@@ -1,16 +1,10 @@
-// Tests the pure logic block (<script id="core">) inside onibus.html against sample /realtime responses.
+// Tests lib/bus-core.js (the pure bus logic) against sample /realtime responses.
 // Run: node test/core.test.mjs
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
-import vm from 'node:vm';
-
-const html = readFileSync(fileURLToPath(new URL('../onibus.html', import.meta.url)), 'utf8');
-const src = html.match(/<script id="core">([\s\S]*?)<\/script>/)[1];
-const ctx = { module: { exports: {} } };
-vm.runInNewContext(src, ctx);
-const Core = ctx.module.exports;
-// objects from the vm realm have other prototypes; compare as plain data
+import Core from '../lib/bus-core.js';
+// compare as plain data
 const plain = x => JSON.parse(JSON.stringify(x));
 const eq = (a, b, m) => assert.deepEqual(plain(a), plain(b), m);
 

@@ -94,6 +94,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .chart .bar{cursor:pointer}
 .up{color:var(--danger)} .down{color:var(--ok)}
 .tag{font-size:12px;color:var(--ink-3)}
+.nb{font-family:var(--mono);font-weight:700;font-size:20px;min-width:64px;text-align:right}
+.nb small{font-size:12px;font-weight:400;color:var(--ink-3)}
 </style>
 <style>
 .mod{display:block;text-decoration:none;color:inherit}
@@ -106,6 +108,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   <div class="top"><div class="brand"><b></b>Argos</div></div>
   <nav class="nav" aria-label="Seções"><a href="index.html" aria-current="page">Início</a><a href="onibus.html">Ônibus</a><a href="carro.html">Carro</a><a href="gastos.html">Gastos</a></nav>
 
+  <div id="bus"></div>
   <div id="summary" hidden>
     <div class="tiles" id="tiles"></div>
     <div id="remind"></div>
@@ -119,6 +122,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <script type="module">
 import { createVault } from './lib/vault.js';
 import { homeSummary } from './lib/home-core.js';
+import { nextBuses } from './lib/home-bus.js';
+import { createUnir, fetchJSON, stcpBase } from './lib/bus-net.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -145,7 +150,28 @@ async function main() {
     $('#note').textContent = err.kind === 'auth' ? 'Token recusado pelo cofre. Reconecte em Carro → Cofre.' : 'Não foi possível carregar o resumo.';
   }
 }
+const hm = ms => new Date(ms).toTimeString().slice(0, 5);
+const mins = m => m < 60 ? `${m}<small> min</small>` : `${Math.floor(m / 60)}<small> h</small> ${m % 60}`;
+async function busMain() {
+  if (!vault.configured()) return;
+  const box = $('#bus');
+  try {
+    const { items } = await vault.list('bus-setup'), rec = items.find(x => x.id === 'setup');
+    const setup = rec && rec.state;
+    if (!setup) return;
+    const unir = createUnir({ getJSON: fetchJSON, storage: localStorage }), base = stcpBase(location.hostname);
+    const rows = await nextBuses(setup, { fetchStcp: id => fetchJSON(base, `/api/stops/${encodeURIComponent(id)}/realtime`), unirUpcoming: l => unir.unirUpcoming(l, 3) });
+    if (!rows.length) return;
+    box.innerHTML = `<div class="card"><h2>Próximo ônibus</h2><ul class="list">${rows.map(r => {
+      if (r.err) return `<li><div class="main">${esc(r.label)}<div class="sub">Sem resposta agora.</div></div></li>`;
+      if (r.empty) return `<li><div class="main">${esc(r.label)}<div class="sub">${r.kind === 'unir' ? 'Nenhum horário nos próximos 7 dias.' : 'Sem previsão agora.'}</div></div></li>`;
+      if (r.kind === 'stcp') return `<li><div class="main">${esc(r.label)}<div class="sub">${esc(r.stop)} · ao vivo</div></div><div class="nb">${r.minutesList.map(m => mins(m)).join(' · ')}</div></li>`;
+      return `<li><div class="main">${esc(r.label)}<div class="sub">linha ${esc(r.line)} às ${hm(r.depAt)} para ${esc(r.to)} · chega ${r.est ? '≈' : ''}${hm(r.doneAt)} · horário</div></div><div class="nb">${mins(r.minutes)}</div></li>`;
+    }).join('')}</ul><p class="tag" style="margin:8px 0 0">Detalhes em <a href="onibus.html">Ônibus</a>.</p></div>`;
+  } catch (err) { /* a home continua sem o card de ônibus */ }
+}
 main();
+busMain();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
