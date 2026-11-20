@@ -1,16 +1,33 @@
 # Cofre privado
 
-A página no GitHub Pages é pública, então ela **não guarda dados**. Os dados pessoais (carro e o que vier depois) ficam aqui, num Cloudflare Worker com um banco KV, e só são entregues a quem enviar o token secreto.
+A página no Cloudflare Pages é pública, então ela **não guarda dados**. Os dados pessoais (carro e o que vier depois) ficam aqui, num Cloudflare Worker com um banco KV, e só são entregues a quem enviar o token secreto.
 
 ```
 Seu aparelho ──(token)──▶ Worker "vault" ──▶ KV (seus dados)
       ▲
-GitHub Pages: só código, sem dados
+Cloudflare Pages: só código, sem dados
 ```
 
 ## Instalar (uma vez, uns 10 minutos, plano gratuito)
 
-Pré-requisito: conta em dash.cloudflare.com e Node instalado.
+O endereço do app é `https://argos-ejb.pages.dev`. Esse é o valor de `ALLOWED_ORIGIN` (origem = esquema + domínio, sem barra no fim nem caminho).
+
+Escolha **um** caminho: o painel da Cloudflare (funciona no celular, sem terminal) ou a linha de comando.
+
+### A. Pelo painel da Cloudflare (celular)
+
+1. **Gere o token.** Use o gerador de senhas do aparelho (64 caracteres, letras e números) e guarde no gerenciador de senhas. Não cole em chat, issue ou commit.
+2. **Crie o banco KV.** dash.cloudflare.com → Storage & Databases → KV → Create. Nome: `VAULT`. Tipo: Standard.
+3. **Crie o Worker.** Workers & Pages → Create → Workers → comece pelo modelo **Hello World**. Nome: `vault` → Deploy.
+4. **Cole o código.** Abra o Worker → Edit code → apague tudo → cole o conteúdo de `vault/worker.js` → Deploy.
+5. **Ligue o banco.** Worker → Settings → Bindings → Add → KV namespace. Variable name: `VAULT` (exatamente assim, maiúsculas). Namespace: o `VAULT` do passo 2. Save.
+6. **Origem permitida.** Settings → Variables and Secrets → Add → tipo **Text**. Nome: `ALLOWED_ORIGIN`. Valor: `https://argos-ejb.pages.dev`. Deploy.
+7. **Token.** Mesma tela → Add → tipo **Secret**. Nome: `VAULT_TOKEN`. Valor: o token do passo 1. Deploy.
+8. **Teste.** Abra `https://vault.SEUNOME.workers.dev/v1/ping` no navegador. Deve responder `{"error":"unauthorized"}`. Isso é o esperado: sem token, não entra.
+
+### B. Pela linha de comando
+
+Pré-requisito: Node instalado.
 
 ```bash
 cd vault
@@ -24,11 +41,15 @@ npx wrangler kv namespace create VAULT
 openssl rand -hex 32
 npx wrangler secret put VAULT_TOKEN      # cole o token quando pedir
 
-# 3. confira ALLOWED_ORIGIN em wrangler.toml (a origem do seu GitHub Pages) e publique
+# 3. confira ALLOWED_ORIGIN em wrangler.toml e publique
 npx wrangler deploy
 ```
 
-O deploy imprime o endereço (`https://vault.SEUNOME.workers.dev`). Abra `carro.html` no app, toque em **Cofre**, cole o endereço e o token. Repita em cada aparelho.
+### Conectar o app
+
+Abra `https://argos-ejb.pages.dev/carro.html`, toque em **Cofre**, cole o endereço do Worker (`https://vault.SEUNOME.workers.dev`) e o token. Repita em cada aparelho. Se aparecer "Cannot reach the vault", confira o `ALLOWED_ORIGIN` (deve ser idêntico à origem do app).
+
+Depois, no app de ônibus (`onibus.html`): **Settings → Save setup to vault**, para os trajetos ficarem no cofre.
 
 ## O que protege o quê
 
@@ -48,7 +69,7 @@ O deploy imprime o endereço (`https://vault.SEUNOME.workers.dev`). Abra `carro.
 
 ## Manutenção
 
-- **Trocar o token** (suspeita de vazamento ou aparelho perdido): gere outro, `npx wrangler secret put VAULT_TOKEN`, e entre de novo nos aparelhos que você quer manter.
+- **Trocar o token** (suspeita de vazamento ou aparelho perdido): gere outro, `npx wrangler secret put VAULT_TOKEN` (ou, no painel, edite o secret `VAULT_TOKEN` do Worker), e entre de novo nos aparelhos que você quer manter.
 - **Backup:** botão **Baixar backup (JSON)** na tela do carro. Guarde o arquivo fora do repositório (`backup-*.json` já está no `.gitignore`).
 - **Testes:** `node test/vault.test.mjs` verifica autenticação, CORS, limites e o funcionamento offline.
 

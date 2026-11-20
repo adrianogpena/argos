@@ -49,11 +49,23 @@ Hospedagem estática: só código
 5. **Hospedagem: Cloudflare Pages, não GitHub Pages.** O dono tem outros projetos em `*.github.io`, e todos os sites de um mesmo usuário compartilham a origem (`usuario.github.io`) e portanto o `localStorage`: qualquer um deles poderia ler o token do cofre. No Cloudflare Pages o Argos tem origem própria (`argos-ejb.pages.dev` ou semelhante).
 6. Quer um gráfico dos gastos (feito) e acha que o painel vai crescer com outros assuntos do dia a dia.
 
-## Estado da migração (repositório `argus`)
+## Estado da migração (repositório `argos`)
 
-Feito: renomear para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`; `argos-proxy`); hospedagem trocada para Cloudflare Pages (`pages.dev`; `ALLOWED_ORIGIN` = `https://argos-ejb.pages.dev`, confirmada pelo dono); home em `index.html` com gasto do mês e lembretes do carro (`lib/home-core.js`); ônibus movido para `onibus.html`.
+Feito e no ar:
+- Repositório limpo `adrianogpena/argos`, sem histórico do Paragem. `main` é a produção.
+- Cloudflare Pages: `https://argos-ejb.pages.dev`, deploy automático a cada push na `main`.
+- Cofre (Worker `vault` + KV) em `https://vault.adrianogpena.workers.dev`, com `ALLOWED_ORIGIN` = `https://argos-ejb.pages.dev` e `VAULT_TOKEN` configurado. `/v1/ping` sem token retorna 401, como esperado.
+- Proxy dos ônibus em `https://argos-proxy.adrianogpena.workers.dev` (mesmo `ALLOWED_ORIGIN`; `PAGES_PROXY` em `onibus.html` confirmado). `onibus.html` mostra as chegadas.
+- Código: renomeado para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`), home em `index.html` (`lib/home-core.js`), ônibus em `onibus.html`.
 
-Pendente (depende do dono): criar o projeto no Cloudflare Pages; confirmar a URL do Worker `argos-proxy` (`PAGES_PROXY` em `onibus.html`); deploy do cofre (`vault/README.md`; nunca pedir o token, use `request_credential`); no app, **Settings → Save setup to vault**; só então apagar o repositório antigo `paragem`. Ideia para a home: próximo ônibus (precisa da chamada ao vivo da STCP).
+Pendente (depende do dono):
+1. Confirmar que o app conecta ao cofre: `carro.html` → Cofre → URL e token. Se der "Cannot reach the vault", conferir `ALLOWED_ORIGIN` do Worker `vault`.
+2. No app de ônibus: **Settings → Save setup to vault**.
+3. Só então o dono apaga o repositório antigo `paragem` (nunca apagar por conta própria).
+
+Regra: nunca pedir, escrever ou registrar o token; se precisar de credencial, usar `request_credential`.
+
+Ideia para a home: próximo ônibus (precisa da chamada ao vivo da STCP).
 
 ## Ideias futuras (não decididas)
 

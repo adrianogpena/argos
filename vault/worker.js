@@ -1,6 +1,6 @@
 // Private data vault: a Cloudflare Worker + one KV namespace.
 //
-// The app (public, on GitHub Pages) holds no data. Personal records live here and are only
+// The app (public, on Cloudflare Pages) holds no data. Personal records live here and are only
 // served to a caller that sends the secret token:  Authorization: Bearer <VAULT_TOKEN>
 //
 // Secrets and bindings (never in the repository):
