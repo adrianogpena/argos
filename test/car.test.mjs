@@ -69,3 +69,11 @@ t('litersFromLevel estimates litres from the gauge percentage', () => {
   assert.equal(TANK_LITERS, 45); assert.equal(litersFromLevel(50), 23); assert.equal(litersFromLevel(100), 45); assert.equal(litersFromLevel(0), 0); assert.equal(litersFromLevel(undefined), null);
 });
 console.log(`\n${n} passed`);
+
+t('fuelRecord: nível do tanque define se é cheio ou parcial', () => {
+  const base = { id: 'x', date: '2026-05-01', odometer: '1', liters: '10', total: '15' };
+  assert.equal(fuelRecord({ ...base, fuelLevel: 100 }).rec.full, true);
+  assert.equal(fuelRecord({ ...base, fuelLevel: 60 }).rec.full, false);
+  assert.equal(fuelRecord({ ...base, fuelLevel: 60 }).rec.fuelLevel, 60);
+  assert.equal('fuelLevel' in fuelRecord(base).rec, false);
+});
