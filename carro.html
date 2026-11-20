@@ -127,9 +127,15 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <label class="field"><span>Litros</span><input name="liters" inputmode="decimal" required></label>
     <label class="field"><span>Valor total (€)</span><input name="total" inputmode="decimal" required></label>
   </div>
-  <label class="field"><span>Posto (opcional)</span><input name="station" maxlength="60"></label>
+  <label class="field"><span>Posto</span><select name="stationSel" id="stationSel"></select></label>
+  <label class="field" id="stationNewBox" hidden><span>Nome do novo posto</span><input name="stationNew" id="stationNew" maxlength="60"></label>
   <label class="field"><span>Observação (opcional)</span><input name="note" maxlength="200" placeholder="Combustível aditivado, viagem, preço promocional…"></label>
-  <label class="check"><input type="checkbox" name="full" checked> Tanque cheio <small style="color:var(--ink-3)">(o consumo é medido entre dois tanques cheios)</small></label>
+  <div class="field"><span>Nível do tanque depois de abastecer</span>
+    <svg id="gaugeF" class="gauge" viewBox="0 0 160 220" role="img" aria-label="Mostrador do combustível"></svg>
+    <input type="range" name="fuelLevel" id="lvRangeF" min="0" max="100" step="1" value="100" aria-label="Posição do ponteiro">
+    <div class="lvtxt" id="lvTxtF" aria-live="polite"></div>
+    <small style="color:var(--ink-3);display:block;margin:2px 0 4px">Padrão: cheio (100%). Só o tanque cheio entra no cálculo do consumo; se parar abaixo disso, o abastecimento conta como parcial.</small>
+  </div>
   <div class="msg" id="fuelMsg" role="status"></div>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnFuelSave">Salvar</button></div>
 </form></dialog>
@@ -267,17 +273,27 @@ async function save(col, rec, msgEl, dlg) {
 }
 function fill(form, obj) { for (const [k, v] of Object.entries(obj)) { const el = form.elements[k]; if (!el) continue; if (el.type === 'checkbox') el.checked = !!v; else el.value = v ?? ''; } }
 
+const DEFAULT_STATION = 'Intermarché', NEW_ST = '__new__';
+function fillStations(cur) {
+  const names = [...new Set([DEFAULT_STATION, ...fuels.map(x => x.station).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
+  if (cur && !names.includes(cur)) names.push(cur);
+  $('#stationSel').innerHTML = names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('') + `<option value="${NEW_ST}">+ Adicionar posto novo…</option>`;
+  $('#stationSel').value = cur || DEFAULT_STATION; $('#stationNewBox').hidden = true; $('#stationNew').value = '';
+}
+$('#stationSel').onchange = () => { const n = $('#stationSel').value === NEW_ST; $('#stationNewBox').hidden = !n; if (n) $('#stationNew').focus(); };
 let editFuel = null, editSvc = null, editSt = null;
 function openFuel(f) {
   editFuel = f?.id || null; const form = $('#formFuel'); form.reset();
-  fill(form, f ? { date: f.date, odometer: f.odometer, liters: String(f.liters).replace('.', ','), total: String(f.total).replace('.', ','), station: f.station, note: f.note, full: f.full } : { date: today(), odometer: summary(fuels, services, statuses).lastOdo || '', full: true });
+  fill(form, f ? { date: f.date, odometer: f.odometer, liters: String(f.liters).replace('.', ','), total: String(f.total).replace('.', ','), note: f.note } : { date: today(), odometer: summary(fuels, services, statuses).lastOdo || '' });
+  fillStations(f ? f.station : DEFAULT_STATION);
+  $('#lvRangeF').value = f ? (f.fuelLevel != null ? Math.round(f.fuelLevel) : f.full ? 100 : 50) : 100; drawGaugeF();
   $('#fuelTitle').textContent = f ? 'Editar abastecimento' : 'Novo abastecimento'; $('#fuelMsg').textContent = '';
   $('#dlgFuel').showModal();
 }
 $('#btnFuel').onclick = () => openFuel();
 $('#btnFuelSave').onclick = () => {
   const f = $('#formFuel');
-  const r = fuelRecord({ id: editFuel || newId(), date: f.date.value, odometer: f.odometer.value, liters: f.liters.value, total: f.total.value, full: f.full.checked, station: f.station.value, note: f.note.value });
+  const r = fuelRecord({ id: editFuel || newId(), date: f.date.value, odometer: f.odometer.value, liters: f.liters.value, total: f.total.value, fuelLevel: f.fuelLevel.value, station: $('#stationSel').value === NEW_ST ? $('#stationNew').value : $('#stationSel').value, note: f.note.value });
   const names = { date: 'a data', odometer: 'o km', liters: 'os litros', total: 'o valor' };
   if (!r.ok) { $('#fuelMsg').className = 'msg bad'; $('#fuelMsg').textContent = 'Confira ' + names[r.error] + '.'; return; }
   save('car-fuel', r.rec, $('#fuelMsg'), $('#dlgFuel'));
@@ -294,24 +310,28 @@ const GAUGE_TICKS = (() => {
   [28, 20, 28, 20, 28, 9, 9, 9].forEach((len, i) => { t += gline(50 - (40 - 2.5 * i) / DEG, 131 - len, 131, 'ty'); });
   return t;
 })();
-function drawGauge() {
-  const p = +$('#lvRange').value, [a, b] = gpt(p, 56), [c, d] = gpt(p, 124);
-  const pump = '<g transform="translate(52 92)" fill="#f2efe6"><path d="M0 4a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v19H0z"/><rect x="3" y="3" width="10" height="7" rx="1" fill="#17150f"/><path d="M17 6h3l3 3v10a2 2 0 0 1-4 0v-7h-2" fill="none" stroke="#f2efe6" stroke-width="2"/></g>';
-  $('#gauge').innerHTML = `<rect width="160" height="220" rx="14" fill="#1c1b18"/><circle cx="${GC.x}" cy="${GC.y}" r="54" fill="#050504"/>${GAUGE_TICKS}${pump}
+function makeGauge(svgSel, rangeSel, txtSel) {
+  const svg = $(svgSel), rng = $(rangeSel), txt = $(txtSel);
+  const draw = () => {
+    const p = +rng.value, [a, b] = gpt(p, 56), [c, d] = gpt(p, 124);
+    const pump = '<g transform="translate(52 92)" fill="#f2efe6"><path d="M0 4a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v19H0z"/><rect x="3" y="3" width="10" height="7" rx="1" fill="#17150f"/><path d="M17 6h3l3 3v10a2 2 0 0 1-4 0v-7h-2" fill="none" stroke="#f2efe6" stroke-width="2"/></g>';
+    svg.innerHTML = `<rect width="160" height="220" rx="14" fill="#1c1b18"/><circle cx="${GC.x}" cy="${GC.y}" r="54" fill="#050504"/>${GAUGE_TICKS}${pump}
     <text x="50" y="52" fill="#f2efe6" text-anchor="middle">1</text><text x="54" y="168" fill="#f2c230" text-anchor="middle">0</text>
     <line class="nd" x1="${a.toFixed(1)}" y1="${b.toFixed(1)}" x2="${c.toFixed(1)}" y2="${d.toFixed(1)}"/>`;
-  $('#lvTxt').textContent = p === 0 ? 'Vazio (≈ 0 l)' : p === 100 ? 'Cheio (≈ ' + litersFromLevel(100) + ' l)' : '≈ ' + litersFromLevel(p) + ' l de ' + litersFromLevel(100) + ' l';
+    txt.textContent = p === 0 ? 'Vazio (≈ 0 l)' : p === 100 ? 'Cheio (≈ ' + litersFromLevel(100) + ' l)' : '≈ ' + litersFromLevel(p) + ' l de ' + litersFromLevel(100) + ' l';
+  };
+  const set = e => { // drag the needle straight on the dial
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const deg = Math.atan2(GC.y - q.y, q.x - GC.x) * 180 / Math.PI;
+    rng.value = Math.max(0, Math.min(100, Math.round(50 + deg / DEG))); draw();
+  };
+  svg.addEventListener('pointerdown', e => { e.preventDefault(); svg.setPointerCapture(e.pointerId); set(e); });
+  svg.addEventListener('pointermove', e => { if (svg.hasPointerCapture(e.pointerId)) set(e); });
+  rng.oninput = draw; draw(); return draw;
 }
-// drag the needle straight on the dial
-const gaugeSet = e => {
-  const svg = $('#gauge'), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
-  const q = pt.matrixTransform(svg.getScreenCTM().inverse());
-  const deg = Math.atan2(GC.y - q.y, q.x - GC.x) * 180 / Math.PI;
-  $('#lvRange').value = Math.max(0, Math.min(100, Math.round(50 + deg / DEG))); drawGauge();
-};
-$('#gauge').addEventListener('pointerdown', e => { e.preventDefault(); $('#gauge').setPointerCapture(e.pointerId); gaugeSet(e); });
-$('#gauge').addEventListener('pointermove', e => { if ($('#gauge').hasPointerCapture(e.pointerId)) gaugeSet(e); });
-$('#lvRange').oninput = drawGauge;
+const drawGauge = makeGauge('#gauge', '#lvRange', '#lvTxt');
+const drawGaugeF = makeGauge('#gaugeF', '#lvRangeF', '#lvTxtF');
 $('#lvOn').onchange = () => { $('#lvBox').hidden = !$('#lvOn').checked; drawGauge(); };
 function openStatus(x) {
   editSt = x?.id || null; const form = $('#formStatus'); form.reset();
