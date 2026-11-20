@@ -1,6 +1,6 @@
 // node test/car.test.mjs
 import assert from 'node:assert/strict';
-import { fuelRecord, consumption, summary, monthlySpend, reminders, serviceRecord, parseNum } from '../lib/car-core.js';
+import { fuelRecord, consumption, summary, monthlySpend, reminders, serviceRecord, parseNum, statusRecord, odoPoints, monthlyKm, kmPerDay } from '../lib/car-core.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 const F = (date, odometer, liters, total, full = true) => ({ id: date + odometer, date, odometer, liters, total, full });
 
@@ -45,5 +45,24 @@ t('serviceRecord needs a kind and a date', () => {
   assert.equal(serviceRecord({ date: '2026-01-01', kind: '' }).ok, false);
   const r = serviceRecord({ id: 'a', date: '2026-01-01', kind: 'Oil', cost: '80,5', nextKm: '', nextDate: '' });
   assert.ok(r.ok); assert.equal(r.rec.cost, 80.5); assert.ok(!('nextKm' in r.rec));
+});
+t('statusRecord: only date and km are required, bad optionals are dropped', () => {
+  const r = statusRecord({ id: 's', date: '2026-03-01', odometer: '12345', fuelLevel: '50', dashRange: '420', dashAvg: '6,5', note: ' ok ' });
+  assert.ok(r.ok); assert.equal(r.rec.fuelLevel, 50); assert.equal(r.rec.dashAvg, 6.5); assert.equal(r.rec.note, 'ok');
+  const m = statusRecord({ id: 's', date: '2026-03-01', odometer: 1, fuelLevel: '150', dashRange: '', dashAvg: '0' });
+  assert.ok(m.ok); assert.ok(!('fuelLevel' in m.rec) && !('dashRange' in m.rec) && !('dashAvg' in m.rec));
+  assert.equal(statusRecord({ date: '2026-03-01' }).error, 'odometer'); assert.equal(statusRecord({ odometer: 1 }).error, 'date');
+});
+t('summary: a status reading raises the odometer', () => {
+  assert.equal(summary([F('2026-01-01', 1000, 40, 70)], [], [{ odometer: 1800 }]).lastOdo, 1800);
+});
+t('odoPoints merges sources, one point per date', () => {
+  const p = odoPoints([F('2026-01-10', 1000, 40, 70)], [{ date: '2026-01-10', odometer: 1005 }, { date: '2026-01-05', odometer: 0 }], [{ date: '2026-01-20', odometer: 1300 }]);
+  assert.deepEqual(p, [{ date: '2026-01-10', odometer: 1005 }, { date: '2026-01-20', odometer: 1300 }]);
+});
+t('monthlyKm interpolates between readings and kmPerDay averages', () => {
+  const p = [{ date: '2026-01-21', odometer: 1000 }, { date: '2026-02-10', odometer: 1400 }];   // 20 days, 20 km/day; Jan 21→Feb 1 is 11 days
+  assert.deepEqual(monthlyKm(p), [{ month: '2026-01', km: 220 }, { month: '2026-02', km: 180 }]);
+  assert.equal(kmPerDay(p), 20); assert.equal(kmPerDay([p[0]]), null); assert.deepEqual(monthlyKm([p[0]]), []);
 });
 console.log(`\n${n} passed`);

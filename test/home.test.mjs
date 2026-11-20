@@ -22,4 +22,8 @@ t('só lembretes vencidos ou próximos', () => {
   assert.deepEqual(s.reminders.map(r => r.kind), ['Óleo']);
   assert.equal(s.reminders[0].state, 'soon');
 });
+t('leitura de odômetro avança os lembretes', () => {
+  const s = homeSummary({ services: [{ id: 's1', date: '2026-01-01', odometer: 500, kind: 'Óleo', cost: 0, nextKm: 900 }], statuses: [{ id: 'x', date: '2026-05-01', odometer: 950 }] }, '2026-05-10');
+  assert.equal(s.reminders[0].state, 'overdue');
+});
 console.log(n + ' ok');

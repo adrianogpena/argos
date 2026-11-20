@@ -35,7 +35,7 @@ Hospedagem estática: só código
 
 - `vault/worker.js`: sem token válido responde 401. Comparação por hash em tempo constante. 8 tokens errados por IP em 15 min bloqueiam o IP (429). CORS restrito a `ALLOWED_ORIGIN` (sem ela configurada, recusa tudo). Falta de configuração falha fechado (500).
 - API: `GET /v1/ping`, `GET /v1/c/:colecao`, `PUT|DELETE /v1/c/:colecao/:id`, `GET /v1/export`. Limites: registro de 8 KB, 20 000 itens por coleção.
-- Coleções em uso: `car-fuel`, `car-service`, `expenses`, `bus-setup`.
+- Coleções em uso: `car-fuel`, `car-service`, `car-status` (leituras do odômetro: km, nível do tanque, autonomia e consumo do painel, observação), `expenses`, `bus-setup`.
 - `lib/vault.js` (cliente): cache local, fila de edições offline, erros tipados (`auth`, `network`, `server`, `config`). A URL do cofre exige `https://` (exceto `localhost`, para testes).
 - O token é gerado pelo dono (`openssl rand -hex 32`) e guardado com `wrangler secret put VAULT_TOKEN`. Troca de token = revoga os aparelhos antigos.
 - Limite conhecido e aceito: a Cloudflare hospeda os dados. Para dado mais sensível (saúde, documentos) criptografar no navegador antes de enviar, ainda não implementado.
@@ -88,13 +88,14 @@ Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre
 ```
 node test/core.test.mjs       lógica dos ônibus (16)
 node test/vault.test.mjs      Worker do cofre e cliente (10 grupos)
-node test/car.test.mjs        consumo, resumo, lembretes (9)
+node test/car.test.mjs        consumo, resumo, lembretes, leituras do odômetro (13)
 node test/expenses.test.mjs   gastos (7)
-node test/home.test.mjs       resumo da home (3)
+node test/home.test.mjs       resumo da home (4)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
+node test/fuelio.test.mjs     importação do Fuelio (4)
 ```
 
-Rode os seis antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
+Rode os sete antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
 
 ## Como criar o repositório novo limpo
 
@@ -109,3 +110,7 @@ git remote add origin git@github.com:<usuario>/argos.git && git push -u origin m
 ```
 
 Conferir antes do push que `git log` tem **um** commit e que nenhum arquivo `backup-*.json`, `.env` ou dado pessoal veio junto.
+
+## Importação do Fuelio (única)
+
+`tools/import-fuelio.mjs` lê um `vehicle-N-local.csv` do backup do Fuelio (`lib/fuelio.js`) e grava em `car-fuel` / `car-service`. Roda no computador do dono com `VAULT_URL` e `VAULT_TOKEN` no ambiente; sem `--apply` só simula. Ids estáveis: repetir sobrescreve. O app guarda um só carro: importar apenas o veículo ativo (o Captur), nunca misturar dois carros (os odômetros se confundem). Os CSVs nunca entram no git.

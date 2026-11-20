@@ -98,12 +98,14 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   </section>
 
   <main id="app" hidden>
-    <div class="row"><button class="btn" id="btnFuel">+ Abastecimento</button><button class="btn ghost" id="btnService">+ Manutenção</button><span class="msg" id="sync" role="status"></span></div>
+    <div class="row"><button class="btn" id="btnFuel">+ Abastecimento</button><button class="btn ghost" id="btnStatus">+ Odômetro</button><button class="btn ghost" id="btnService">+ Manutenção</button><span class="msg" id="sync" role="status"></span></div>
     <div id="remind"></div>
     <div class="tiles" id="tiles"></div>
     <div class="card"><h2>Consumo por abastecimento (km/l)</h2><div id="chCons"></div></div>
     <div class="card"><h2>Gasto por mês (€)</h2><div id="chSpend"></div></div>
+    <div class="card"><h2>Km rodados por mês</h2><div id="chKm"></div></div>
     <div class="card"><h2>Abastecimentos</h2><ul class="list" id="fuelList"></ul></div>
+    <div class="card"><h2>Leituras do odômetro</h2><ul class="list" id="stList"></ul></div>
     <div class="card"><h2>Manutenções</h2><ul class="list" id="svcList"></ul></div>
     <div class="row"><button class="btn ghost" id="btnExport">Baixar backup (JSON)</button></div>
   </main>
@@ -121,9 +123,28 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <label class="field"><span>Valor total (€)</span><input name="total" inputmode="decimal" required></label>
   </div>
   <label class="field"><span>Posto (opcional)</span><input name="station" maxlength="60"></label>
+  <label class="field"><span>Observação (opcional)</span><input name="note" maxlength="200" placeholder="Combustível aditivado, viagem, preço promocional…"></label>
   <label class="check"><input type="checkbox" name="full" checked> Tanque cheio <small style="color:var(--ink-3)">(o consumo é medido entre dois tanques cheios)</small></label>
   <div class="msg" id="fuelMsg" role="status"></div>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnFuelSave">Salvar</button></div>
+</form></dialog>
+
+<dialog id="dlgStatus"><form method="dialog" class="sheet" id="formStatus">
+  <h3 id="stTitle">Leitura do odômetro</h3>
+  <div class="two">
+    <label class="field"><span>Data</span><input name="date" type="date" required></label>
+    <label class="field"><span>Km do odômetro</span><input name="odometer" inputmode="decimal" required></label>
+  </div>
+  <label class="field"><span>Nível do tanque (opcional)</span><select name="fuelLevel">
+    <option value="">Não informar</option><option value="5">Reserva</option><option value="25">¼</option><option value="50">½</option><option value="75">¾</option><option value="100">Cheio</option>
+  </select></label>
+  <div class="two">
+    <label class="field"><span>Autonomia no painel (km)</span><input name="dashRange" inputmode="decimal"></label>
+    <label class="field"><span>Consumo do painel (l/100 km)</span><input name="dashAvg" inputmode="decimal"></label>
+  </div>
+  <label class="field"><span>Observação (opcional)</span><input name="note" maxlength="200" placeholder="Antes da viagem, depois da revisão…"></label>
+  <div class="msg" id="stMsg" role="status"></div>
+  <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnStSave">Salvar</button></div>
 </form></dialog>
 
 <dialog id="dlgService"><form method="dialog" class="sheet" id="formService">
@@ -145,7 +166,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <script type="module">
 import { createVault, newId } from './lib/vault.js';
-import { fuelRecord, serviceRecord, summary, consumption, monthlySpend, reminders, parseNum, byOdometer } from './lib/car-core.js';
+import { fuelRecord, serviceRecord, statusRecord, odoPoints, monthlyKm, kmPerDay, summary, consumption, monthlySpend, reminders, parseNum, byOdometer } from './lib/car-core.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -156,7 +177,7 @@ const kmFmt = n => Math.round(n).toLocaleString('pt-BR');
 const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const dateBR = s => s.split('-').reverse().join('/');
 
-let fuels = [], services = [];
+let fuels = [], services = [], statuses = [];
 
 // ---------- vault connection ----------
 function showSetup(msg, cls = '') {
@@ -174,10 +195,10 @@ $('#btnConnect').onclick = async () => {
 };
 
 async function load() {
-  const [f, s] = await Promise.all([vault.list('car-fuel'), vault.list('car-service')]);
-  fuels = f.items; services = s.items;
+  const [f, s, st] = await Promise.all([vault.list('car-fuel'), vault.list('car-service'), vault.list('car-status')]);
+  fuels = f.items; services = s.items; statuses = st.items;
   $('#setup').hidden = true; $('#app').hidden = false;
-  $('#sync').textContent = f.stale || s.stale ? 'Offline: salvo neste aparelho, será enviado depois.' : '';
+  $('#sync').textContent = f.stale || s.stale || st.stale ? 'Offline: salvo neste aparelho, será enviado depois.' : '';
   render();
 }
 
@@ -185,14 +206,18 @@ async function load() {
 function tile(k, v, u = '') { return `<div class="tile"><div class="k">${esc(k)}</div><div><span class="v">${esc(v)}</span><span class="u">${esc(u)}</span></div></div>`; }
 
 function render() {
-  const s = summary(fuels, services);
+  const s = summary(fuels, services, statuses), pts = odoPoints(fuels, services, statuses), perDay = kmPerDay(pts);
+  const lastSt = [...statuses].sort((a, b) => a.date.localeCompare(b.date) || a.odometer - b.odometer).pop();
   $('#tiles').innerHTML = fuels.length ? [
     tile('Odômetro', kmFmt(s.lastOdo), 'km'), tile('Último consumo', dec(s.lastKmPerL), 'km/l'),
     tile('Média', dec(s.avgKmPerL), 'km/l'), tile('Custo por km', s.avgCostPerKm == null ? '–' : eur(s.avgCostPerKm).replace(/\s/g, ' '), ''),
-    tile('Preço médio/l', s.avgPricePerL == null ? '–' : eur(s.avgPricePerL), ''), tile('Total gasto', eur(s.spent + services.reduce((a, x) => a + (x.cost || 0), 0)), ''),
+    tile('Preço médio/l', s.avgPricePerL == null ? '–' : eur(s.avgPricePerL), ''), tile('Km por dia', perDay == null ? '–' : dec(perDay, 0), 'km'),
+    ...(lastSt && lastSt.fuelLevel != null ? [tile('Tanque em ' + dateBR(lastSt.date).slice(0, 5), Math.round(lastSt.fuelLevel), '%' + (lastSt.dashRange != null ? ' · ' + kmFmt(lastSt.dashRange) + ' km' : ''))] : []), tile('Total gasto', eur(s.spent + services.reduce((a, x) => a + (x.cost || 0), 0)), ''),
   ].join('') : '<div class="card empty" style="grid-column:1/-1">Registre o primeiro abastecimento para ver as estatísticas.</div>';
 
   const rem = reminders(services, s.lastOdo, today());
+  const mk = monthlyKm(pts);
+  $('#chKm').innerHTML = mk.length ? bars(mk.map(m => ({ label: m.month.slice(5) + '/' + m.month.slice(2, 4), v: m.km, tip: `${m.month.split('-').reverse().join('/')}: ${kmFmt(m.km)} km` })).slice(-24), n => kmFmt(n)) : '<div class="empty">Precisa de duas leituras de odômetro em datas diferentes.</div>';
   $('#remind').innerHTML = rem.length ? `<div class="card"><h2>Lembretes</h2><ul class="list">${rem.map(r => `<li><div class="main">${esc(r.kind)}<div class="sub">${[r.kmLeft != null ? (r.kmLeft >= 0 ? `faltam ${kmFmt(r.kmLeft)} km` : `passou ${kmFmt(-r.kmLeft)} km`) : '', r.daysLeft != null ? (r.daysLeft >= 0 ? `em ${r.daysLeft} dias` : `venceu há ${-r.daysLeft} dias`) : ''].filter(Boolean).join(' · ')}</div></div><span class="pill ${r.state}">${{ overdue: 'atrasado', soon: 'em breve', ok: 'ok' }[r.state]}</span></li>`).join('')}</ul></div>` : '';
 
   const cons = consumption(fuels);
@@ -201,7 +226,10 @@ function render() {
   $('#chSpend').innerHTML = ms.length ? bars(ms.map(m => ({ label: m.month.slice(5) + '/' + m.month.slice(2, 4), v: m.total, tip: `${m.month.split('-').reverse().join('/')}: ${eur(m.total)}` })).slice(-24), n => kmFmt(n)) : '<div class="empty">Sem gastos ainda.</div>';
 
   const fl = [...fuels].sort(byOdometer).reverse();
-  $('#fuelList').innerHTML = fl.length ? fl.map(f => `<li><div class="main"><span class="num">${kmFmt(f.odometer)} km</span> · ${dateBR(f.date)}<div class="sub">${dec(f.liters, 2)} l · ${eur(f.total)} · ${eur(f.liters ? f.total / f.liters : 0)}/l${f.full ? '' : ' · parcial'}${f.station ? ' · ' + esc(f.station) : ''}</div></div><button data-edit-fuel="${esc(f.id)}" aria-label="Editar">Editar</button><button data-del-fuel="${esc(f.id)}" aria-label="Apagar">Apagar</button></li>`).join('') : '<li class="empty">Nenhum abastecimento.</li>';
+  $('#fuelList').innerHTML = fl.length ? fl.map(f => `<li><div class="main"><span class="num">${kmFmt(f.odometer)} km</span> · ${dateBR(f.date)}<div class="sub">${dec(f.liters, 2)} l · ${eur(f.total)} · ${eur(f.liters ? f.total / f.liters : 0)}/l${f.full ? '' : ' · parcial'}${f.station ? ' · ' + esc(f.station) : ''}${f.note ? ' · ' + esc(f.note) : ''}</div></div><button data-edit-fuel="${esc(f.id)}" aria-label="Editar">Editar</button><button data-del-fuel="${esc(f.id)}" aria-label="Apagar">Apagar</button></li>`).join('') : '<li class="empty">Nenhum abastecimento.</li>';
+  const LV = { 5: 'reserva', 25: '¼', 50: '½', 75: '¾', 100: 'cheio' };
+  const stl = [...statuses].sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer);
+  $('#stList').innerHTML = stl.length ? stl.map(x => `<li><div class="main"><span class="num">${kmFmt(x.odometer)} km</span> · ${dateBR(x.date)}<div class="sub">${[x.fuelLevel != null ? 'tanque ' + (LV[x.fuelLevel] || Math.round(x.fuelLevel) + '%') : '', x.dashRange != null ? 'autonomia ' + kmFmt(x.dashRange) + ' km' : '', x.dashAvg != null ? 'painel ' + dec(x.dashAvg, 1) + ' l/100 km' : '', x.note ? esc(x.note) : ''].filter(Boolean).join(' · ')}</div></div><button data-edit-st="${esc(x.id)}">Editar</button><button data-del-st="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma leitura. Use “+ Odômetro” para atualizar o km sem abastecer.</li>';
   const sl = [...services].sort((a, b) => b.date.localeCompare(a.date));
   $('#svcList').innerHTML = sl.length ? sl.map(x => `<li><div class="main">${esc(x.kind)} · ${dateBR(x.date)}<div class="sub">${x.odometer ? kmFmt(x.odometer) + ' km · ' : ''}${eur(x.cost || 0)}${x.nextKm ? ' · próxima ' + kmFmt(x.nextKm) + ' km' : ''}${x.nextDate ? ' · até ' + dateBR(x.nextDate) : ''}</div></div><button data-edit-svc="${esc(x.id)}">Editar</button><button data-del-svc="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma manutenção.</li>';
 }
@@ -231,24 +259,37 @@ async function save(col, rec, msgEl, dlg) {
 }
 function fill(form, obj) { for (const [k, v] of Object.entries(obj)) { const el = form.elements[k]; if (!el) continue; if (el.type === 'checkbox') el.checked = !!v; else el.value = v ?? ''; } }
 
-let editFuel = null, editSvc = null;
+let editFuel = null, editSvc = null, editSt = null;
 function openFuel(f) {
   editFuel = f?.id || null; const form = $('#formFuel'); form.reset();
-  fill(form, f ? { date: f.date, odometer: f.odometer, liters: String(f.liters).replace('.', ','), total: String(f.total).replace('.', ','), station: f.station, full: f.full } : { date: today(), odometer: summary(fuels, services).lastOdo || '', full: true });
+  fill(form, f ? { date: f.date, odometer: f.odometer, liters: String(f.liters).replace('.', ','), total: String(f.total).replace('.', ','), station: f.station, note: f.note, full: f.full } : { date: today(), odometer: summary(fuels, services, statuses).lastOdo || '', full: true });
   $('#fuelTitle').textContent = f ? 'Editar abastecimento' : 'Novo abastecimento'; $('#fuelMsg').textContent = '';
   $('#dlgFuel').showModal();
 }
 $('#btnFuel').onclick = () => openFuel();
 $('#btnFuelSave').onclick = () => {
   const f = $('#formFuel');
-  const r = fuelRecord({ id: editFuel || newId(), date: f.date.value, odometer: f.odometer.value, liters: f.liters.value, total: f.total.value, full: f.full.checked, station: f.station.value });
+  const r = fuelRecord({ id: editFuel || newId(), date: f.date.value, odometer: f.odometer.value, liters: f.liters.value, total: f.total.value, full: f.full.checked, station: f.station.value, note: f.note.value });
   const names = { date: 'a data', odometer: 'o km', liters: 'os litros', total: 'o valor' };
   if (!r.ok) { $('#fuelMsg').className = 'msg bad'; $('#fuelMsg').textContent = 'Confira ' + names[r.error] + '.'; return; }
   save('car-fuel', r.rec, $('#fuelMsg'), $('#dlgFuel'));
 };
+function openStatus(x) {
+  editSt = x?.id || null; const form = $('#formStatus'); form.reset();
+  fill(form, x ? { date: x.date, odometer: x.odometer, fuelLevel: x.fuelLevel ?? '', dashRange: x.dashRange ?? '', dashAvg: x.dashAvg == null ? '' : String(x.dashAvg).replace('.', ','), note: x.note } : { date: today(), odometer: summary(fuels, services, statuses).lastOdo || '' });
+  $('#stTitle').textContent = x ? 'Editar leitura' : 'Leitura do odômetro'; $('#stMsg').textContent = '';
+  $('#dlgStatus').showModal();
+}
+$('#btnStatus').onclick = () => openStatus();
+$('#btnStSave').onclick = () => {
+  const f = $('#formStatus');
+  const r = statusRecord({ id: editSt || newId(), date: f.date.value, odometer: f.odometer.value, fuelLevel: f.fuelLevel.value, dashRange: f.dashRange.value, dashAvg: f.dashAvg.value, note: f.note.value });
+  if (!r.ok) { $('#stMsg').className = 'msg bad'; $('#stMsg').textContent = r.error === 'date' ? 'Confira a data.' : 'Confira o km.'; return; }
+  save('car-status', r.rec, $('#stMsg'), $('#dlgStatus'));
+};
 function openSvc(s) {
   editSvc = s?.id || null; const form = $('#formService'); form.reset();
-  fill(form, s ? { kind: s.kind, date: s.date, odometer: s.odometer || '', cost: String(s.cost || '').replace('.', ','), nextKm: s.nextKm ?? '', nextDate: s.nextDate || '' } : { date: today(), odometer: summary(fuels, services).lastOdo || '' });
+  fill(form, s ? { kind: s.kind, date: s.date, odometer: s.odometer || '', cost: String(s.cost || '').replace('.', ','), nextKm: s.nextKm ?? '', nextDate: s.nextDate || '' } : { date: today(), odometer: summary(fuels, services, statuses).lastOdo || '' });
   $('#svcTitle').textContent = s ? 'Editar manutenção' : 'Nova manutenção'; $('#svcMsg').textContent = '';
   $('#dlgService').showModal();
 }
@@ -264,9 +305,10 @@ document.addEventListener('click', async e => {
   const d = b.dataset;
   if (d.editFuel) openFuel(fuels.find(f => f.id === d.editFuel));
   else if (d.editSvc) openSvc(services.find(s => s.id === d.editSvc));
-  else if (d.delFuel || d.delSvc) {
+  else if (d.editSt) openStatus(statuses.find(s => s.id === d.editSt));
+  else if (d.delFuel || d.delSvc || d.delSt) {
     if (!confirm('Apagar este registro?')) return;
-    try { await vault.del(d.delFuel ? 'car-fuel' : 'car-service', d.delFuel || d.delSvc); await load(); } catch (err) { alert(err.message); }
+    try { await vault.del(d.delFuel ? 'car-fuel' : d.delSt ? 'car-status' : 'car-service', d.delFuel || d.delSvc || d.delSt); await load(); } catch (err) { alert(err.message); }
   }
 });
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
