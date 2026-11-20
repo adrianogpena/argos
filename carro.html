@@ -290,7 +290,8 @@ const gline = (p, r1, r2, cls) => { const [a, b] = gpt(p, r1), [c, d] = gpt(p, r
 const GAUGE_TICKS = (() => {
   let t = gline(100, 98, 127, 'tw') + gline(75, 109, 120, 'tw') + gline(75, 122, 130, 'ty') + gline(62.5, 123, 132, 'ty')
     + gline(50, 102, 121, 'tw') + gline(50, 124, 134, 'ty') + gline(43.75, 124, 134, 'ty') + gline(37.5, 123, 132, 'ty') + gline(31.25, 122, 131, 'ty') + gline(25, 110, 122, 'tw');
-  for (let k = 0; k < 8; k++) t += gline(50 - (22.5 + 2.5 * k) / DEG, 131 - (8 + 3.3 * k), 131, 'ty');   // reserve fan: longer lines towards 0
+  // reserve zone: 8 ticks every 2.5deg counted from the 0 end; fixed sizes: long (0,2,4), medium (1,3), short (5,6,7)
+  [28, 20, 28, 20, 28, 9, 9, 9].forEach((len, i) => { t += gline(50 - (40 - 2.5 * i) / DEG, 131 - len, 131, 'ty'); });
   return t;
 })();
 function drawGauge() {
