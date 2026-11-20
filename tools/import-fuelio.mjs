@@ -23,8 +23,13 @@ if (!/^https:\/\//.test(url) || !token) { console.error('Defina VAULT_URL (https
 let ok = 0;
 for (const [col, recs] of [['car-fuel', fuel], ['car-service', service]]) {
   for (const rec of recs) {
-    const res = await fetch(`${url}/v1/c/${col}/${rec.id}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(rec) });
-    if (!res.ok) { console.error(`Falhou (${res.status}) em ${col}/${rec.id}. Parando; pode rodar de novo com segurança.`); process.exit(1); }
+    let res;
+    for (let tent = 1; tent <= 5; tent++) {            // erros 5xx/rede são passageiros: repete com espera
+      try { res = await fetch(`${url}/v1/c/${col}/${rec.id}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(rec) }); } catch { res = null; }
+      if (res && res.status < 500) break;
+      await new Promise(r => setTimeout(r, 1000 * tent));
+    }
+    if (!res || !res.ok) { console.error(`Falhou (${res ? res.status : 'rede'}) em ${col}/${rec.id}. Parando; pode rodar de novo com segurança.`); process.exit(1); }
     ok++;
   }
 }
