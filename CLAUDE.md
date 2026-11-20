@@ -92,9 +92,10 @@ node test/car.test.mjs        consumo, resumo, lembretes (9)
 node test/expenses.test.mjs   gastos (7)
 node test/home.test.mjs       resumo da home (3)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
+node test/fuelio.test.mjs     importação do Fuelio (4)
 ```
 
-Rode os seis antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
+Rode os sete antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
 
 ## Como criar o repositório novo limpo
 
@@ -109,3 +110,7 @@ git remote add origin git@github.com:<usuario>/argos.git && git push -u origin m
 ```
 
 Conferir antes do push que `git log` tem **um** commit e que nenhum arquivo `backup-*.json`, `.env` ou dado pessoal veio junto.
+
+## Importação do Fuelio (única)
+
+`tools/import-fuelio.mjs` lê um `vehicle-N-local.csv` do backup do Fuelio (`lib/fuelio.js`) e grava em `car-fuel` / `car-service`. Roda no computador do dono com `VAULT_URL` e `VAULT_TOKEN` no ambiente; sem `--apply` só simula. Ids estáveis: repetir sobrescreve. O app guarda um só carro: importar apenas o veículo ativo (o Captur), nunca misturar dois carros (os odômetros se confundem). Os CSVs nunca entram no git.
