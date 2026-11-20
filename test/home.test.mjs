@@ -7,12 +7,12 @@ t('vazio não quebra', () => {
   const s = homeSummary({}, '2026-05-10');
   assert.equal(s.total, 0); assert.deepEqual(s.reminders, []);
 });
-t('soma o mês, incluindo o carro', () => {
+t('soma o mês só com os gastos lançados (o carro não entra)', () => {
   const s = homeSummary({
     expenses: [{ id: 'a', date: '2026-05-02', amount: 100, category: 'Mercado' }, { id: 'b', date: '2026-04-02', amount: 50, category: 'Mercado' }],
     fuels: [{ id: 'f', date: '2026-05-03', odometer: 1000, liters: 40, total: 60, full: true }],
   }, '2026-05-10');
-  assert.equal(s.total, 160);
+  assert.equal(s.total, 100);
 });
 t('só lembretes vencidos ou próximos', () => {
   const s = homeSummary({ services: [

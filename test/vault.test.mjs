@@ -92,4 +92,27 @@ await t('client: wrong token raises auth error; forget wipes the device', async 
   v.configure('https://v.example', TOKEN); await v.put('c', { id: 'a' });
   v.forget(); assert.equal(s.keys().length, 0); assert.equal(v.configured(), false);
 });
+await t('batch POST: grava vários, valida tudo antes, respeita os limites', async () => {
+  const env = mkEnv();
+  const post = body => worker.fetch(req('/v1/c/ex', { method: 'POST', body }), env);
+  const r = await (await post({ items: [{ id: 'a', v: 1 }, { id: 'b', v: 2 }] })).json(); assert.deepEqual([r.rev, r.n], [1, 2]);
+  assert.equal((await (await worker.fetch(req('/v1/c/ex'), env)).json()).items.length, 2);
+  await post({ items: [{ id: 'a', v: 9 }] });
+  assert.equal((await (await worker.fetch(req('/v1/c/ex'), env)).json()).items.find(x => x.id === 'a').v, 9);
+  assert.equal((await post({ items: [{ id: 'ok' }, { id: 'bad id' }] })).status, 400);       // nada é gravado se um falhar
+  assert.equal((await (await worker.fetch(req('/v1/c/ex'), env)).json()).items.length, 2);
+  assert.equal((await post({ items: [] })).status, 400); assert.equal((await post({})).status, 400);
+  assert.equal((await post({ items: Array.from({ length: 501 }, (_, i) => ({ id: 'x' + i })) })).status, 400);
+  assert.equal((await post({ items: [{ id: 'big', a: 'x'.repeat(9000) }] })).status, 413);
+  assert.equal((await worker.fetch(req('/v1/c/ex', { method: 'POST', body: { items: [{ id: 'n' }] }, token: null }), env)).status, 401);
+});
+await t('client putMany: envia em lotes e atualiza o cache local', async () => {
+  const env = mkEnv(), l = link(env), s = store();
+  const v = createVault({ storage: s, fetchFn: l.fetchFn }); v.configure('https://v.example', TOKEN);
+  const recs = Array.from({ length: 450 }, (_, i) => ({ id: 'r' + i, v: i }));
+  assert.equal((await v.putMany('ex', recs)).n, 450);
+  l.state.down = true;
+  assert.equal((await v.list('ex')).items.length, 450);                                        // veio do cache
+  await assert.rejects(() => v.putMany('ex', [{ id: 'z' }]), e => e.kind === 'network');
+});
 console.log(`\n${n} groups passed`);
