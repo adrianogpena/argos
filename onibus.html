@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ônibus</title>
-<meta name="description" content="Follow a Porto STCP bus line and see what is coming to your stop.">
+<meta name="description" content="Acompanhe uma linha de ônibus da STCP no Porto e veja o que está chegando à sua paragem.">
 <meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -194,103 +194,103 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
   <header class="top">
     <div class="brand"><b aria-hidden="true"></b>Ônibus</div>
     <button class="icon-btn" id="btnTheme" data-theme-btn type="button"></button>
-    <button class="icon-btn" id="btnSettings" aria-label="Settings" title="Settings">
+    <button class="icon-btn" id="btnSettings" aria-label="Configurações" title="Configurações">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
     </button>
   </header>
   <nav class="nav" aria-label="Seções"><a href="index.html">Início</a><a href="onibus.html" aria-current="page">Ônibus</a><a href="carro.html">Carro</a><a href="gastos.html">Gastos</a></nav>
 
-  <nav class="tabs" id="tabs" aria-label="Your lines"></nav>
+  <nav class="tabs" id="tabs" aria-label="Suas linhas"></nav>
 
   <main id="main"></main>
 
   <footer class="foot">
-    Unofficial data from the STCP website, for personal use. One request per stop per refresh, every 30&nbsp;s or slower, paused while this page is hidden.
-    Positions are inferred from arrival estimates; STCP publishes no GPS here.
+    Dados não oficiais do site da STCP, para uso pessoal. Uma requisição por paragem a cada atualização, a cada 30&nbsp;s ou mais devagar, em pausa enquanto a página está oculta.
+    As posições são deduzidas das estimativas de chegada; a STCP não publica GPS aqui.
   </footer>
 </div>
 
 <!-- Add line -->
 <dialog id="dlgAdd"><form method="dialog" class="sheet" id="formAdd">
-  <h3>Add a line</h3>
-  <p class="hint">Fetch the stop list from STCP, or paste one yourself.</p>
-  <div class="seg" role="group" aria-label="Source">
-    <button type="button" data-mode="api" aria-pressed="true">From STCP</button>
-    <button type="button" data-mode="paste" aria-pressed="false">Paste stops</button>
+  <h3>Adicionar linha</h3>
+  <p class="hint">Busque a lista de paragens na STCP ou cole uma você mesmo.</p>
+  <div class="seg" role="group" aria-label="Origem">
+    <button type="button" data-mode="api" aria-pressed="true">Da STCP</button>
+    <button type="button" data-mode="paste" aria-pressed="false">Colar paragens</button>
   </div>
-  <label class="field"><span>Line number</span><input type="text" name="short" placeholder="502" autocomplete="off" autocapitalize="characters" required></label>
+  <label class="field"><span>Número da linha</span><input type="text" name="short" placeholder="502" autocomplete="off" autocapitalize="characters" required></label>
   <div data-pane="api">
-    <label class="field"><span>A stop code on this line</span><input type="text" name="probe" placeholder="BCM1" autocomplete="off" autocapitalize="characters">
-      <small>Used to look up the line's internal route_id via /api/stops/CODE/routes.</small></label>
-    <label class="field"><span>…or the internal route_id, if you know it</span><input type="text" name="rid" placeholder="optional" autocomplete="off">
-      <small>On stcp.pt/pt/linhas, open the line, then in your browser's developer tools find the request to /api/route/<b>ID</b>/stops.</small></label>
+    <label class="field"><span>Um código de paragem desta linha</span><input type="text" name="probe" placeholder="BCM1" autocomplete="off" autocapitalize="characters">
+      <small>Usado para descobrir o route_id interno da linha via /api/stops/CODE/routes.</small></label>
+    <label class="field"><span>…ou o route_id interno, se souber</span><input type="text" name="rid" placeholder="opcional" autocomplete="off">
+      <small>Em stcp.pt/pt/linhas, abra a linha e, nas ferramentas de desenvolvedor do navegador, procure a requisição a /api/route/<b>ID</b>/stops.</small></label>
   </div>
   <div data-pane="paste" hidden>
-    <label class="field"><span>Direction name</span><input type="text" name="dirname" placeholder="Matosinhos (Mercado)" autocomplete="off"></label>
-    <label class="field"><span>Stops in order, one per line</span>
+    <label class="field"><span>Nome do sentido</span><input type="text" name="dirname" placeholder="Matosinhos (Mercado)" autocomplete="off"></label>
+    <label class="field"><span>Paragens em ordem, uma por linha</span>
       <textarea name="list" placeholder="BLRB2 Bolhão&#10;BLFZ1 Bolhão (Firmeza)&#10;JN3 Jornal de Notícias"></textarea>
-      <small>"CODE Name", "Name CODE", "Name (CODE)" or a comma-separated list all work.</small></label>
+      <small>"CÓDIGO Nome", "Nome CÓDIGO", "Nome (CÓDIGO)" ou uma lista separada por vírgulas funcionam.</small></label>
     <div class="preview" id="pastePreview" hidden></div>
   </div>
-  <label class="field"><span>Line colour</span><input type="text" name="color" placeholder="#F5D24C (filled from STCP when available)" autocomplete="off"></label>
+  <label class="field"><span>Cor da linha</span><input type="text" name="color" placeholder="#F5D24C (preenchida pela STCP quando disponível)" autocomplete="off"></label>
   <div class="msg" id="addMsg" role="status"></div>
   <div class="actions">
-    <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
-    <button class="btn" type="button" id="btnAddGo">Add line</button>
+    <button class="btn ghost" value="cancel" formnovalidate>Cancelar</button>
+    <button class="btn" type="button" id="btnAddGo">Adicionar linha</button>
   </div>
 </form></dialog>
 
 <!-- Line options -->
 <dialog id="dlgLine"><form method="dialog" class="sheet" id="formLine">
-  <h3 id="lineTitle">Line</h3>
+  <h3 id="lineTitle">Linha</h3>
   <p class="hint" id="lineHint"></p>
-  <label class="field"><span>Line colour</span><input type="text" name="color" autocomplete="off"></label>
-  <label class="field"><span>Stop code to look up the route (for refreshing from STCP)</span><input type="text" name="probe" autocomplete="off" autocapitalize="characters"></label>
+  <label class="field"><span>Cor da linha</span><input type="text" name="color" autocomplete="off"></label>
+  <label class="field"><span>Código de paragem para buscar o percurso (para atualizar pela STCP)</span><input type="text" name="probe" autocomplete="off" autocapitalize="characters"></label>
   <div class="msg" id="lineMsg" role="status"></div>
   <div class="actions">
-    <button class="btn ghost" type="button" id="btnLineRefresh">Load both directions from STCP</button>
+    <button class="btn ghost" type="button" id="btnLineRefresh">Carregar os dois sentidos da STCP</button>
   </div>
   <div class="actions">
-    <button class="btn danger" type="button" id="btnLineDelete">Remove line</button>
-    <button class="btn" type="button" id="btnLineSave">Save</button>
+    <button class="btn danger" type="button" id="btnLineDelete">Remover linha</button>
+    <button class="btn" type="button" id="btnLineSave">Salvar</button>
   </div>
 </form></dialog>
 
 <!-- Settings -->
 <dialog id="dlgSettings"><form method="dialog" class="sheet" id="formSettings">
-  <h3>Settings</h3>
-  <label class="field"><span>Buses to follow at my stop</span>
+  <h3>Configurações</h3>
+  <label class="field"><span>Ônibus a acompanhar na minha paragem</span>
     <div class="seg" role="group" data-name="count"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button></div></label>
-  <label class="field"><span>Refresh every</span>
+  <label class="field"><span>Atualizar a cada</span>
     <div class="seg" role="group" data-name="interval"><button type="button" data-v="30">30 s</button><button type="button" data-v="45">45 s</button><button type="button" data-v="60">60 s</button><button type="button" data-v="120">2 min</button></div></label>
-  <label class="field"><span>Look back at most</span>
-    <div class="seg" role="group" data-name="maxBack"><button type="button" data-v="8">8 stops</button><button type="button" data-v="15">15</button><button type="button" data-v="30">30</button></div>
-    <small>How many stops before yours the app may poll to place a bus. Fewer stops, fewer requests.</small></label>
-  <label class="field"><span>Not started if the next stop is over</span>
+  <label class="field"><span>Olhar para trás no máximo</span>
+    <div class="seg" role="group" data-name="maxBack"><button type="button" data-v="8">8 paragens</button><button type="button" data-v="15">15</button><button type="button" data-v="30">30</button></div>
+    <small>Quantas paragens antes da sua o app pode consultar para situar um ônibus. Menos paragens, menos requisições.</small></label>
+  <label class="field"><span>Não iniciado se a próxima paragem estiver a mais de</span>
     <div class="seg" role="group" data-name="ghost"><button type="button" data-v="5">5 min</button><button type="button" data-v="10">10 min</button><button type="button" data-v="15">15 min</button></div>
-    <small>A bus whose next stop is further away than this is shown as "Not started yet". Lower it if parked buses show as on the way; raise it if real buses show as not started.</small></label>
-  <label class="field"><span>Theme</span>
-    <div class="seg" role="group" data-name="theme"><button type="button" data-v="auto">System</button><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></label>
+    <small>Um ônibus cuja próxima paragem esteja mais longe que isso aparece como "Ainda não iniciou". Diminua se ônibus parados aparecem a caminho; aumente se ônibus reais aparecem como não iniciados.</small></label>
+  <label class="field"><span>Tema</span>
+    <div class="seg" role="group" data-name="theme"><button type="button" data-v="auto">Sistema</button><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div></label>
   <hr class="sep">
-  <label class="field"><span>API address</span>
-    <input type="url" name="proxy" placeholder="Auto (stcp.pt, or this site's own /api)" autocomplete="off">
-    <small>Leave empty to try stcp.pt directly. If your browser blocks it, paste your proxy here, e.g. https://argos-proxy.you.workers.dev</small></label>
-  <div class="row"><button class="btn ghost" type="button" id="btnTest">Test connection</button></div>
+  <label class="field"><span>Endereço da API</span>
+    <input type="url" name="proxy" placeholder="Automático (stcp.pt ou o /api deste site)" autocomplete="off">
+    <small>Deixe vazio para tentar o stcp.pt direto. Se o navegador bloquear, cole aqui o seu proxy, p. ex. https://argos-proxy.voce.workers.dev</small></label>
+  <div class="row"><button class="btn ghost" type="button" id="btnTest">Testar conexão</button></div>
   <div class="msg" id="testMsg" role="status"></div>
   <hr class="sep">
   <div class="row">
-    <button class="btn ghost" type="button" id="btnExport">Copy my setup</button>
-    <button class="btn ghost" type="button" id="btnImport">Paste a setup</button>
+    <button class="btn ghost" type="button" id="btnExport">Copiar minha configuração</button>
+    <button class="btn ghost" type="button" id="btnImport">Colar uma configuração</button>
   </div>
   <div class="row">
-    <button class="btn ghost" type="button" id="btnVaultSave">Save setup to vault</button>
-    <button class="btn ghost" type="button" id="btnVaultLoad">Load setup from vault</button>
+    <button class="btn ghost" type="button" id="btnVaultSave">Salvar configuração no cofre</button>
+    <button class="btn ghost" type="button" id="btnVaultLoad">Carregar configuração do cofre</button>
   </div>
-  <small style="color:var(--ink-3)">The private vault keeps your lines and trips off this public page. Connect it once under Carro → Cofre.</small>
+  <small style="color:var(--ink-3)">O cofre privado guarda suas linhas e trajetos fora desta página pública. Conecte-o uma vez em Carro → Cofre.</small>
   <div class="msg" id="ioMsg" role="status"></div>
   <div class="actions">
-    <button class="btn danger" type="button" id="btnReset">Reset everything</button>
-    <button class="btn" value="close">Done</button>
+    <button class="btn danger" type="button" id="btnReset">Apagar tudo</button>
+    <button class="btn" value="close">Pronto</button>
   </div>
 </form></dialog>
 
@@ -428,12 +428,12 @@ async function getJSON(base, path, timeoutMs = 10000) {
   try {
     res = await fetch(base + path, { signal: ctl.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
   } catch (e) {
-    if (e.name === 'AbortError') throw new ApiError('timeout', 'STCP did not answer within 10 seconds.');
-    if (!navigator.onLine) throw new ApiError('offline', 'You are offline.');
-    throw new ApiError('blocked', 'The browser could not reach the API.', base);
+    if (e.name === 'AbortError') throw new ApiError('timeout', 'A STCP não respondeu em 10 segundos.');
+    if (!navigator.onLine) throw new ApiError('offline', 'Você está sem internet.');
+    throw new ApiError('blocked', 'O navegador não conseguiu acessar a API.', base);
   } finally { clearTimeout(t); }
-  if (!res.ok) throw new ApiError('http', `The API answered ${res.status}${res.statusText ? ' ' + res.statusText : ''}.`, path);
-  try { return await res.json(); } catch (e) { throw new ApiError('parse', 'The API sent something that is not JSON. It may have changed.', path); }
+  if (!res.ok) throw new ApiError('http', `A API respondeu ${res.status}${res.statusText ? ' ' + res.statusText : ''}.`, path);
+  try { return await res.json(); } catch (e) { throw new ApiError('parse', 'A API enviou algo que não é JSON. Ela pode ter mudado.', path); }
 }
 
 async function api(path) {
@@ -448,12 +448,12 @@ async function api(path) {
   }
   // Report the most telling failure: a real answer from STCP or the proxy beats a 404 from this page's own host.
   const pick = errs.find(([b, e]) => e.kind !== 'blocked' && b !== location.origin) || errs.find(([, e]) => e.kind === 'blocked') || errs[0];
-  throw pick ? pick[1] : new ApiError('blocked', 'No API address worked.');
+  throw pick ? pick[1] : new ApiError('blocked', 'Nenhum endereço de API funcionou.');
 }
 
 async function fetchStop(id) {
   const j = await api(`/api/stops/${encodeURIComponent(id)}/realtime`);
-  if (!j || !Array.isArray(j.arrivals)) throw new ApiError('parse', 'The realtime answer has no "arrivals" list. The API may have changed.');
+  if (!j || !Array.isArray(j.arrivals)) throw new ApiError('parse', 'A resposta em tempo real não tem a lista "arrivals". A API pode ter mudado.');
   return j;
 }
 
@@ -527,27 +527,27 @@ function delayPill(b) {
   if (b.delay === null || b.delay === undefined || b.delay === '' || !Number.isFinite(d)) {
     return b.status ? `<span class="pill">${esc(String(b.status).replace(/_/g, ' '))}</span>` : '';
   }
-  if (d >= 1) return `<span class="pill late">${d} min late</span>`;
-  if (d <= -1) return `<span class="pill">${-d} min early</span>`;
-  return `<span class="pill ok">on time</span>`;
+  if (d >= 1) return `<span class="pill late">${d} min de atraso</span>`;
+  if (d <= -1) return `<span class="pill">${-d} min adiantado</span>`;
+  return `<span class="pill ok">no horário</span>`;
 }
 function whereText(b, stops) {
   switch (b.state) {
-    case 'arriving': return ['Arriving now', ''];
-    case 'terminus': return ['At the first stop', `leaves ${esc(stops[0].name)} in ${b.nextMinutes} min`];
-    case 'scheduled': return ['Not started yet', 'timetable estimate, no bus on the way'];
-    case 'far': return [`${b.stopsAway}+ stops away`, `beyond the ${state.settings.maxBack} stops checked`];
-    case 'unknown': return ['Position unknown', 'no trip_id from STCP'];
-    default: return [`${b.stopsAway} ${b.stopsAway === 1 ? 'stop' : 'stops'} away`, `next: ${esc(b.nextName)} in ${b.nextMinutes} min`];
+    case 'chegando': return ['Chegando agora', ''];
+    case 'terminus': return ['Na primeira paragem', `sai de ${esc(stops[0].name)} em ${b.nextMinutes} min`];
+    case 'scheduled': return ['Ainda não iniciou', 'estimativa do horário, nenhum ônibus a caminho'];
+    case 'far': return [`a ${b.stopsAway}+ paragens`, `além das ${state.settings.maxBack} paragens verificadas`];
+    case 'unknown': return ['Posição desconhecida', 'sem trip_id da STCP'];
+    default: return [`a ${b.stopsAway} ${b.stopsAway === 1 ? 'paragem' : 'paragens'}`, `próxima: ${esc(b.nextName)} em ${b.nextMinutes} min`];
   }
 }
 
 // ---------- render ----------
 function renderTabs() {
   $('#tabs').innerHTML = state.lines.map(l => `
-    <button class="tab" data-key="${esc(l.key)}" aria-current="${l.key === state.activeLine}" aria-label="${l.kind === 'unir' ? esc(l.name) : `Line ${esc(l.short)} to ${esc(l.dirs[l.activeDir]?.name || '')}`}" title="${esc(l.kind === 'unir' ? l.name : l.dirs[l.activeDir]?.name || '')}">
+    <button class="tab" data-key="${esc(l.key)}" aria-current="${l.key === state.activeLine}" aria-label="${l.kind === 'unir' ? esc(l.name) : `Linha ${esc(l.short)} para ${esc(l.dirs[l.activeDir]?.name || '')}`}" title="${esc(l.kind === 'unir' ? l.name : l.dirs[l.activeDir]?.name || '')}">
       <span class="sw" style="background:${esc(Core.normColor(l.color) || '#F5D24C')};color:${inkFor(l.color)}">${esc(l.short)}</span>
-    </button>`).join('') + `<button class="tab add" id="tabAdd">+ Add line</button>`;
+    </button>`).join('') + `<button class="tab add" id="tabAdd">+ Adicionar linha</button>`;
   $('#tabs').querySelectorAll('[data-key]').forEach(b => b.onclick = () => {
     if (state.activeLine === b.dataset.key) return;
     state.activeLine = b.dataset.key; save(); live = { busy: false }; render(); refresh();
@@ -557,15 +557,15 @@ function renderTabs() {
 
 function errorBox(e) {
   const kinds = {
-    blocked: ['Blocked by the browser', `The request to the STCP API was refused before it arrived, almost always CORS. Set up the small proxy from the README and paste its address in Settings.`],
-    offline: ['Offline', 'Reconnect and it will refresh on its own.'],
-    timeout: ['STCP is slow to answer', e.message],
-    http: ['The API returned an error', `${e.message} The unofficial API may have changed or be down for a moment.`],
-    parse: ['Unexpected answer from STCP', e.message],
+    blocked: ['Bloqueado pelo navegador', `A requisição à API da STCP foi recusada antes de chegar, quase sempre por CORS. Configure o pequeno proxy do README e cole o endereço dele em Configurações.`],
+    offline: ['Sem internet', 'Reconecte e a página atualiza sozinha.'],
+    timeout: ['A STCP está demorando a responder', e.message],
+    http: ['A API devolveu um erro', `${e.message} A API não oficial pode ter mudado ou estar fora do ar por um momento.`],
+    parse: ['Resposta inesperada da STCP', e.message],
   };
-  const [t, m] = kinds[e.kind] || ['Something went wrong', e.message];
+  const [t, m] = kinds[e.kind] || ['Algo deu errado', e.message];
   return `<div class="err" role="alert"><strong>${esc(t)}</strong>${esc(m)}
-    <div class="acts"><button class="chip-btn" data-act="retry">Try again</button>${e.kind === 'blocked' || e.kind === 'http' ? '<button class="chip-btn" data-act="settings">API settings</button>' : ''}</div></div>`;
+    <div class="acts"><button class="chip-btn" data-act="retry">Tentar de novo</button>${e.kind === 'blocked' || e.kind === 'http' ? '<button class="chip-btn" data-act="settings">Configurações da API</button>' : ''}</div></div>`;
 }
 
 function render() {
@@ -574,27 +574,27 @@ function render() {
   renderTabs();
   const main = $('#main');
   if (l?.kind === 'unir') return renderUnir(l);
-  if (!l) { main.innerHTML = `<div class="panel"><div class="empty">No lines yet. Add one to start.</div></div>`; return; }
+  if (!l) { main.innerHTML = `<div class="panel"><div class="empty">Nenhuma linha ainda. Adicione uma para começar.</div></div>`; return; }
   const d = dir(), mi = myIdx(), stops = d.stops;
   const twoDirs = l.dirs.length > 1;
   const other = twoDirs ? l.dirs[(l.activeDir + 1) % l.dirs.length].name : null;
 
   let panel;
   if (mi < 0) {
-    panel = `<div class="panel"><div class="empty">Tap a stop below and choose <b>Set as my stop</b>. The app then follows the next ${state.settings.count === 1 ? 'bus' : state.settings.count + ' buses'} coming to it.</div></div>`;
+    panel = `<div class="panel"><div class="empty">Toque numa paragem abaixo e escolha <b>Definir como minha paragem</b>. O app passa a acompanhar ${state.settings.count === 1 ? 'o próximo ônibus' : 'os próximos ' + state.settings.count + ' ônibus'} que chegam a ela.</div></div>`;
   } else {
-    const head = `<div class="panel-head"><span class="k">My stop</span><span class="stopname">${esc(stops[mi].name)}</span><span class="code">${esc(stops[mi].code)}</span></div>`;
+    const head = `<div class="panel-head"><span class="k">Minha paragem</span><span class="stopname">${esc(stops[mi].name)}</span><span class="code">${esc(stops[mi].code)}</span></div>`;
     let body = '';
     if (live.err) body = errorBox(live.err);
     if (live.buses) {
-      if (!live.buses.length) body += `<div class="empty">No ${esc(l.short)} expected here in the next hour.</div>`;
+      if (!live.buses.length) body += `<div class="empty">Nenhum ${esc(l.short)} previsto aqui na próxima hora.</div>`;
       body += live.buses.map(b => {
         const [w, sub] = whereText(b, stops);
         const muted = b.state === 'scheduled';
         return `<div class="bus${muted ? ' muted' : ''}">
           <div class="min">${b.minutes}<small>min</small></div>
           <div><div class="where">${w}</div><div class="sub">${sub}${b.headsign ? `${sub ? ' · ' : ''}to ${esc(b.headsign)}` : ''}</div></div>
-          <div class="right">${muted ? '<span class="pill">scheduled</span>' : delayPill(b)}<div class="clock">${clockOf(b)}</div></div>
+          <div class="right">${muted ? '<span class="pill">horário</span>' : delayPill(b)}<div class="clock">${clockOf(b)}</div></div>
         </div>`;
       }).join('');
       const p = live.passed;
@@ -603,12 +603,12 @@ function render() {
           <div><div class="where">Already passed</div><div class="sub">${p.nextMinutes > 0 ? `reaches ${esc(p.nextName)} in ${p.nextMinutes} min` : `at ${esc(p.nextName)} now`}${p.headsign ? ` · to ${esc(p.headsign)}` : ''}</div></div>
           <div class="right">${delayPill(p)}</div>
         </div>`;
-      if (live.partial) body += `<div class="empty" style="font-size:13px">Could not check ${esc(stops[live.partial.idx].name)}; positions before it are uncertain.</div>`;
-    } else if (!live.err) body += `<div class="empty">Loading arrivals…</div>`;
+      if (live.partial) body += `<div class="empty" style="font-size:13px">Não foi possível verificar ${esc(stops[live.partial.idx].name)}; as posições antes dela são incertas.</div>`;
+    } else if (!live.err) body += `<div class="empty">Carregando chegadas…</div>`;
     const ds = live.meta?.data_source && !/real/i.test(live.meta.data_source) ? ` · ${esc(live.meta.data_source)}` : '';
     panel = `<section class="panel" aria-live="polite">${head}${body}
-      <div class="status-row"><span class="upd" id="upd" title="${live.requests ? live.requests + ' requests in the last refresh' : ''}${ds}"></span>
-      <button data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Refresh</span></button></div></section>`;
+      <div class="status-row"><span class="upd" id="upd" title="${live.requests ? live.requests + ' requisições na última atualização' : ''}${ds}"></span>
+      <button data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Atualizar</span></button></div></section>`;
   }
 
   // timeline
@@ -620,36 +620,36 @@ function render() {
     for (const [n, b] of buses.entries()) {
       const at = b.state === 'far' ? lowest : b.nextIdx;
       if (at !== i) continue;
-      const label = b.state === 'terminus' ? 'at first stop' : b.state === 'far' ? `${b.stopsAway}+ stops` : b.state === 'arriving' ? 'arriving' : `${b.stopsAway} ${b.stopsAway === 1 ? 'stop' : 'stops'}`;
-      rows += `<li class="marker"><div class="rail"></div><div><span class="vehicle" title="Bus ${n + 1}">${ICONS.bus}<span>${n === 0 ? 'Next' : n === 1 ? '2nd' : '3rd'}</span><span class="num">${b.minutes} min</span></span></div><div class="note">${label}</div></li>`;
+      const label = b.state === 'terminus' ? 'na primeira paragem' : b.state === 'far' ? `${b.stopsAway}+ paragens` : b.state === 'chegando' ? 'chegando' : `${b.stopsAway} ${b.stopsAway === 1 ? 'paragem' : 'paragens'}`;
+      rows += `<li class="marker"><div class="rail"></div><div><span class="vehicle" title="Ônibus ${n + 1}">${ICONS.bus}<span>${n === 0 ? 'Próximo' : n === 1 ? '2º' : '3º'}</span><span class="num">${b.minutes} min</span></span></div><div class="note">${label}</div></li>`;
     }
     const p = live.passed;
-    if (p && p.nextIdx === i) rows += `<li class="marker"><div class="rail"></div><div><span class="vehicle passed" title="Last bus that passed your stop">${ICONS.bus}<span>Passed</span></span></div><div class="note">${p.stopsPast} ${p.stopsPast === 1 ? 'stop' : 'stops'} past</div></li>`;
+    if (p && p.nextIdx === i) rows += `<li class="marker"><div class="rail"></div><div><span class="vehicle passed" title="Último ônibus que passou pela sua paragem">${ICONS.bus}<span>Passou</span></span></div><div class="note">${p.stopsPast} ${p.stopsPast === 1 ? 'paragem' : 'paragens'} atrás</div></li>`;
     const beyond = mi >= 0 && i > mi;
     const eta = mi >= 0 && i <= mi && firstEtas[i] !== undefined ? `${firstEtas[i]}′` : '';
     rows += `<li class="stop${i === mi ? ' mine' : ''}${beyond ? ' beyond' : ''}${i === stops.length - 1 ? ' last' : ''}" data-i="${i}">
       <div class="rail"><span class="dot"></span></div>
-      <button class="stop-btn" aria-expanded="false" aria-label="${esc(s.name)} ${esc(s.code)}${i === mi ? ', my stop' : ''}"><div class="nm">${esc(s.name)}${i === mi ? '<span class="mine-tag">MY STOP</span>' : ''}</div><div class="code">${esc(s.code)}</div></button>
+      <button class="stop-btn" aria-expanded="false" aria-label="${esc(s.name)} ${esc(s.code)}${i === mi ? ', minha paragem' : ''}"><div class="nm">${esc(s.name)}${i === mi ? '<span class="mine-tag">MINHA PARAGEM</span>' : ''}</div><div class="code">${esc(s.code)}</div></button>
       <div class="eta">${eta}</div>
     </li>`;
   });
 
   main.innerHTML = `
     <section class="line-head">
-      <div class="badge" aria-label="Line ${esc(l.short)}">${esc(l.short)}</div>
+      <div class="badge" aria-label="Linha ${esc(l.short)}">${esc(l.short)}</div>
       <div class="dir">
-        <div class="lbl">Towards ${l.example ? '<span class="tag">Example data</span>' : ''}</div>
+        <div class="lbl">Sentido ${l.example ? '<span class="tag">Dados de exemplo</span>' : ''}</div>
         <div class="to">${esc(d.name)}</div>
         <div class="dir-actions">
-          <button class="chip-btn" id="btnSwap" ${twoDirs ? '' : 'disabled'} title="${twoDirs ? 'Switch to ' + esc(other) : 'Only one direction loaded'}">${ICONS.swap}${twoDirs ? 'To ' + esc(other) : 'One direction'}</button>
-          <button class="chip-btn" id="btnLine">${ICONS.dots}Line</button>
+          <button class="chip-btn" id="btnSwap" ${twoDirs ? '' : 'disabled'} title="${twoDirs ? 'Mudar para ' + esc(other) : 'Só um sentido carregado'}">${ICONS.swap}${twoDirs ? 'Para ' + esc(other) : 'Um sentido'}</button>
+          <button class="chip-btn" id="btnLine">${ICONS.dots}Linha</button>
         </div>
       </div>
     </section>
     ${panel}
-    <div class="sec-title"><h2>${stops.length} stops</h2><span>${buses.length ? 'minutes for the next bus' : ''}</span></div>
+    <div class="sec-title"><h2>${stops.length} paragens</h2><span>${buses.length ? 'minutos até o próximo ônibus' : ''}</span></div>
     <ol class="tl" id="tl">${rows}</ol>
-    ${l.example ? `<p class="legend">This stop list is the example from your brief. Open <b>Line</b> to load both directions from STCP.</p>` : ''}`;
+    ${l.example ? `<p class="legend">Esta lista de paragens é o exemplo do briefing. Abra <b>Linha</b> para carregar os dois sentidos da STCP.</p>` : ''}`;
 
   main.querySelectorAll('[data-act="retry"]').forEach(b => b.onclick = () => refresh());
   main.querySelectorAll('[data-act="settings"]').forEach(b => b.onclick = openSettings);
@@ -664,47 +664,47 @@ function dayLabel(ms) {
   const d = new Date(ms), t = new Date();
   if (d.toDateString() === t.toDateString()) return '';
   t.setDate(t.getDate() + 1);
-  return d.toDateString() === t.toDateString() ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short' });
+  return d.toDateString() === t.toDateString() ? 'Amanhã' : d.toLocaleDateString('pt-BR', { weekday: 'short' });
 }
 function renderUnir(l) {
   let body = live.err ? errorBox(live.err) : '';
   if (live.unir) {
-    if (!live.unir.length) body += `<div class="empty">No buses in the timetable for the next 7 days.</div>`;
+    if (!live.unir.length) body += `<div class="empty">Nenhum ônibus no horário nos próximos 7 dias.</div>`;
     body += live.unir.map(o => {
       const m = Math.round((o.depAt - Date.now()) / 60000), day = dayLabel(o.depAt);
       const when = m < 60 ? `${Math.max(0, m)}<small>min</small>` : `<span class="at">${hm(o.depAt)}</span>`;
       const ride = Math.round((o.arrAt - o.depAt) / 60000);
       return `<div class="bus${o.beaten ? ' muted' : ''}">
         <div class="min">${when}${day ? `<small class="day">${esc(day)}</small>` : ''}</div>
-        <div><div class="where"><span class="lnum">${esc(o.line)}</span> to ${esc(o.toName)}</div>
-          <div class="sub">from ${esc(o.fromName)} ${hm(o.depAt)} · ${o.est ? '≈' : ''}${ride} min ride${o.walk ? ` + ${o.walk} min walk` : ''} · bus to ${esc(o.headsign)}</div></div>
-        <div class="right">${o.best ? '<span class="pill ok">best</span>' : o.beaten ? '<span class="pill">later is faster</span>' : ''}
-          <div class="clock">${esc(l.arrive || 'there')} ${o.est ? '≈' : ''}${hm(o.doneAt)}</div></div>
+        <div><div class="where"><span class="lnum">${esc(o.line)}</span> para ${esc(o.toName)}</div>
+          <div class="sub">de ${esc(o.fromName)} ${hm(o.depAt)} · ${o.est ? '≈' : ''}${ride} min de viagem${o.walk ? ` + ${o.walk} min a pé` : ''} · ônibus para ${esc(o.headsign)}</div></div>
+        <div class="right">${o.best ? '<span class="pill ok">melhor</span>' : o.beaten ? '<span class="pill">o seguinte é mais rápido</span>' : ''}
+          <div class="clock">${esc(l.arrive || 'lá')} ${o.est ? '≈' : ''}${hm(o.doneAt)}</div></div>
       </div>`;
     }).join('');
-  } else if (!live.err) body += `<div class="empty">Loading timetables…</div>`;
-  const routes = l.routes.map(r => `<li><span class="code">${esc(r.from)}</span> → ${r.to.map(t => `<span class="code">${esc(t)}</span>`).join(' or ')}</li>`).join('');
+  } else if (!live.err) body += `<div class="empty">Carregando horários…</div>`;
+  const routes = l.routes.map(r => `<li><span class="code">${esc(r.from)}</span> → ${r.to.map(t => `<span class="code">${esc(t)}</span>`).join(' ou ')}</li>`).join('');
   $('#main').innerHTML = `
     <section class="line-head">
       <div class="badge" aria-hidden="true">${esc(l.short)}</div>
       <div class="dir">
-        <div class="lbl">UNIR <span class="tag">Timetable</span></div>
+        <div class="lbl">UNIR <span class="tag">Horário</span></div>
         <div class="to">${esc(l.name)}</div>
-        <div class="dir-actions"><button class="chip-btn" id="btnUnirRemove">Remove</button></div>
+        <div class="dir-actions"><button class="chip-btn" id="btnUnirRemove">Remover</button></div>
       </div>
     </section>
     <section class="panel" aria-live="polite">
-      <div class="panel-head"><span class="k">Next buses</span><span class="stopname">${l.target ? `Time ${esc(l.arrive)} includes the walk` : 'Arrival at the stop'}</span></div>
+      <div class="panel-head"><span class="k">Próximos ônibus</span><span class="stopname">${l.target ? `O horário de ${esc(l.arrive)} inclui a caminhada` : 'Chegada à paragem'}</span></div>
       ${body}
-      <div class="status-row"><span class="upd" id="upd"></span><button data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Refresh</span></button></div>
+      <div class="status-row"><span class="upd" id="upd"></span><button data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
     </section>
-    <div class="sec-title"><h2>Routes</h2></div>
+    <div class="sec-title"><h2>Percursos</h2></div>
     <ul class="routes">${routes}</ul>
-    <p class="legend">Planned times from paragens.amp.pt; UNIR publishes no live positions or delays. ≈ = arrival estimated from the ride in the other direction (the last stop lists no arrivals). Walks are straight-line distance + 30% at 80 m/min.</p>`;
+    <p class="legend">Horários previstos de paragens.amp.pt; a UNIR não publica posições nem atrasos em tempo real. ≈ = chegada estimada pela viagem no sentido contrário (a última paragem não lista chegadas). Caminhadas: distância em linha reta + 30% a 80 m/min.</p>`;
   $('#main').querySelectorAll('[data-act="retry"]').forEach(b => b.onclick = () => refresh());
   $('#main').querySelectorAll('[data-act="settings"]').forEach(b => b.onclick = openSettings);
   $('#btnUnirRemove').onclick = () => {
-    if (!confirm(`Remove ${l.name}?`)) return;
+    if (!confirm(`Remover ${l.name}?`)) return;
     state.lines = state.lines.filter(x => x !== l); state.activeLine = state.lines[0]?.key || null; save();
     live = { busy: false }; render(); refresh();
   };
@@ -720,7 +720,7 @@ function toggleSetRow(li) {
   const isMine = d.stops[i].id === d.myStop;
   const row = document.createElement('div');
   row.className = 'set-row';
-  row.innerHTML = isMine ? `<button class="chip-btn">Clear my stop</button>` : `<button class="chip-btn">Set as my stop</button>`;
+  row.innerHTML = isMine ? `<button class="chip-btn">Limpar minha paragem</button>` : `<button class="chip-btn">Definir como minha paragem</button>`;
   row.firstElementChild.onclick = () => { d.myStop = isMine ? null : d.stops[i].id; save(); live = { busy: false }; render(); refresh(); };
   li.appendChild(row);
   li.querySelector('.stop-btn').setAttribute('aria-expanded', 'true');
@@ -730,10 +730,10 @@ function renderStatus() {
   const u = $('#upd'), b = $('#btnRefresh');
   if (!u) return;
   if (b) { b.disabled = !!live.busy; b.querySelector('svg')?.classList.toggle('spin', !!live.busy); }
-  if (live.busy) { u.textContent = 'Updating…'; return; }
-  if (!live.at) { u.textContent = live.err ? 'Not updated' : ''; return; }
+  if (live.busy) { u.textContent = 'Atualizando…'; return; }
+  if (!live.at) { u.textContent = live.err ? 'Não atualizado' : ''; return; }
   const s = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
-  u.innerHTML = `Updated <span class="num">${live.at.toTimeString().slice(0, 8)}</span>${document.hidden ? '' : ` · <span class="num">${String(s).padStart(2, '\u2007')}s</span>`}`;
+  u.innerHTML = `Atualizado <span class="num">${live.at.toTimeString().slice(0, 8)}</span>${document.hidden ? '' : ` · <span class="num">${String(s).padStart(2, '\u2007')}s</span>`}`;
 }
 tickTimer = setInterval(renderStatus, 1000);
 
@@ -741,9 +741,9 @@ tickTimer = setInterval(renderStatus, 1000);
 async function loadFromStcp({ short, probe, routeId }) {
   let color = null, rid = routeId ? String(routeId).trim() : '';
   if (!rid) {
-    if (!probe) throw new Error('Give a stop code on the line, or its route_id.');
+    if (!probe) throw new Error('Informe um código de paragem da linha ou o route_id.');
     const r = Core.findRoute(await api(`/api/stops/${encodeURIComponent(probe)}/routes`), short);
-    if (!r) throw new Error(`Line ${short} was not found at stop ${probe}. Check both.`);
+    if (!r) throw new Error(`A linha ${short} não foi encontrada na paragem ${probe}. Confira os dois.`);
     rid = r.routeId; color = r.color;
   } else if (probe) {
     try { const r = Core.findRoute(await api(`/api/stops/${encodeURIComponent(probe)}/routes`), short); if (r) color = r.color; } catch (e) {}
@@ -755,11 +755,11 @@ async function loadFromStcp({ short, probe, routeId }) {
       if (stops.length) dirs.push({ id: di, name: stops[stops.length - 1].name, stops, myStop: null });
     } catch (e) { if (di === 0) throw e; }
   }
-  if (!dirs.length) throw new Error(`route_id ${rid} returned no stops.`);
+  if (!dirs.length) throw new Error(`O route_id ${rid} não devolveu paragens.`);
   return { rid, color, dirs };
 }
 function explain(e) {
-  if (e instanceof ApiError && e.kind === 'blocked') return 'The browser blocked the request (CORS). Use the paste option, or set up the proxy in Settings.';
+  if (e instanceof ApiError && e.kind === 'blocked') return 'O navegador bloqueou a requisição (CORS). Use a opção de colar ou configure o proxy em Configurações.';
   return e.message || String(e);
 }
 
@@ -778,21 +778,21 @@ $('#formAdd').querySelectorAll('[data-mode]').forEach(b => b.onclick = () => set
 $('#formAdd').list.addEventListener('input', e => {
   const s = Core.parseStopList(e.target.value), pv = $('#pastePreview');
   pv.hidden = !e.target.value.trim();
-  pv.innerHTML = s.length ? s.map((x, i) => `<div><span class="code">${esc(x.code)}</span><span>${i + 1}. ${esc(x.name)}</span></div>`).join('') : '<div>No stops recognised yet.</div>';
+  pv.innerHTML = s.length ? s.map((x, i) => `<div><span class="code">${esc(x.code)}</span><span>${i + 1}. ${esc(x.name)}</span></div>`).join('') : '<div>Nenhuma paragem reconhecida ainda.</div>';
 });
 $('#btnAddGo').onclick = async () => {
   const f = $('#formAdd'), msg = $('#addMsg');
   const short = f.short.value.trim().toUpperCase();
-  if (!short) { msg.className = 'msg bad'; msg.textContent = 'Enter the line number.'; return; }
+  if (!short) { msg.className = 'msg bad'; msg.textContent = 'Informe o número da linha.'; return; }
   const base = { key: 'l' + Date.now().toString(36), short, routeId: null, color: Core.normColor(f.color.value) || null, example: false, probe: f.probe.value.trim().toUpperCase(), activeDir: 0 };
   try {
     if (addMode === 'paste') {
       const stops = Core.parseStopList(f.list.value);
-      if (stops.length < 2) throw new Error('Paste at least two stops, one per line, each with its code.');
+      if (stops.length < 2) throw new Error('Cole pelo menos duas paragens, uma por linha, cada uma com seu código.');
       base.dirs = [{ id: 'paste', name: f.dirname.value.trim() || stops[stops.length - 1].name, stops, myStop: null }];
       base.probe = base.probe || stops[0].code;
     } else {
-      msg.className = 'msg'; msg.textContent = 'Asking STCP…';
+      msg.className = 'msg'; msg.textContent = 'Consultando a STCP…';
       const r = await loadFromStcp({ short, probe: base.probe, routeId: f.rid.value });
       Object.assign(base, { routeId: r.rid, dirs: r.dirs, color: base.color || r.color });
     }
@@ -800,39 +800,39 @@ $('#btnAddGo').onclick = async () => {
     state.lines.push(base); state.activeLine = base.key; save();
     $('#dlgAdd').close(); live = { busy: false }; render(); refresh();
   } catch (e) {
-    msg.className = 'msg bad'; msg.textContent = explain(e) + (addMode === 'api' ? ' You can switch to "Paste stops".' : '');
+    msg.className = 'msg bad'; msg.textContent = explain(e) + (addMode === 'api' ? ' Você pode mudar para "Colar paragens".' : '');
   }
 };
 
 // ---------- line dialog ----------
 function openLine() {
   const l = line(), f = $('#formLine');
-  $('#lineTitle').textContent = `Line ${l.short}`;
-  $('#lineHint').textContent = `${l.dirs.length} direction${l.dirs.length > 1 ? 's' : ''} loaded${l.routeId ? ` · route_id ${l.routeId}` : ''}${l.example ? ' · example data' : ''}.`;
+  $('#lineTitle').textContent = `Linha ${l.short}`;
+  $('#lineHint').textContent = `${l.dirs.length} ${l.dirs.length > 1 ? 'sentidos carregados' : 'sentido carregado'}${l.routeId ? ` · route_id ${l.routeId}` : ''}${l.example ? ' · dados de exemplo' : ''}.`;
   f.color.value = l.color || ''; f.probe.value = l.probe || l.dirs[0]?.stops[0]?.code || '';
   $('#lineMsg').textContent = ''; $('#dlgLine').showModal();
 }
 $('#btnLineSave').onclick = () => {
   const l = line(), f = $('#formLine');
-  const c = Core.normColor(f.color.value); if (f.color.value && !c) { $('#lineMsg').className = 'msg bad'; $('#lineMsg').textContent = 'Use a hex colour like #F5D24C.'; return; }
+  const c = Core.normColor(f.color.value); if (f.color.value && !c) { $('#lineMsg').className = 'msg bad'; $('#lineMsg').textContent = 'Use uma cor hexadecimal como #F5D24C.'; return; }
   l.color = c || l.color; l.probe = f.probe.value.trim().toUpperCase() || l.probe; save(); $('#dlgLine').close(); render();
 };
 $('#btnLineRefresh').onclick = async () => {
   const l = line(), f = $('#formLine'), msg = $('#lineMsg');
-  msg.className = 'msg'; msg.textContent = 'Asking STCP…';
+  msg.className = 'msg'; msg.textContent = 'Consultando a STCP…';
   try {
     const r = await loadFromStcp({ short: l.short, probe: f.probe.value.trim().toUpperCase(), routeId: l.routeId });
     const mine = new Map(l.dirs.map(d => [d.myStop, true]));
     r.dirs.forEach(d => { const hit = d.stops.find(s => mine.has(s.id)); if (hit) d.myStop = hit.id; });
     const keep = r.dirs.findIndex(d => d.myStop);
     Object.assign(l, { routeId: r.rid, dirs: r.dirs, example: false, color: l.color || r.color, probe: f.probe.value.trim().toUpperCase() || l.probe, activeDir: Math.max(0, keep) });
-    save(); msg.className = 'msg good'; msg.textContent = `Loaded ${r.dirs.length} direction(s), route_id ${r.rid}.`;
+    save(); msg.className = 'msg good'; msg.textContent = `${r.dirs.length} sentido(s) carregado(s), route_id ${r.rid}.`;
     live = { busy: false }; render(); refresh();
   } catch (e) { msg.className = 'msg bad'; msg.textContent = explain(e); }
 };
 $('#btnLineDelete').onclick = () => {
   const l = line();
-  if (!confirm(`Remove line ${l.short}?`)) return;
+  if (!confirm(`Remover a linha ${l.short}?`)) return;
   state.lines = state.lines.filter(x => x !== l); state.activeLine = state.lines[0]?.key || null; save();
   $('#dlgLine').close(); live = { busy: false }; render(); refresh();
 };
@@ -842,7 +842,7 @@ function openSettings() {
   const f = $('#formSettings');
   f.querySelectorAll('.seg[data-name]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(String(seg.dataset.name === 'theme' ? getTheme() : state.settings[seg.dataset.name]) === b.dataset.v))));
   f.proxy.value = state.settings.proxy || '';
-  $('#testMsg').textContent = apiBase ? `Working via ${apiBase}` : ''; $('#testMsg').className = 'msg';
+  $('#testMsg').textContent = apiBase ? `Funcionando via ${apiBase}` : ''; $('#testMsg').className = 'msg';
   $('#ioMsg').textContent = '';
   $('#dlgSettings').showModal();
 }
@@ -855,49 +855,49 @@ $('#formSettings').querySelectorAll('.seg[data-name]').forEach(seg => seg.queryS
 $('#formSettings').proxy.addEventListener('change', e => { state.settings.proxy = e.target.value.trim().replace(/\/+$/, ''); apiBase = null; save(); });
 $('#btnTest').onclick = async () => {
   state.settings.proxy = $('#formSettings').proxy.value.trim().replace(/\/+$/, ''); save();
-  const msg = $('#testMsg'); msg.className = 'msg'; msg.textContent = 'Testing…';
+  const msg = $('#testMsg'); msg.className = 'msg'; msg.textContent = 'Testando…';
   const probe = dir()?.stops[Math.max(0, myIdx())]?.id || 'BCM1';
   const out = [];
   for (const base of candidates()) {
-    try { const j = await getJSON(base, `/api/stops/${encodeURIComponent(probe)}/realtime`); out.push(`${base}: works (${(j.arrivals || []).length} arrivals at ${probe})`); apiBase = apiBase || base; }
-    catch (e) { out.push(`${base}: ${e.kind === 'blocked' ? 'blocked (CORS or unreachable)' : e.message}`); }
+    try { const j = await getJSON(base, `/api/stops/${encodeURIComponent(probe)}/realtime`); out.push(`${base}: funciona (${(j.arrivals || []).length} chegadas em ${probe})`); apiBase = apiBase || base; }
+    catch (e) { out.push(`${base}: ${e.kind === 'blocked' ? 'bloqueado (CORS ou inacessível)' : e.message}`); }
   }
   msg.className = 'msg ' + (apiBase ? 'good' : 'bad'); msg.innerHTML = out.map(esc).join('<br>');
   if (apiBase) refresh();
 };
 $('#btnExport').onclick = async () => {
   const txt = JSON.stringify(state);
-  try { await navigator.clipboard.writeText(txt); $('#ioMsg').textContent = 'Copied. Paste it into Argos on another device.'; }
-  catch (e) { prompt('Copy this:', txt); }
+  try { await navigator.clipboard.writeText(txt); $('#ioMsg').textContent = 'Copiado. Cole no Argos em outro aparelho.'; }
+  catch (e) { prompt('Copie isto:', txt); }
 };
 $('#btnImport').onclick = () => {
-  const txt = prompt('Paste a setup copied from Argos:'); if (!txt) return;
+  const txt = prompt('Cole uma configuração copiada do Argos:'); if (!txt) return;
   try { const s = JSON.parse(txt); if (s.v !== 1 || !Array.isArray(s.lines)) throw 0; state = s; save(); applyTheme(); $('#dlgSettings').close(); live = { busy: false }; render(); refresh(); }
-  catch (e) { $('#ioMsg').className = 'msg bad'; $('#ioMsg').textContent = 'That is not a Argos setup.'; }
+  catch (e) { $('#ioMsg').className = 'msg bad'; $('#ioMsg').textContent = 'Isso não é uma configuração do Argos.'; }
 };
 // ---------- private vault (setup sync) ----------
 async function vaultSetup(save) {
   const msg = $('#ioMsg'); msg.className = 'msg'; msg.textContent = '…';
   try {
     const { createVault } = await import('./lib/vault.js'), v = createVault();
-    if (!v.configured()) throw new Error('Connect the vault first: open Carro → Cofre.');
+    if (!v.configured()) throw new Error('Conecte o cofre primeiro: abra Carro → Cofre.');
     if (save) {
       const copy = JSON.parse(JSON.stringify(state)); copy.settings.proxy = '';
       const r = await v.put('bus-setup', { id: 'setup', state: copy });
-      msg.className = 'msg good'; msg.textContent = r.sent ? 'Saved to the vault.' : 'Offline: will be sent later.';
+      msg.className = 'msg good'; msg.textContent = r.sent ? 'Salvo no cofre.' : 'Sem internet: será enviado depois.';
     } else {
       const { items } = await v.list('bus-setup'); const rec = items.find(x => x.id === 'setup');
-      if (!rec) throw new Error('Nothing saved in the vault yet.');
-      const s = rec.state; if (s.v !== 1 || !Array.isArray(s.lines)) throw new Error('Saved setup is not valid.');
+      if (!rec) throw new Error('Nada salvo no cofre ainda.');
+      const s = rec.state; if (s.v !== 1 || !Array.isArray(s.lines)) throw new Error('A configuração salva não é válida.');
       s.settings = { ...state.settings, ...s.settings, proxy: state.settings.proxy };
       state = s; save_(); applyTheme(); $('#dlgSettings').close(); live = { busy: false }; render(); refresh();
     }
-  } catch (e) { msg.className = 'msg bad'; msg.textContent = e.kind === 'auth' ? 'The vault refused the token.' : e.message; }
+  } catch (e) { msg.className = 'msg bad'; msg.textContent = e.kind === 'auth' ? 'O cofre recusou o token.' : e.message; }
 }
 const save_ = save;
 $('#btnVaultSave').onclick = () => vaultSetup(true);
 $('#btnVaultLoad').onclick = () => vaultSetup(false);
-$('#btnReset').onclick = () => { if (!confirm('Remove all lines and settings?')) return; state = defaultState(); save(); applyTheme(); $('#dlgSettings').close(); live = { busy: false }; render(); refresh(); };
+$('#btnReset').onclick = () => { if (!confirm('Remover todas as linhas e configurações?')) return; state = defaultState(); save(); applyTheme(); $('#dlgSettings').close(); live = { busy: false }; render(); refresh(); };
 
 // close dialogs on backdrop tap
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
