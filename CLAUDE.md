@@ -46,12 +46,12 @@ Hospedagem estática: só código
 2. Nome: **Argos**.
 3. **Sem** botão "sair e apagar deste aparelho". Para revogar um aparelho, troque o token.
 4. **Repositório novo, sem histórico**, e o antigo (`paragem`) será apagado. Motivo: o histórico antigo contém trajetos pessoais. A cópia limpa é um único commit inicial.
-5. **Hospedagem: Cloudflare Pages, não GitHub Pages.** O dono tem outros projetos em `*.github.io`, e todos os sites de um mesmo usuário compartilham a origem (`usuario.github.io`) e portanto o `localStorage`: qualquer um deles poderia ler o token do cofre. No Cloudflare Pages o Argos tem origem própria (`argos.pages.dev` ou semelhante).
+5. **Hospedagem: Cloudflare Pages, não GitHub Pages.** O dono tem outros projetos em `*.github.io`, e todos os sites de um mesmo usuário compartilham a origem (`usuario.github.io`) e portanto o `localStorage`: qualquer um deles poderia ler o token do cofre. No Cloudflare Pages o Argos tem origem própria (`argos-ejb.pages.dev` ou semelhante).
 6. Quer um gráfico dos gastos (feito) e acha que o painel vai crescer com outros assuntos do dia a dia.
 
 ## Estado da migração (repositório `argus`)
 
-Feito: renomear para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`; `argos-proxy`); hospedagem trocada para Cloudflare Pages (`pages.dev`; `ALLOWED_ORIGIN` = `https://argos.pages.dev`, confirmada pelo dono); home em `index.html` com gasto do mês e lembretes do carro (`lib/home-core.js`); ônibus movido para `onibus.html`.
+Feito: renomear para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`; `argos-proxy`); hospedagem trocada para Cloudflare Pages (`pages.dev`; `ALLOWED_ORIGIN` = `https://argos-ejb.pages.dev`, confirmada pelo dono); home em `index.html` com gasto do mês e lembretes do carro (`lib/home-core.js`); ônibus movido para `onibus.html`.
 
 Pendente (depende do dono): criar o projeto no Cloudflare Pages; confirmar a URL do Worker `argos-proxy` (`PAGES_PROXY` em `onibus.html`); deploy do cofre (`vault/README.md`; nunca pedir o token, use `request_credential`); no app, **Settings → Save setup to vault**; só então apagar o repositório antigo `paragem`. Ideia para a home: próximo ônibus (precisa da chamada ao vivo da STCP).
 

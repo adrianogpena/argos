@@ -4,7 +4,7 @@ compatibility_date = "2025-06-01"
 
 [vars]
 # Exact origin of the app. Nothing else can call the vault from a browser.
-ALLOWED_ORIGIN = "https://argos.pages.dev"
+ALLOWED_ORIGIN = "https://argos-ejb.pages.dev"
 
 # Fill in the id printed by:  npx wrangler kv namespace create VAULT
 # (an id is just a label, not a secret; the data is protected by the token, not by this id)

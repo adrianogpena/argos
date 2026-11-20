@@ -35,7 +35,7 @@ Phones won't run a downloaded HTML file properly, so the app needs to be served 
 
 **A. Cloudflare Pages + Cloudflare Worker (free, works anywhere, recommended)**
 
-Cloudflare Pages, not GitHub Pages: every `*.github.io` site of one user shares an origin, and so `localStorage`, where the vault token lives. On Pages, Argos gets its own origin (`https://argos.pages.dev` or similar).
+Cloudflare Pages, not GitHub Pages: every `*.github.io` site of one user shares an origin, and so `localStorage`, where the vault token lives. On Pages, Argos gets its own origin (`https://argos-ejb.pages.dev` or similar).
 
 1. Dashboard → Workers & Pages → Create → Pages → Connect to Git → pick this repository. Framework preset: *None*; build command empty; output directory `/`.
 2. After the first deploy the app is at `https://<project>.pages.dev`. Put that origin (scheme + domain, no path) in `ALLOWED_ORIGIN` in `vault/wrangler.toml` and `proxy/wrangler.toml`, and redeploy both Workers.
