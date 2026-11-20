@@ -16,6 +16,7 @@ carro.html             car log (fuel, services, reminders); its data lives in th
 lib/                   vault client and car maths (ES modules)
 vault/                 private data vault: Cloudflare Worker + KV, token protected. See vault/README.md
 gastos.html            expenses with monthly and per-category charts
+saude.html             weight and height of people and pets; data in the vault (health-members, health-measures)
 lib/home-core.js       home summary maths
 test/*.test.mjs        vault, car, expenses and home tests (node test/<name>.test.mjs)
 ```

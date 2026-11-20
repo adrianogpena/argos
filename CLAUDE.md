@@ -12,6 +12,7 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Ônibus | `onibus.html` | pronto (herdado de Paragem) |
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
 | Gastos (gráfico mensal e por categoria; soma o carro) | `gastos.html` | pronto |
+| Saúde (peso e altura de pessoas e bichos) | `saude.html` | pronto; dados importados do Supabase uma única vez |
 
 Nome escolhido: **Argos** (o gigante de cem olhos). Cada módulo é uma página própria, sem build, sem framework. Lógica pura em `lib/*.js` (módulos ES, testáveis em Node).
 
@@ -35,7 +36,7 @@ Hospedagem estática: só código
 
 - `vault/worker.js`: sem token válido responde 401. Comparação por hash em tempo constante. 8 tokens errados por IP em 15 min bloqueiam o IP (429). CORS restrito a `ALLOWED_ORIGIN` (sem ela configurada, recusa tudo). Falta de configuração falha fechado (500).
 - API: `GET /v1/ping`, `GET /v1/c/:colecao`, `PUT|DELETE /v1/c/:colecao/:id`, `GET /v1/export`. Limites: registro de 8 KB, 20 000 itens por coleção.
-- Coleções em uso: `car-fuel`, `car-service`, `car-status` (leituras do odômetro: km, nível do tanque em % lido num mostrador deslizante, com litros estimados sobre 45 L, autonomia e consumo do painel, observação), `expenses`, `bus-setup`.
+- Coleções em uso: `car-fuel`, `car-service`, `car-status` (leituras do odômetro: km, nível do tanque em % lido num mostrador deslizante, com litros estimados sobre 45 L, autonomia e consumo do painel, observação), `expenses`, `bus-setup`, `health-members` (nome, tipo `human`/`pet`, espécie, sexo, nascimento, observações), `health-measures` (membro, medida `weight` em kg ou `height` em cm, valor, data; id = membro-medida-data, então a mesma medida no mesmo dia se substitui).
 - `lib/vault.js` (cliente): cache local, fila de edições offline, erros tipados (`auth`, `network`, `server`, `config`). A URL do cofre exige `https://` (exceto `localhost`, para testes).
 - O token é gerado pelo dono (`openssl rand -hex 32`) e guardado com `wrangler secret put VAULT_TOKEN`. Troca de token = revoga os aparelhos antigos.
 - Limite conhecido e aceito: a Cloudflare hospeda os dados. Para dado mais sensível (saúde, documentos) criptografar no navegador antes de enviar, ainda não implementado.
@@ -93,9 +94,10 @@ node test/expenses.test.mjs   gastos (7)
 node test/home.test.mjs       resumo da home (4)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
 node test/fuelio.test.mjs     importação do Fuelio (4)
+node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (6)
 ```
 
-Rode os sete antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
+Rode os oito antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
 
 ## Como criar o repositório novo limpo
 
@@ -114,3 +116,7 @@ Conferir antes do push que `git log` tem **um** commit e que nenhum arquivo `bac
 ## Importação do Fuelio (única)
 
 `tools/import-fuelio.mjs` lê um `vehicle-N-local.csv` do backup do Fuelio (`lib/fuelio.js`) e grava em `car-fuel` / `car-service`. Roda no computador do dono com `VAULT_URL` e `VAULT_TOKEN` no ambiente; sem `--apply` só simula. Ids estáveis: repetir sobrescreve. O app guarda um só carro: importar apenas o veículo ativo (o Captur), nunca misturar dois carros (os odômetros se confundem). Os CSVs nunca entram no git.
+
+## Importação do Supabase (única)
+
+`tools/import-health.mjs` lê o CSV exportado da tabela `members` + `measurements` do antigo Supabase (`lib/health-core.js`, `fromRows`) e grava em `health-members` / `health-measures`. Mesmo modelo do Fuelio: `VAULT_URL` e `VAULT_TOKEN` no ambiente, sem `--apply` só simula, ids estáveis. Importação única; depois de usada, o arquivo pode ser apagado. O CSV fica em `data/` (ignorado pelo git). Cuidado ao exportar: ligar `members` e `measurements` por `member_id`, nunca só por `user_id` (isso multiplica cada medida por todos os membros).
