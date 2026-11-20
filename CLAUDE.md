@@ -35,7 +35,7 @@ Hospedagem estática: só código
 
 - `vault/worker.js`: sem token válido responde 401. Comparação por hash em tempo constante. 8 tokens errados por IP em 15 min bloqueiam o IP (429). CORS restrito a `ALLOWED_ORIGIN` (sem ela configurada, recusa tudo). Falta de configuração falha fechado (500).
 - API: `GET /v1/ping`, `GET /v1/c/:colecao`, `PUT|DELETE /v1/c/:colecao/:id`, `GET /v1/export`. Limites: registro de 8 KB, 20 000 itens por coleção.
-- Coleções em uso: `car-fuel`, `car-service`, `car-status` (leituras do odômetro: km, nível do tanque, autonomia e consumo do painel, observação), `expenses`, `bus-setup`.
+- Coleções em uso: `car-fuel`, `car-service`, `car-status` (leituras do odômetro: km, nível do tanque em % lido num mostrador deslizante, com litros estimados sobre 45 L, autonomia e consumo do painel, observação), `expenses`, `bus-setup`.
 - `lib/vault.js` (cliente): cache local, fila de edições offline, erros tipados (`auth`, `network`, `server`, `config`). A URL do cofre exige `https://` (exceto `localhost`, para testes).
 - O token é gerado pelo dono (`openssl rand -hex 32`) e guardado com `wrangler secret put VAULT_TOKEN`. Troca de token = revoga os aparelhos antigos.
 - Limite conhecido e aceito: a Cloudflare hospeda os dados. Para dado mais sensível (saúde, documentos) criptografar no navegador antes de enviar, ainda não implementado.

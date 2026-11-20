@@ -79,6 +79,11 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .chart .dot{fill:var(--series);stroke:var(--surface);stroke-width:2}
 .tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:4px 8px;border-radius:6px;z-index:9;white-space:nowrap}
 .empty{color:var(--ink-3);font-size:14px;padding:4px 0}
+.gauge{width:min(260px,100%);display:block;margin:0 auto}
+.gauge .arc{fill:none;stroke:var(--rule);stroke-width:10}.gauge .res{fill:none;stroke:var(--danger);stroke-width:10}
+.gauge .tk{stroke:var(--ink-3);stroke-width:2}.gauge text{font-family:var(--mono);font-size:11px;fill:var(--ink-2)}
+.gauge .nd{stroke:var(--ink);stroke-width:3;stroke-linecap:round}.gauge .hub{fill:var(--ink)}
+#lvRange{width:100%;margin:6px 0}.lvtxt{text-align:center;font-weight:700}
 .priv{font-size:12px;color:var(--ink-3);margin-top:18px}
 [hidden]{display:none!important}
 </style>
@@ -135,9 +140,13 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <label class="field"><span>Data</span><input name="date" type="date" required></label>
     <label class="field"><span>Km do odômetro</span><input name="odometer" inputmode="decimal" required></label>
   </div>
-  <label class="field"><span>Nível do tanque (opcional)</span><select name="fuelLevel">
-    <option value="">Não informar</option><option value="5">Reserva</option><option value="25">¼</option><option value="50">½</option><option value="75">¾</option><option value="100">Cheio</option>
-  </select></label>
+  <label class="check"><input type="checkbox" id="lvOn"> Informar o nível do tanque</label>
+  <div id="lvBox" hidden>
+    <svg id="gauge" class="gauge" viewBox="-14 -10 228 132" role="img" aria-label="Mostrador do combustível"></svg>
+    <input type="range" name="fuelLevel" id="lvRange" min="0" max="100" step="5" value="50" aria-label="Posição do ponteiro">
+    <div class="lvtxt" id="lvTxt" aria-live="polite"></div>
+    <small style="color:var(--ink-3);display:block;margin:2px 0 12px">Mova até o ponteiro ficar igual ao do painel do carro. O valor em litros é uma estimativa.</small>
+  </div>
   <div class="two">
     <label class="field"><span>Autonomia no painel (km)</span><input name="dashRange" inputmode="decimal"></label>
     <label class="field"><span>Consumo do painel (l/100 km)</span><input name="dashAvg" inputmode="decimal"></label>
@@ -166,7 +175,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <script type="module">
 import { createVault, newId } from './lib/vault.js';
-import { fuelRecord, serviceRecord, statusRecord, odoPoints, monthlyKm, kmPerDay, summary, consumption, monthlySpend, reminders, parseNum, byOdometer } from './lib/car-core.js';
+import { fuelRecord, serviceRecord, statusRecord, litersFromLevel, odoPoints, monthlyKm, kmPerDay, summary, consumption, monthlySpend, reminders, parseNum, byOdometer } from './lib/car-core.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -212,7 +221,7 @@ function render() {
     tile('Odômetro', kmFmt(s.lastOdo), 'km'), tile('Último consumo', dec(s.lastKmPerL), 'km/l'),
     tile('Média', dec(s.avgKmPerL), 'km/l'), tile('Custo por km', s.avgCostPerKm == null ? '–' : eur(s.avgCostPerKm).replace(/\s/g, ' '), ''),
     tile('Preço médio/l', s.avgPricePerL == null ? '–' : eur(s.avgPricePerL), ''), tile('Km por dia', perDay == null ? '–' : dec(perDay, 0), 'km'),
-    ...(lastSt && lastSt.fuelLevel != null ? [tile('Tanque em ' + dateBR(lastSt.date).slice(0, 5), Math.round(lastSt.fuelLevel), '%' + (lastSt.dashRange != null ? ' · ' + kmFmt(lastSt.dashRange) + ' km' : ''))] : []), tile('Total gasto', eur(s.spent + services.reduce((a, x) => a + (x.cost || 0), 0)), ''),
+    ...(lastSt && lastSt.fuelLevel != null ? [tile('Tanque em ' + dateBR(lastSt.date).slice(0, 5), '≈ ' + litersFromLevel(lastSt.fuelLevel), 'l' + (lastSt.dashRange != null ? ' · ' + kmFmt(lastSt.dashRange) + ' km' : ''))] : []), tile('Total gasto', eur(s.spent + services.reduce((a, x) => a + (x.cost || 0), 0)), ''),
   ].join('') : '<div class="card empty" style="grid-column:1/-1">Registre o primeiro abastecimento para ver as estatísticas.</div>';
 
   const rem = reminders(services, s.lastOdo, today());
@@ -227,9 +236,8 @@ function render() {
 
   const fl = [...fuels].sort(byOdometer).reverse();
   $('#fuelList').innerHTML = fl.length ? fl.map(f => `<li><div class="main"><span class="num">${kmFmt(f.odometer)} km</span> · ${dateBR(f.date)}<div class="sub">${dec(f.liters, 2)} l · ${eur(f.total)} · ${eur(f.liters ? f.total / f.liters : 0)}/l${f.full ? '' : ' · parcial'}${f.station ? ' · ' + esc(f.station) : ''}${f.note ? ' · ' + esc(f.note) : ''}</div></div><button data-edit-fuel="${esc(f.id)}" aria-label="Editar">Editar</button><button data-del-fuel="${esc(f.id)}" aria-label="Apagar">Apagar</button></li>`).join('') : '<li class="empty">Nenhum abastecimento.</li>';
-  const LV = { 5: 'reserva', 25: '¼', 50: '½', 75: '¾', 100: 'cheio' };
-  const stl = [...statuses].sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer);
-  $('#stList').innerHTML = stl.length ? stl.map(x => `<li><div class="main"><span class="num">${kmFmt(x.odometer)} km</span> · ${dateBR(x.date)}<div class="sub">${[x.fuelLevel != null ? 'tanque ' + (LV[x.fuelLevel] || Math.round(x.fuelLevel) + '%') : '', x.dashRange != null ? 'autonomia ' + kmFmt(x.dashRange) + ' km' : '', x.dashAvg != null ? 'painel ' + dec(x.dashAvg, 1) + ' l/100 km' : '', x.note ? esc(x.note) : ''].filter(Boolean).join(' · ')}</div></div><button data-edit-st="${esc(x.id)}">Editar</button><button data-del-st="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma leitura. Use “+ Odômetro” para atualizar o km sem abastecer.</li>';
+    const stl = [...statuses].sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer);
+  $('#stList').innerHTML = stl.length ? stl.map(x => `<li><div class="main"><span class="num">${kmFmt(x.odometer)} km</span> · ${dateBR(x.date)}<div class="sub">${[x.fuelLevel != null ? 'tanque ≈ ' + litersFromLevel(x.fuelLevel) + ' l (' + Math.round(x.fuelLevel) + '%)' : '', x.dashRange != null ? 'autonomia ' + kmFmt(x.dashRange) + ' km' : '', x.dashAvg != null ? 'painel ' + dec(x.dashAvg, 1) + ' l/100 km' : '', x.note ? esc(x.note) : ''].filter(Boolean).join(' · ')}</div></div><button data-edit-st="${esc(x.id)}">Editar</button><button data-del-st="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma leitura. Use “+ Odômetro” para atualizar o km sem abastecer.</li>';
   const sl = [...services].sort((a, b) => b.date.localeCompare(a.date));
   $('#svcList').innerHTML = sl.length ? sl.map(x => `<li><div class="main">${esc(x.kind)} · ${dateBR(x.date)}<div class="sub">${x.odometer ? kmFmt(x.odometer) + ' km · ' : ''}${eur(x.cost || 0)}${x.nextKm ? ' · próxima ' + kmFmt(x.nextKm) + ' km' : ''}${x.nextDate ? ' · até ' + dateBR(x.nextDate) : ''}</div></div><button data-edit-svc="${esc(x.id)}">Editar</button><button data-del-svc="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma manutenção.</li>';
 }
@@ -274,16 +282,28 @@ $('#btnFuelSave').onclick = () => {
   if (!r.ok) { $('#fuelMsg').className = 'msg bad'; $('#fuelMsg').textContent = 'Confira ' + names[r.error] + '.'; return; }
   save('car-fuel', r.rec, $('#fuelMsg'), $('#dlgFuel'));
 };
+const gp = (p, r) => { const a = Math.PI * (1 - p / 100); return [100 + r * Math.cos(a), 100 - r * Math.sin(a)]; };
+const garc = (p1, p2, r = 80) => { const [x1, y1] = gp(p1, r), [x2, y2] = gp(p2, r); return `M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 0 1 ${x2.toFixed(1)},${y2.toFixed(1)}`; };
+function drawGauge() {
+  const p = +$('#lvRange').value, [nx, ny] = gp(p, 66);
+  const tk = [0, 25, 50, 75, 100].map(t => { const [a, b] = gp(t, 70), [c, d] = gp(t, t % 50 ? 78 : 86); return `<line class="tk" x1="${a.toFixed(1)}" y1="${b.toFixed(1)}" x2="${c.toFixed(1)}" y2="${d.toFixed(1)}"/>`; }).join('');
+  const lb = [[0, '0'], [50, '½'], [100, '1']].map(([t, l]) => { const [x, y] = gp(t, 98); return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle">${l}</text>`; }).join('');
+  $('#gauge').innerHTML = `<path class="arc" d="${garc(0, 100)}"/><path class="res" d="${garc(0, 8)}"/>${tk}${lb}<line class="nd" x1="100" y1="100" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"/><circle class="hub" cx="100" cy="100" r="5"/>`;
+  $('#lvTxt').textContent = p === 0 ? 'Vazio (≈ 0 l)' : p === 100 ? 'Cheio (≈ ' + litersFromLevel(100) + ' l)' : '≈ ' + litersFromLevel(p) + ' l de ' + litersFromLevel(100) + ' l';
+}
+$('#lvRange').oninput = drawGauge;
+$('#lvOn').onchange = () => { $('#lvBox').hidden = !$('#lvOn').checked; drawGauge(); };
 function openStatus(x) {
   editSt = x?.id || null; const form = $('#formStatus'); form.reset();
-  fill(form, x ? { date: x.date, odometer: x.odometer, fuelLevel: x.fuelLevel ?? '', dashRange: x.dashRange ?? '', dashAvg: x.dashAvg == null ? '' : String(x.dashAvg).replace('.', ','), note: x.note } : { date: today(), odometer: summary(fuels, services, statuses).lastOdo || '' });
+  fill(form, x ? { date: x.date, odometer: x.odometer, dashRange: x.dashRange ?? '', dashAvg: x.dashAvg == null ? '' : String(x.dashAvg).replace('.', ','), note: x.note } : { date: today(), odometer: summary(fuels, services, statuses).lastOdo || '' });
+  const lv = x?.fuelLevel; $('#lvOn').checked = lv != null; $('#lvRange').value = lv != null ? Math.round(lv / 5) * 5 : 50; $('#lvBox').hidden = lv == null; drawGauge();
   $('#stTitle').textContent = x ? 'Editar leitura' : 'Leitura do odômetro'; $('#stMsg').textContent = '';
   $('#dlgStatus').showModal();
 }
 $('#btnStatus').onclick = () => openStatus();
 $('#btnStSave').onclick = () => {
   const f = $('#formStatus');
-  const r = statusRecord({ id: editSt || newId(), date: f.date.value, odometer: f.odometer.value, fuelLevel: f.fuelLevel.value, dashRange: f.dashRange.value, dashAvg: f.dashAvg.value, note: f.note.value });
+  const r = statusRecord({ id: editSt || newId(), date: f.date.value, odometer: f.odometer.value, fuelLevel: $('#lvOn').checked ? f.fuelLevel.value : '', dashRange: f.dashRange.value, dashAvg: f.dashAvg.value, note: f.note.value });
   if (!r.ok) { $('#stMsg').className = 'msg bad'; $('#stMsg').textContent = r.error === 'date' ? 'Confira a data.' : 'Confira o km.'; return; }
   save('car-status', r.rec, $('#stMsg'), $('#dlgStatus'));
 };

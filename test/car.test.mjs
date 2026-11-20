@@ -1,6 +1,6 @@
 // node test/car.test.mjs
 import assert from 'node:assert/strict';
-import { fuelRecord, consumption, summary, monthlySpend, reminders, serviceRecord, parseNum, statusRecord, odoPoints, monthlyKm, kmPerDay } from '../lib/car-core.js';
+import { fuelRecord, consumption, summary, monthlySpend, reminders, serviceRecord, parseNum, statusRecord, odoPoints, monthlyKm, kmPerDay, litersFromLevel, TANK_LITERS } from '../lib/car-core.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 const F = (date, odometer, liters, total, full = true) => ({ id: date + odometer, date, odometer, liters, total, full });
 
@@ -64,5 +64,8 @@ t('monthlyKm interpolates between readings and kmPerDay averages', () => {
   const p = [{ date: '2026-01-21', odometer: 1000 }, { date: '2026-02-10', odometer: 1400 }];   // 20 days, 20 km/day; Jan 21→Feb 1 is 11 days
   assert.deepEqual(monthlyKm(p), [{ month: '2026-01', km: 220 }, { month: '2026-02', km: 180 }]);
   assert.equal(kmPerDay(p), 20); assert.equal(kmPerDay([p[0]]), null); assert.deepEqual(monthlyKm([p[0]]), []);
+});
+t('litersFromLevel estimates litres from the gauge percentage', () => {
+  assert.equal(TANK_LITERS, 45); assert.equal(litersFromLevel(50), 23); assert.equal(litersFromLevel(100), 45); assert.equal(litersFromLevel(0), 0); assert.equal(litersFromLevel(undefined), null);
 });
 console.log(`\n${n} passed`);
