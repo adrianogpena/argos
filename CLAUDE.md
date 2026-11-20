@@ -117,6 +117,6 @@ Conferir antes do push que `git log` tem **um** commit e que nenhum arquivo `bac
 
 `tools/import-fuelio.mjs` lê um `vehicle-N-local.csv` do backup do Fuelio (`lib/fuelio.js`) e grava em `car-fuel` / `car-service`. Roda no computador do dono com `VAULT_URL` e `VAULT_TOKEN` no ambiente; sem `--apply` só simula. Ids estáveis: repetir sobrescreve. O app guarda um só carro: importar apenas o veículo ativo (o Captur), nunca misturar dois carros (os odômetros se confundem). Os CSVs nunca entram no git.
 
-## Importação do Supabase (única)
+## Importação do Supabase (feita)
 
-`tools/import-health.mjs` lê o CSV exportado da tabela `members` + `measurements` do antigo Supabase (`lib/health-core.js`, `fromRows`) e grava em `health-members` / `health-measures`. Mesmo modelo do Fuelio: `VAULT_URL` e `VAULT_TOKEN` no ambiente, sem `--apply` só simula, ids estáveis. Importação única; depois de usada, o arquivo pode ser apagado. O CSV fica em `data/` (ignorado pelo git). Cuidado ao exportar: ligar `members` e `measurements` por `member_id`, nunca só por `user_id` (isso multiplica cada medida por todos os membros).
+Peso e altura vieram do antigo Supabase numa importação única, já concluída (5 membros, 55 medidas em `health-members` / `health-measures`). O script foi apagado; `fromRows` em `lib/health-core.js` e seus testes ficam. Lição: ao exportar, ligar `members` e `measurements` por `member_id`, nunca só por `user_id` (isso multiplica cada medida por todos os membros).
