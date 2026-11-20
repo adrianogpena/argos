@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Argos</title>
+<title>Ônibus</title>
 <meta name="description" content="Follow a Porto STCP bus line and see what is coming to your stop.">
 <meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
@@ -60,6 +60,10 @@ svg{display:block}
 .icon-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);display:grid;place-items:center}
 .icon-btn:active{transform:scale(.97)}
 .icon-btn svg{width:20px;height:20px}
+
+.nav{display:flex;gap:6px;margin:0 0 14px}
+.nav a{border:1px solid var(--rule);background:var(--surface);color:var(--ink);text-decoration:none;border-radius:999px;padding:7px 14px;font-size:14px;font-weight:600}
+.nav [aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 
 /* line tabs */
 .tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
@@ -188,14 +192,13 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
 <body>
 <div class="wrap">
   <header class="top">
-    <a href="index.html" class="brand" style="text-decoration:none;color:inherit"><b aria-hidden="true"></b>Argos</a>
-    <a href="carro.html" class="icon-btn" style="text-decoration:none;color:inherit;font-size:13px;font-weight:700;width:auto;padding:0 12px" title="Car log">Carro</a>
-    <a href="gastos.html" class="icon-btn" style="text-decoration:none;color:inherit;font-size:13px;font-weight:700;width:auto;padding:0 12px" title="Expenses">Gastos</a>
+    <div class="brand"><b aria-hidden="true"></b>Ônibus</div>
     <button class="icon-btn" id="btnTheme" aria-label="Switch theme" title="Theme"></button>
     <button class="icon-btn" id="btnSettings" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
     </button>
   </header>
+  <nav class="nav" aria-label="Seções"><a href="index.html">Início</a><a href="onibus.html" aria-current="page">Ônibus</a><a href="carro.html">Carro</a><a href="gastos.html">Gastos</a></nav>
 
   <nav class="tabs" id="tabs" aria-label="Your lines"></nav>
 
