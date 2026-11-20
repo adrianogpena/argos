@@ -58,14 +58,14 @@ Feito e no ar:
 - Proxy dos ônibus em `https://argos-proxy.adrianogpena.workers.dev` (mesmo `ALLOWED_ORIGIN`; `PAGES_PROXY` em `onibus.html` confirmado). `onibus.html` mostra as chegadas.
 - Código: renomeado para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`), home em `index.html` (`lib/home-core.js`), ônibus em `onibus.html`.
 
-Pendente (depende do dono):
-1. Confirmar que o app conecta ao cofre: `carro.html` → Cofre → URL e token. Se der "Cannot reach the vault", conferir `ALLOWED_ORIGIN` do Worker `vault`.
-2. No app de ônibus: **Settings → Save setup to vault**.
-3. Só então o dono apaga o repositório antigo `paragem` (nunca apagar por conta própria).
+Migração concluída:
+- O app conecta ao cofre (carro usa o token com sucesso) e o setup dos ônibus, incluindo as linhas UNIR, está salvo no cofre (`bus-setup`).
+- O repositório antigo `paragem` foi apagado pelo dono.
+- Lição: cada origem tem seu próprio `localStorage`; dados do site antigo não migram sozinhos, só por "Copy setup" e "Paste a setup".
 
 Regra: nunca pedir, escrever ou registrar o token; se precisar de credencial, usar `request_credential`.
 
-Ideia para a home: próximo ônibus (precisa da chamada ao vivo da STCP).
+Próxima tarefa sugerida: "próximo ônibus" na home (precisa da chamada ao vivo da STCP e do setup guardado no cofre).
 
 ## Ideias futuras (não decididas)
 
