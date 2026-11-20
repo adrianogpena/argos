@@ -136,8 +136,8 @@ const vault = createVault();
 async function main() {
   if (!vault.configured()) { $('#note').innerHTML = 'Para ver o resumo, conecte o cofre em <a href="carro.html">Carro → Cofre</a>.'; return; }
   try {
-    const [e, f, s] = await Promise.all([vault.list('expenses'), vault.list('car-fuel'), vault.list('car-service')]);
-    const t = today(), r = homeSummary({ expenses: e.items, fuels: f.items, services: s.items }, t);
+    const [e, f, s, st] = await Promise.all([vault.list('expenses'), vault.list('car-fuel'), vault.list('car-service'), vault.list('car-status')]);
+    const t = today(), r = homeSummary({ expenses: e.items, fuels: f.items, services: s.items, statuses: st.items }, t);
     const d = r.delta;
     $('#tiles').innerHTML =
       `<div class="tile"><div class="k">Gasto em ${MONTHS[+r.month.slice(5) - 1]}</div><div><span class="v">${eur(r.total)}</span></div></div>` +
