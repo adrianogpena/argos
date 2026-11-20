@@ -1,6 +1,6 @@
 // node test/expenses.test.mjs
 import assert from 'node:assert/strict';
-import { expenseRecord, withCar, monthly, byCategory, monthTotal, delta, categoriesIn } from '../lib/expenses-core.js';
+import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn } from '../lib/expenses-core.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 const E = (date, amount, category) => ({ id: date + amount, date, amount, category });
 
@@ -10,9 +10,15 @@ t('expenseRecord validates', () => {
   assert.equal(expenseRecord({ id: 'a', date: '2026-05-02', amount: '5', category: ' ' }).error, 'category');
   assert.equal(expenseRecord({ id: 'a', date: 'hoje', amount: '5', category: 'x' }).error, 'date');
 });
-t('withCar adds fuel and services as category Carro, drops zero-cost rows', () => {
-  const all = withCar([E('2026-05-01', 10, 'Mercado')], [{ id: 'a', date: '2026-05-02', total: 60 }], [{ id: 'b', date: '2026-05-03', cost: 0, kind: 'Lavagem' }, { id: 'c', date: '2026-05-04', cost: 90, kind: 'Óleo' }]);
-  assert.deepEqual(all.map(x => [x.category, x.amount]), [['Mercado', 10], ['Carro', 60], ['Carro', 90]]);
+t('expenseRecord keeps the bank fields and rejects an unknown need', () => {
+  const r = expenseRecord({ id: 'a', date: '2026-05-02', amount: '9', category: 'Mercado', need: 'essential', source: 'bank', auto: true, key: 'loja-exemplo' }).rec;
+  assert.deepEqual([r.need, r.source, r.auto, r.key], ['essential', 'bank', true, 'loja-exemplo']);
+  const m = expenseRecord({ id: 'b', date: '2026-05-02', amount: '9', category: 'Mercado', need: 'xyz' }).rec;
+  assert.equal(m.need, ''); assert.ok(!('auto' in m) && !('source' in m));
+});
+t('needSplit separates essential, flexible and undefined in the month', () => {
+  const items = [{ ...E('2026-05-01', 100, 'Moradia'), need: 'essential' }, { ...E('2026-05-02', 20, 'Lazer'), need: 'flexible' }, E('2026-05-03', 5, 'x'), { ...E('2026-04-03', 99, 'x'), need: 'essential' }];
+  assert.deepEqual(needSplit(items, '2026-05'), { essential: 100, flexible: 20, none: 5 });
 });
 t('monthly fills empty months and keeps order', () => {
   const m = monthly([E('2026-03-10', 5, 'a'), E('2026-03-20', 7, 'a'), E('2026-05-01', 3, 'a')], 4, new Date(2026, 4, 15));

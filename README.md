@@ -15,7 +15,8 @@ test/core.test.mjs     tests for the bus-locating logic: node test/core.test.mjs
 carro.html             car log (fuel, services, reminders); its data lives in the private vault
 lib/                   vault client and car maths (ES modules)
 vault/                 private data vault: Cloudflare Worker + KV, token protected. See vault/README.md
-gastos.html            expenses with monthly and per-category charts
+gastos.html            expenses with monthly and per-category charts; bank statement (CSV) import
+lib/statement.js       CSV bank statement parser; lib/classify.js guesses category and need
 saude.html             weight and height of people and pets; data in the vault (health-members, health-measures)
 lib/home-core.js       home summary maths
 test/*.test.mjs        vault, car, expenses and home tests (node test/<name>.test.mjs)

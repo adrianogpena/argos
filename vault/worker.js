@@ -13,11 +13,13 @@
 //   GET    /v1/c/:collection             -> {rev, items:[...]}
 //   PUT    /v1/c/:collection/:id         body = the record  -> {rev}
 //   DELETE /v1/c/:collection/:id         -> {rev}
+//   POST   /v1/c/:collection             body = {items:[record,...]} (até 500, cada um com id) -> {rev, n}   (importações)
 //   GET    /v1/export                    -> {collections:{name:[...]}}   (backup)
 
 const COLLECTION = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const ID = /^[A-Za-z0-9_-]{1,40}$/;
 const MAX_BODY = 8 * 1024;          // one record
+const MAX_BATCH = 500, MAX_BATCH_BODY = 1024 * 1024;   // import em lote: registros e bytes por chamada
 const MAX_ITEMS = 20000;            // per collection
 const MAX_FAILS = 8, FAIL_WINDOW = 900;   // failed tokens per client per 15 min
 
@@ -38,7 +40,7 @@ function corsFor(request, env) {
     ok, origin,
     headers: {
       ...(ok ? { 'Access-Control-Allow-Origin': origin } : {}),
-      'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Authorization, Content-Type',
       'Access-Control-Max-Age': '86400',
       'Vary': 'Origin',
@@ -93,6 +95,25 @@ export default {
       const doc = (await env.VAULT.get(key, 'json')) || { rev: 0, items: {} };
 
       if (parts.length === 3 && request.method === 'GET') return json({ rev: doc.rev, items: Object.values(doc.items) });
+
+      if (parts.length === 3 && request.method === 'POST') {
+        const text = await request.text();
+        if (text.length > MAX_BATCH_BODY) return json({ error: 'batch too large' }, 413);
+        let body; try { body = JSON.parse(text); } catch (e) { return json({ error: 'bad json' }, 400); }
+        const list = body && body.items;
+        if (!Array.isArray(list) || !list.length || list.length > MAX_BATCH) return json({ error: 'items must be 1..' + MAX_BATCH + ' records' }, 400);
+        for (const r of list) {
+          if (!r || typeof r !== 'object' || Array.isArray(r) || !ID.test(String(r.id))) return json({ error: 'each record needs a valid id' }, 400);
+          if (JSON.stringify(r).length > MAX_BODY) return json({ error: 'record too large' }, 413);
+        }
+        const fresh = new Set(list.map(r => r.id).filter(id => !(id in doc.items)));
+        if (Object.keys(doc.items).length + fresh.size > MAX_ITEMS) return json({ error: 'collection full' }, 413);
+        const now = Date.now();
+        for (const r of list) doc.items[r.id] = { ...r, updatedAt: now };
+        doc.rev += 1;
+        await env.VAULT.put(key, JSON.stringify(doc));
+        return json({ rev: doc.rev, n: list.length });
+      }
 
       if (parts.length === 4 && ID.test(parts[3])) {
         const id = parts[3];

@@ -75,7 +75,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .list{list-style:none;margin:0;padding:0}
 .list li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--rule)}
 .list li:first-child{border-top:0}
-.list .main{flex:1;min-width:0} .list .sub{font-size:13px;color:var(--ink-2)}
+.list li{flex-wrap:wrap} .list .main{flex:1 1 200px;min-width:0} .list .sub{font-size:13px;color:var(--ink-2)}
 .list button{border:0;background:none;color:var(--ink-3);padding:6px;border-radius:8px}
 .pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--ink-2)}
 .pill.overdue{background:var(--danger-bg);color:var(--danger)} .pill.soon{background:var(--warn-bg);color:var(--warn)}
@@ -100,6 +100,14 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .chart .bar{cursor:pointer}
 .up{color:var(--danger)} .down{color:var(--ok)}
 .tag{font-size:12px;color:var(--ink-3)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.chips button{border:1px solid var(--rule);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pill.need{background:var(--surface-2)} .pill.rev{background:var(--warn-bg);color:var(--warn)}
+.list li .acts{display:flex;flex-wrap:wrap;justify-content:flex-end}
+.list button.ok{color:var(--ok);font-weight:700}
+.prev{font-size:14px;color:var(--ink-2);margin:0 0 12px} .prev b{color:var(--ink)}
+details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2)}
 </style>
 </head>
 <body>
@@ -114,14 +122,13 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   </section>
 
   <main id="app" hidden>
-    <div class="row"><button class="btn" id="btnAdd">+ Gasto</button>
-      <label class="check" style="margin:0"><input type="checkbox" id="withCar" checked> incluir o carro</label>
+    <div class="row"><button class="btn" id="btnAdd">+ Gasto</button><button class="btn ghost" id="btnImport">Importar extrato</button>
       <span class="msg" id="sync" role="status"></span></div>
     <div class="month"><button class="btn ghost" id="prev" aria-label="Mês anterior">‹</button><div class="label" id="monthLabel"></div><button class="btn ghost" id="next" aria-label="Próximo mês">›</button></div>
-    <div class="tiles" id="tiles"></div>
+    <div class="tiles" id="tiles"></div><div class="tag" id="needNote" style="margin:-6px 0 12px"></div>
     <div class="card"><h2>Últimos 12 meses (€)</h2><div id="chMonths"></div><div class="tag">Toque numa barra para escolher o mês.</div></div>
     <div class="card"><h2>Por categoria no mês</h2><div id="chCats"></div></div>
-    <div class="card"><h2>Lançamentos do mês</h2><ul class="list" id="list"></ul></div>
+    <div class="card"><h2>Lançamentos do mês</h2><div class="chips" id="chips"></div><ul class="list" id="list"></ul></div>
     <div class="row"><button class="btn ghost" id="btnExport">Baixar backup (JSON)</button></div>
   </main>
   <p class="priv">Os dados ficam no seu cofre (Cloudflare) e uma cópia fica neste aparelho para funcionar sem internet.</p>
@@ -135,15 +142,37 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   </div>
   <label class="field"><span>Categoria</span><input name="category" list="cats" autocomplete="off" required><datalist id="cats"></datalist>
     <small>Escolha uma da lista ou escreva uma nova.</small></label>
+  <label class="field"><span>Tipo de gasto</span><select name="need"><option value="">Não definido</option><option value="essential">Essencial (aluguel, luz, mercado…)</option><option value="flexible">Flexível (lazer, assinaturas…)</option></select></label>
   <label class="field"><span>Descrição (opcional)</span><input name="note" maxlength="120"></label>
+  <label class="check" id="similarRow" hidden><input type="checkbox" name="similar" checked> <span id="similarTxt">Aplicar aos lançamentos parecidos</span></label>
   <div class="msg" id="addMsg" role="status"></div>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnSave">Salvar</button></div>
 </form></dialog>
 
+<dialog id="dlgImport"><div class="sheet">
+  <h3>Importar extrato do banco</h3>
+  <p class="tag" style="margin:0 0 12px">Arquivo CSV do mês (ou de vários meses). Ele é lido aqui no aparelho; só os lançamentos vão para o cofre. Valor e dia vêm do banco; categoria e tipo são palpites que você pode corrigir depois.</p>
+  <label class="field"><span>Arquivo do extrato</span><input type="file" id="stmtFile" accept=".csv,.txt,.tsv,text/csv,text/plain"></label>
+  <div id="stmtPrev" class="prev" role="status"></div>
+  <details id="stmtMap" hidden><summary>Ajustar colunas</summary>
+    <div class="two" style="margin-top:10px">
+      <label class="field"><span>Data</span><select id="mDate"></select></label>
+      <label class="field"><span>Descrição</span><select id="mDesc"></select></label>
+      <label class="field"><span>Valor</span><select id="mAmount"></select></label>
+      <label class="field"><span>Débito (se separado)</span><select id="mDebit"></select></label>
+    </div>
+    <label class="check"><input type="checkbox" id="mInvert"> inverter o sinal (saídas aparecem como positivas)</label>
+  </details>
+  <div class="msg" id="stmtMsg" role="status"></div>
+  <div class="actions"><button class="btn ghost" type="button" id="stmtCancel">Fechar</button><button class="btn" type="button" id="stmtGo" disabled>Importar</button></div>
+</div></dialog>
+
 <script type="module">
 import { initTheme } from "./lib/theme.js"; initTheme();
 import { createVault, newId } from './lib/vault.js';
-import { expenseRecord, withCar, monthly, byCategory, monthTotal, delta, categoriesIn } from './lib/expenses-core.js';
+import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn } from './lib/expenses-core.js';
+import { parseStatement, decodeText } from './lib/statement.js';
+import { planImport, descKey, UNCAT, NEEDS } from './lib/classify.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -155,33 +184,45 @@ const dateBR = s => s.split('-').reverse().join('/');
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const monthName = k => { const n = MONTHS[+k.slice(5) - 1]; return n[0].toUpperCase() + n.slice(1) + ' de ' + k.slice(0, 4); };
 
-let expenses = [], fuels = [], services = [], month = today().slice(0, 7), editing = null;
+let expenses = [], rules = new Map(), month = today().slice(0, 7), editing = null, filter = 'all';
 
 async function load() {
-  const [e, f, s] = await Promise.all([vault.list('expenses'), vault.list('car-fuel'), vault.list('car-service')]);
-  expenses = e.items; fuels = f.items; services = s.items;
+  const [e, r] = await Promise.all([vault.list('expenses'), vault.list('expense-rules')]);
+  expenses = e.items; rules = new Map(r.items.map(x => [x.id, x]));
   $('#setup').hidden = true; $('#app').hidden = false;
   $('#sync').textContent = e.stale ? 'Offline: salvo neste aparelho.' : '';
   render();
 }
-const all = () => $('#withCar').checked ? withCar(expenses, fuels, services) : expenses;
+const all = () => expenses;
 
 function render() {
-  const items = all(), total = monthTotal(items, month), d = delta(items, month);
+  const items = all(), total = monthTotal(items, month), d = delta(items, month), ns = needSplit(items, month);
   const inMonth = items.filter(x => x.date.startsWith(month));
   $('#monthLabel').textContent = monthName(month);
   $('#next').disabled = month >= today().slice(0, 7);
   $('#tiles').innerHTML =
     `<div class="tile"><div class="k">Total do mês</div><div><span class="v">${eur(total)}</span></div></div>` +
-    `<div class="tile"><div class="k">Contra o mês anterior</div><div><span class="v ${d == null ? '' : d > 0 ? 'up' : 'down'}">${d == null ? '–' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d * 100)) + '%'}</span></div></div>`;
+    `<div class="tile"><div class="k">Contra o mês anterior</div><div><span class="v ${d == null ? '' : d > 0 ? 'up' : 'down'}">${d == null ? '–' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d * 100)) + '%'}</span></div></div>` +
+    `<div class="tile"><div class="k">Essenciais</div><div><span class="v">${eur(ns.essential)}</span></div></div>` +
+    `<div class="tile"><div class="k">Flexíveis</div><div><span class="v">${eur(ns.flexible)}</span></div></div>`;
+  $('#needNote').textContent = ns.none > 0.005 ? `Sem tipo definido: ${eur(ns.none)}. Edite os lançamentos para classificar.` : '';
 
   const ms = monthly(items, 12, new Date(+month.slice(0, 4), +month.slice(5) - 1, 15));
   $('#chMonths').innerHTML = bars(ms);
   const cats = byCategory(items, month), max = Math.max(...cats.map(c => c.amount), 1);
   $('#chCats').innerHTML = cats.length ? cats.map(c => `<div class="hbar"><span class="name" title="${esc(c.category)}">${esc(c.category)}</span><div class="track"><div class="fill" style="width:${(c.amount / max * 100).toFixed(1)}%"></div></div><span class="val">${eur(c.amount)} · ${Math.round(c.share * 100)}%</span></div>`).join('') : '<div class="empty">Sem gastos neste mês.</div>';
 
-  const sorted = [...inMonth].sort((a, b) => b.date.localeCompare(a.date));
-  $('#list').innerHTML = sorted.length ? sorted.map(x => `<li><div class="main">${esc(x.category)} · ${eur(x.amount)}<div class="sub">${dateBR(x.date)}${x.note ? ' · ' + esc(x.note) : ''}${x.fromCar ? ' · vem da tela do carro' : ''}</div></div>${x.fromCar ? '' : `<button data-edit="${esc(x.id)}">Editar</button><button data-del="${esc(x.id)}">Apagar</button>`}</li>`).join('') : '<li class="empty">Nenhum lançamento.</li>';
+  const nRev = inMonth.filter(x => x.auto).length;
+  if (filter === 'review' && !nRev) filter = 'all';
+  $('#chips').innerHTML = [['all', 'Todos'], ['review', `Revisar (${nRev})`], ['essential', 'Essenciais'], ['flexible', 'Flexíveis']].map(([k, l]) => `<button type="button" data-filter="${k}" aria-pressed="${filter === k}">${l}</button>`).join('');
+  const shown = inMonth.filter(x => filter === 'all' || (filter === 'review' ? x.auto : x.need === filter));
+  const sorted = shown.sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
+  $('#list').innerHTML = sorted.length ? sorted.map(x => {
+    const unc = x.category === UNCAT;
+    return `<li><div class="main">${esc(x.category)} · ${eur(x.amount)}<div class="sub">${dateBR(x.date)}${x.note ? ' · ' + esc(x.note) : ''}</div>` +
+      `<div>${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
+      `<div class="acts">${x.auto && !unc ? `<button class="ok" data-ok="${esc(x.id)}" title="Confirmar categoria e tipo">✓ Confirmar</button>` : ''}<button data-edit="${esc(x.id)}">Editar</button><button data-del="${esc(x.id)}">Apagar</button></div></li>`;
+  }).join('') : '<li class="empty">Nenhum lançamento.</li>';
 }
 
 function bars(data) {
@@ -200,26 +241,103 @@ document.addEventListener('focusout', () => { tip.hidden = true; });
 
 const shift = n => { const d = new Date(+month.slice(0, 4), +month.slice(5) - 1 + n, 1); month = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); render(); };
 $('#prev').onclick = () => shift(-1); $('#next').onclick = () => shift(1);
-$('#withCar').onchange = render;
 
 function openForm(x) {
   editing = x?.id || null; const f = $('#formAdd'); f.reset();
-  f.date.value = x?.date || (month === today().slice(0, 7) ? today() : month + '-01'); f.amount.value = x ? String(x.amount).replace('.', ',') : ''; f.category.value = x?.category || ''; f.note.value = x?.note || '';
+  f.date.value = x?.date || (month === today().slice(0, 7) ? today() : month + '-01'); f.amount.value = x ? String(x.amount).replace('.', ',') : ''; f.category.value = x && x.category !== UNCAT ? x.category : ''; f.note.value = x?.note || ''; f.need.value = x?.need || '';
+  const sim = x?.key ? expenses.filter(y => y.key === x.key && y.id !== x.id && y.auto).length : 0;
+  $('#similarRow').hidden = !x?.key; $('#similarTxt').textContent = sim ? `Aplicar aos ${sim} lançamentos parecidos ainda não confirmados` : 'Lembrar para os próximos extratos';
   $('#cats').innerHTML = categoriesIn(expenses).map(c => `<option value="${esc(c)}">`).join('');
   $('#addTitle').textContent = x ? 'Editar gasto' : 'Novo gasto'; $('#addMsg').textContent = ''; $('#dlgAdd').showModal();
 }
 $('#btnAdd').onclick = () => openForm();
+const msgBad = (el, e) => { el.className = 'msg bad'; el.textContent = e.kind === 'auth' ? 'Token recusado. Reconecte o cofre.' : e.message; };
+
+/** Guarda a decisão do dono como regra e, se pedido, aplica aos parecidos ainda não confirmados. */
+async function learn(rec, applySimilar) {
+  if (!rec.key || rec.category === UNCAT) return;
+  await vault.put('expense-rules', { id: rec.key, category: rec.category, need: rec.need || '', label: rec.note.slice(0, 60) });
+  if (!applySimilar) return;
+  const same = expenses.filter(y => y.key === rec.key && y.id !== rec.id && y.auto).map(y => ({ ...y, category: rec.category, need: rec.need || '', auto: undefined }));
+  if (same.length) await vault.putMany('expenses', same);
+}
+
 $('#btnSave').onclick = async () => {
-  const f = $('#formAdd'), r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: f.category.value, note: f.note.value });
+  const f = $('#formAdd'), old = expenses.find(x => x.id === editing);
+  const r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: f.category.value, note: f.note.value, need: f.need.value, source: old?.source, key: old?.key });
   const names = { date: 'a data', amount: 'o valor', category: 'a categoria' };
   if (!r.ok) { $('#addMsg').className = 'msg bad'; $('#addMsg').textContent = 'Confira ' + names[r.error] + '.'; return; }
-  try { await vault.put('expenses', r.rec); $('#dlgAdd').close(); month = r.rec.date.slice(0, 7); await load(); }
-  catch (e) { $('#addMsg').className = 'msg bad'; $('#addMsg').textContent = e.kind === 'auth' ? 'Token recusado. Reconecte o cofre.' : e.message; }
+  try {
+    await vault.put('expenses', r.rec);
+    if (r.rec.key) await learn(r.rec, f.similar.checked);
+    $('#dlgAdd').close(); month = r.rec.date.slice(0, 7); await load();
+  } catch (e) { msgBad($('#addMsg'), e); }
+};
+
+// ---- importar extrato ----
+let stmt = null;   // { text, parsed }
+const colOpts = (headers, withNone) => (withNone ? '<option value="-1">—</option>' : '') + headers.map((h, i) => `<option value="${i}">${esc(h || 'coluna ' + (i + 1))}</option>`).join('');
+function renderStmt() {
+  const p = stmt?.parsed, prev = $('#stmtPrev'), go = $('#stmtGo');
+  go.disabled = true; $('#stmtMsg').textContent = '';
+  if (!p) { prev.textContent = ''; $('#stmtMap').hidden = true; return; }
+  $('#stmtMap').hidden = false;
+  if (p.error === 'empty') { prev.textContent = 'O arquivo está vazio.'; return; }
+  if (p.error === 'columns' || p.error === 'rows') {
+    prev.innerHTML = p.error === 'columns' ? 'Não reconheci as colunas. Escolha abaixo qual é a data, a descrição e o valor.' : 'Não encontrei lançamentos com essas colunas. Confira a escolha abaixo.';
+    $('#stmtMap').open = true; return;
+  }
+  const plan = planImport(p.rows, new Set(expenses.map(x => x.id)), rules);
+  stmt.plan = plan;
+  const total = plan.records.reduce((s, r) => s + r.amount, 0), unc = plan.records.filter(r => r.category === UNCAT).length;
+  const dates = p.rows.map(r => r.date).sort(), sample = plan.records.slice(0, 3).map(r => `${dateBR(r.date)} · ${esc(r.note)} · ${eur(r.amount)}`).join('<br>');
+  prev.innerHTML = `Período: <b>${dateBR(dates[0])}</b> a <b>${dateBR(dates[dates.length - 1])}</b><br>` +
+    `<b>${plan.records.length}</b> gastos novos, somando <b>${eur(total)}</b>` +
+    (plan.duplicates ? `<br>${plan.duplicates} já importados antes (mantidos como estão)` : '') +
+    (plan.income ? `<br>${plan.income} entradas ignoradas (salário, estornos…)` : '') +
+    (unc ? `<br>${unc} sem categoria: você define depois, na lista` : '') +
+    (sample ? `<br><span class="tag">Exemplo:<br>${sample}</span>` : '');
+  go.disabled = !plan.records.length;
+}
+function setStmt(override) {
+  const parsed = parseStatement(stmt.text, override); stmt.parsed = parsed;
+  const h = parsed.headers || [], c = parsed.cols || {};
+  const fill = (id, withNone, v) => { const el = $(id); el.innerHTML = colOpts(h, withNone); el.value = String(v ?? (withNone ? -1 : 0)); };
+  fill('#mDate', false, c.date); fill('#mDesc', true, c.desc); fill('#mAmount', true, c.amount); fill('#mDebit', true, c.debit);
+  stmt.headerIndex = c.headerIndex ?? parsed.headerIndex ?? 0; renderStmt();
+}
+$('#btnImport').onclick = () => { stmt = null; $('#stmtFile').value = ''; renderStmt(); $('#dlgImport').showModal(); };
+$('#stmtCancel').onclick = () => $('#dlgImport').close();
+$('#stmtFile').onchange = async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try { stmt = { text: decodeText(await file.arrayBuffer()) }; setStmt(); }
+  catch (err) { stmt = null; renderStmt(); $('#stmtMsg').className = 'msg bad'; $('#stmtMsg').textContent = 'Não consegui ler o arquivo.'; }
+};
+['#mDate', '#mDesc', '#mAmount', '#mDebit', '#mInvert'].forEach(id => $(id).onchange = () => {
+  if (!stmt) return; const n = id => +$(id).value;
+  const amount = n('#mAmount'), debit = n('#mDebit');
+  setStmt({ headerIndex: stmt.headerIndex, date: n('#mDate'), desc: n('#mDesc'), amount, debit, credit: -1, invert: $('#mInvert').checked });
+});
+$('#stmtGo').onclick = async () => {
+  const plan = stmt?.plan; if (!plan?.records.length) return;
+  const msg = $('#stmtMsg'); msg.className = 'msg'; msg.textContent = 'Enviando ao cofre…'; $('#stmtGo').disabled = true;
+  try {
+    await vault.putMany('expenses', plan.records.map(r => expenseRecord(r).rec).filter(Boolean));
+    month = plan.records.map(r => r.date.slice(0, 7)).sort().pop(); $('#dlgImport').close(); filter = 'review'; await load();
+  } catch (e) {
+    $('#stmtGo').disabled = false; msg.className = 'msg bad';
+    msg.textContent = e.kind === 'network' ? 'Sem conexão: a importação precisa de internet. Tente de novo.' : /404|405/.test(e.message) ? 'O Worker do cofre precisa ser atualizado (npx wrangler deploy na pasta vault/).' : e.kind === 'auth' ? 'Token recusado. Reconecte o cofre.' : e.message;
+  }
 };
 document.addEventListener('click', async e => {
   const m = e.target.closest('[data-month]'); if (m) { month = m.dataset.month; render(); return; }
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.edit) openForm(expenses.find(x => x.id === b.dataset.edit));
+  if (b.dataset.filter) { filter = b.dataset.filter; render(); }
+  else if (b.dataset.ok) {
+    const x = expenses.find(y => y.id === b.dataset.ok); if (!x) return;
+    try { const { auto, ...rest } = x; await vault.put('expenses', rest); await learn({ ...rest }, true); await load(); } catch (err) { alert(err.message); }
+  }
+  else if (b.dataset.edit) openForm(expenses.find(x => x.id === b.dataset.edit));
   else if (b.dataset.del && confirm('Apagar este lançamento?')) { try { await vault.del('expenses', b.dataset.del); await load(); } catch (err) { alert(err.message); } }
 });
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset?.month) { e.preventDefault(); month = e.target.dataset.month; render(); } });
