@@ -1,0 +1,11 @@
+test/fixtures/
+
+# Personal data must never be committed. The vault holds it, not git.
+.dev.vars
+.env
+.env.*
+*.pem
+backup-*.json
+data/
+vault/.wrangler/
+.wrangler/

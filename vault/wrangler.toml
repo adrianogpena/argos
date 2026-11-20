@@ -1,0 +1,13 @@
+name = "vault"            # rename to whatever you like; this becomes https://<name>.<you>.workers.dev
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+# Exact origin of the app. Nothing else can call the vault from a browser.
+ALLOWED_ORIGIN = "https://argos.pages.dev"
+
+# Fill in the id printed by:  npx wrangler kv namespace create VAULT
+# (an id is just a label, not a secret; the data is protected by the token, not by this id)
+[[kv_namespaces]]
+binding = "VAULT"
+id = "REPLACE_WITH_NAMESPACE_ID"

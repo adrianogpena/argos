@@ -1,0 +1,7 @@
+name = "argos-proxy"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+# Set this to your Cloudflare Pages origin once the app is published, e.g. "https://you.pages.dev"
+ALLOWED_ORIGIN = "https://argos.pages.dev"
