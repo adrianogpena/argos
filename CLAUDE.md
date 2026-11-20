@@ -51,9 +51,9 @@ Hospedagem estática: só código
 
 ## Estado da migração (repositório `argus`)
 
-Feito: renomear para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`; `argos-proxy`); hospedagem trocada para Cloudflare Pages (`pages.dev`; `ALLOWED_ORIGIN` provisório `https://argos.pages.dev`, ajustar para a origem real); home em `index.html` com gasto do mês e lembretes do carro (`lib/home-core.js`); ônibus movido para `onibus.html`.
+Feito: renomear para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`; `argos-proxy`); hospedagem trocada para Cloudflare Pages (`pages.dev`; `ALLOWED_ORIGIN` = `https://argos.pages.dev`, confirmada pelo dono); home em `index.html` com gasto do mês e lembretes do carro (`lib/home-core.js`); ônibus movido para `onibus.html`.
 
-Pendente (depende do dono): criar o projeto no Cloudflare Pages; confirmar a origem real e a URL do Worker `argos-proxy` (`PAGES_PROXY` em `onibus.html`); deploy do cofre (`vault/README.md`; nunca pedir o token, use `request_credential`); no app, **Settings → Save setup to vault**; só então apagar o repositório antigo `paragem`. Ideia para a home: próximo ônibus (precisa da chamada ao vivo da STCP).
+Pendente (depende do dono): criar o projeto no Cloudflare Pages; confirmar a URL do Worker `argos-proxy` (`PAGES_PROXY` em `onibus.html`); deploy do cofre (`vault/README.md`; nunca pedir o token, use `request_credential`); no app, **Settings → Save setup to vault**; só então apagar o repositório antigo `paragem`. Ideia para a home: próximo ônibus (precisa da chamada ao vivo da STCP).
 
 ## Ideias futuras (não decididas)
 
