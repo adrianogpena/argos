@@ -56,7 +56,7 @@ Feito e no ar:
 - Cloudflare Pages: `https://argos-ejb.pages.dev`, deploy automático a cada push na `main`.
 - Cofre (Worker `vault` + KV) em `https://vault.adrianogpena.workers.dev`, com `ALLOWED_ORIGIN` = `https://argos-ejb.pages.dev` e `VAULT_TOKEN` configurado. `/v1/ping` sem token retorna 401, como esperado.
 - Proxy dos ônibus em `https://argos-proxy.adrianogpena.workers.dev` (mesmo `ALLOWED_ORIGIN`; `PAGES_PROXY` em `onibus.html` confirmado). `onibus.html` mostra as chegadas.
-- Código: renomeado para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v1`), home em `index.html` (`lib/home-core.js`), ônibus em `onibus.html`.
+- Código: renomeado para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v2`), home em `index.html` (`lib/home-core.js`), ônibus em `onibus.html`.
 
 Migração concluída:
 - O app conecta ao cofre (carro usa o token com sucesso) e o setup dos ônibus, incluindo as linhas UNIR, está salvo no cofre (`bus-setup`).
@@ -65,7 +65,7 @@ Migração concluída:
 
 Regra: nunca pedir, escrever ou registrar o token; se precisar de credencial, usar `request_credential`.
 
-Próxima tarefa sugerida: "próximo ônibus" na home (precisa da chamada ao vivo da STCP e do setup guardado no cofre).
+Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre; STCP ao vivo pela chamada via proxy e UNIR por horário). `lib/bus-core.js` e `lib/bus-net.js` são compartilhados entre `onibus.html` e a home. Ideias: escolher linha por horário do dia (casa de manhã, trabalho à tarde) e permitir fixar quais linhas aparecem.
 
 ## Ideias futuras (não decididas)
 
@@ -91,9 +91,10 @@ node test/vault.test.mjs      Worker do cofre e cliente (10 grupos)
 node test/car.test.mjs        consumo, resumo, lembretes (9)
 node test/expenses.test.mjs   gastos (7)
 node test/home.test.mjs       resumo da home (3)
+node test/home-bus.test.mjs   próximo ônibus da home (4)
 ```
 
-Rode os cinco antes de commitar. O `core.test.mjs` extrai o bloco `<script id="core">` do `onibus.html`. Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
+Rode os seis antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
 
 ## Como criar o repositório novo limpo
 
