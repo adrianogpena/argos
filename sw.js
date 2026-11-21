@@ -1,7 +1,7 @@
 // Argos service worker: keeps the app shell available offline.
 // Live arrivals (/api/...) are never cached and never intercepted.
 const CACHE = 'argos-v5';
-const SHELL = ['./', './index.html', './onibus.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './carro.html', './gastos.html', './saude.html', './lib/health-core.js', './lib/expenses-core.js', './lib/statement.js', './lib/classify.js', './lib/vault.js', './lib/car-core.js', './lib/home-core.js', './lib/home-bus.js', './lib/bus-core.js', './lib/bus-net.js'];
+const SHELL = ['./', './index.html', './onibus.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './carro.html', './gastos.html', './saude.html', './lib/health-core.js', './lib/expenses-core.js', './lib/classify.js', './lib/vault.js', './lib/car-core.js', './lib/home-core.js', './lib/home-bus.js', './lib/bus-core.js', './lib/bus-net.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

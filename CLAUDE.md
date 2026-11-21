@@ -11,7 +11,7 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Início (resumo) | `index.html` | pronto |
 | Ônibus | `onibus.html` | pronto (herdado de Paragem) |
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
-| Gastos (gráfico mensal e por categoria; importa extrato do banco em CSV; o carro **não** entra) | `gastos.html` | pronto |
+| Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; o carro **não** entra) | `gastos.html` | pronto |
 | Saúde (peso e altura de pessoas e bichos) | `saude.html` | pronto; dados importados do Supabase uma única vez |
 
 Nome escolhido: **Argos** (o gigante de cem olhos). Cada módulo é uma página própria, sem build, sem framework. Lógica pura em `lib/*.js` (módulos ES, testáveis em Node).
@@ -36,7 +36,7 @@ Hospedagem estática: só código
 
 - `vault/worker.js`: sem token válido responde 401. Comparação por hash em tempo constante. 8 tokens errados por IP em 15 min bloqueiam o IP (429). CORS restrito a `ALLOWED_ORIGIN` (sem ela configurada, recusa tudo). Falta de configuração falha fechado (500).
 - API: `GET /v1/ping`, `GET /v1/c/:colecao`, `PUT|DELETE /v1/c/:colecao/:id`, `GET /v1/export`. Limites: registro de 8 KB, 20 000 itens por coleção.
-- Coleções em uso: `car-fuel`, `car-service`, `car-status` (leituras do odômetro: km, nível do tanque em % lido num mostrador deslizante, com litros estimados sobre 45 L, autonomia e consumo do painel, observação), `expenses` (lançamentos manuais e do extrato; do extrato: `source:'bank'`, `need` essencial/flexível, `auto:true` = palpite não confirmado, `key` = chave do comerciante), `expense-rules` (regras aprendidas: id = chave do comerciante, categoria e tipo), `bus-setup`, `health-members` (nome, tipo `human`/`pet`, espécie, sexo, nascimento, observações), `health-measures` (membro, medida `weight` em kg ou `height` em cm, valor, data; id = membro-medida-data, então a mesma medida no mesmo dia se substitui).
+- Coleções em uso: `car-fuel`, `car-service`, `car-status` (leituras do odômetro: km, nível do tanque em % lido num mostrador deslizante, com litros estimados sobre 45 L, autonomia e consumo do painel, observação), `expenses` (lançamentos manuais e do extrato; do extrato: `source:'bank'`, `need` essencial/flexível, `auto:true` = palpite não confirmado, `key` = chave do comerciante; `label` = rótulo curto que detalha a categoria, ex.: Transporte › Combustível; categorias continuam a lista fechada, o rótulo é livre e reusado; vem do palpite/regra e a tela mostra "Detalhe por rótulo no mês"; `tools/expenses.mjs groups`/`label` rotulam o que já está gravado), `expense-rules` (regras aprendidas: id = chave do comerciante, categoria, tipo e `tag` = rótulo), `bus-setup`, `health-members` (nome, tipo `human`/`pet`, espécie, sexo, nascimento, observações), `health-measures` (membro, medida `weight` em kg ou `height` em cm, valor, data; id = membro-medida-data, então a mesma medida no mesmo dia se substitui).
 - `POST /v1/c/:colecao` com `{items:[...]}` grava até 500 registros de uma vez (importações; o KV aceita ~1 escrita/s por coleção, então gravar um a um não serve). Exige `wrangler deploy` do Worker.
 - `lib/vault.js` (cliente): cache local, fila de edições offline, erros tipados (`auth`, `network`, `server`, `config`). A URL do cofre exige `https://` (exceto `localhost`, para testes).
 - O token é gerado pelo dono (`openssl rand -hex 32`) e guardado com `wrangler secret put VAULT_TOKEN`. Troca de token = revoga os aparelhos antigos.
@@ -71,11 +71,11 @@ Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre
 
 ## Extrato do banco (feito)
 
-Todo mês o dono importa o extrato do mês anterior (na primeira vez, vários meses) em Gastos → Importar extrato. CSV lido no navegador (`lib/statement.js`: cabeçalho achado sozinho, ajuste manual de colunas, UTF-8 ou Windows-1252); só saídas viram gasto, entradas são ignoradas. **Só data e valor são verdade**; categoria e tipo são palpites (`lib/classify.js`): regra aprendida > regra embutida por palavra-chave > "Sem categoria". Palpite fica `auto:true` ("revisar") até o dono editar ou confirmar; editar/confirmar grava uma regra em `expense-rules` e pode aplicar aos parecidos ainda não confirmados. Ids determinísticos (data+valor+descrição): reimportar nunca duplica nem sobrescreve edições. Dados do carro não entram em Gastos nem na home (o banco já paga combustível, evita contar em dobro). Dados reais de extrato nunca entram em testes.
+**Não há importação na página.** O dono pede ao Claude para importar o extrato (PDF ou CSV, um mês ou vários) e usa a skill `.claude/skills/importar-extrato/SKILL.md`: o Claude lê o arquivo (mais confiável que um parser rígido), decide o que é gasto (poupança, depósitos a prazo e transferências próprias ficam de fora), classifica e grava com `tools/expenses.mjs` (`rules` lista as regras aprendidas; `push` simula e `--apply` grava via `POST /v1/c/expenses`). Roda no computador do dono com `VAULT_URL`/`VAULT_TOKEN` no ambiente; **as variáveis ficam em `~/.argos-vault.env`** (fora do git): quando `tools/*.mjs` pedir e elas não estiverem no ambiente, confira esse arquivo (`sed -E 's/=.*/=<oculto>/' ~/.argos-vault.env` mostra só os nomes) e carregue só dentro do comando (`set -a; . ~/.argos-vault.env; set +a; node tools/...`). Nunca imprimir, copiar nem registrar o valor do token. **Só data e valor são verdade**; categoria e tipo são palpites (`auto:true`, "revisar" na tela) até o dono editar ou confirmar; isso grava uma regra em `expense-rules`, que o script reaplica nas próximas importações. Regra com `skip:true` = "não é gasto" (poupança, depósito a prazo, conta da esposa, transferência própria): o `push` descarta; criadas com `tools/expenses.mjs rule <chave> --skip`. A categoria no formulário é dropdown fechado (`categoryOptions`/`canonicalCategory` em `lib/expenses-core.js`) com "+ Nova categoria…" no fim, para não duplicar por erro de digitação. Ids determinísticos (`bankId` em `lib/classify.js`: data+valor+descrição): reimportar nunca duplica nem sobrescreve edições. Depois de gravar, o Claude revisa os pendentes (`tools/expenses.mjs review` / `confirm`): pesquisa o nome do comerciante, confirma sozinho os de alta confiança (viram regra) e deixa "revisar" só os duvidosos. Dados do carro não entram em Gastos nem na home. Dados reais de extrato nunca entram no git, na skill nem em testes.
 
 ## Ideias futuras (não decididas)
 
-- Gastos: orçamento por categoria com alerta; gastos recorrentes (aluguel, assinaturas); importar extrato bancário em CSV (processar no navegador, nunca enviar a terceiros).
+- Gastos: orçamento por categoria com alerta; gastos recorrentes (aluguel, assinaturas).
 - Carro: custo total por km incluindo manutenção; lembrete de seguro, IPVA/imposto e inspeção periódica.
 - Outros módulos: saúde (peso, consultas, medicação), contas a vencer, treinos. Cada um é uma coleção nova no cofre e uma página nova, sem mudar o Worker.
 - Criptografia no navegador para módulos sensíveis.
@@ -99,8 +99,7 @@ node test/expenses.test.mjs   gastos (8)
 node test/home.test.mjs       resumo da home (4)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
 node test/fuelio.test.mjs     importação do Fuelio (4)
-node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (6)
-node test/statement.test.mjs  leitura de extrato CSV (7)
+node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (7)
 node test/classify.test.mjs   classificação e plano de importação (7)
 ```
 
