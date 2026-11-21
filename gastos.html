@@ -140,8 +140,8 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
     <label class="field"><span>Data</span><input name="date" type="date" required></label>
     <label class="field"><span>Valor (€)</span><input name="amount" inputmode="decimal" required></label>
   </div>
-  <label class="field"><span>Categoria</span><input name="category" list="cats" autocomplete="off" required><datalist id="cats"></datalist>
-    <small>Escolha uma da lista ou escreva uma nova.</small></label>
+  <label class="field"><span>Categoria</span><select name="category" id="catSel" required></select></label>
+  <label class="field" id="catNewRow" hidden><span>Nome da nova categoria</span><input name="newCategory" id="catNew" maxlength="40" autocomplete="off"></label>
   <label class="field"><span>Tipo de gasto</span><select name="need"><option value="">Não definido</option><option value="essential">Essencial (aluguel, luz, mercado…)</option><option value="flexible">Flexível (lazer, assinaturas…)</option></select></label>
   <label class="field"><span>Descrição (opcional)</span><input name="note" maxlength="120"></label>
   <label class="check" id="similarRow" hidden><input type="checkbox" name="similar" checked> <span id="similarTxt">Aplicar aos lançamentos parecidos</span></label>
@@ -153,7 +153,7 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
 <script type="module">
 import { initTheme } from "./lib/theme.js"; initTheme();
 import { createVault, newId } from './lib/vault.js';
-import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn } from './lib/expenses-core.js';
+import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory } from './lib/expenses-core.js';
 import { UNCAT, NEEDS } from './lib/classify.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -224,12 +224,26 @@ document.addEventListener('focusout', () => { tip.hidden = true; });
 const shift = n => { const d = new Date(+month.slice(0, 4), +month.slice(5) - 1 + n, 1); month = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); render(); };
 $('#prev').onclick = () => shift(-1); $('#next').onclick = () => shift(1);
 
+const NEW_CAT = '__new';
+/** Dropdown fechado: só categorias que já existem, mais "+ Nova categoria…" no fim (evita erro de digitação nos relatórios). */
+function fillCategories(selected) {
+  const opts = categoryOptions(expenses), sel = $('#catSel');
+  sel.innerHTML = '<option value="">Escolha…</option>' + opts.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('') + `<option value="${NEW_CAT}">+ Nova categoria…</option>`;
+  sel.value = selected && opts.includes(selected) ? selected : '';
+  if (selected && !opts.includes(selected)) { sel.insertBefore(new Option(selected, selected), sel.lastElementChild); sel.value = selected; }
+  $('#catNew').value = ''; $('#catNewRow').hidden = true;
+}
+$('#catSel').onchange = e => { const nw = e.target.value === NEW_CAT; $('#catNewRow').hidden = !nw; if (nw) $('#catNew').focus(); };
+function pickedCategory(f) {
+  if (f.category.value !== NEW_CAT) return f.category.value;
+  return canonicalCategory(f.newCategory.value, categoryOptions(expenses));
+}
+
 function openForm(x) {
   editing = x?.id || null; const f = $('#formAdd'); f.reset();
-  f.date.value = x?.date || (month === today().slice(0, 7) ? today() : month + '-01'); f.amount.value = x ? String(x.amount).replace('.', ',') : ''; f.category.value = x && x.category !== UNCAT ? x.category : ''; f.note.value = x?.note || ''; f.need.value = x?.need || '';
+  f.date.value = x?.date || (month === today().slice(0, 7) ? today() : month + '-01'); f.amount.value = x ? String(x.amount).replace('.', ',') : ''; fillCategories(x && x.category !== UNCAT ? x.category : ''); f.note.value = x?.note || ''; f.need.value = x?.need || '';
   const sim = x?.key ? expenses.filter(y => y.key === x.key && y.id !== x.id && y.auto).length : 0;
   $('#similarRow').hidden = !x?.key; $('#similarTxt').textContent = sim ? `Aplicar aos ${sim} lançamentos parecidos ainda não confirmados` : 'Lembrar para os próximos extratos';
-  $('#cats').innerHTML = categoriesIn(expenses).map(c => `<option value="${esc(c)}">`).join('');
   $('#addTitle').textContent = x ? 'Editar gasto' : 'Novo gasto'; $('#addMsg').textContent = ''; $('#dlgAdd').showModal();
 }
 $('#btnAdd').onclick = () => openForm();
@@ -246,7 +260,7 @@ async function learn(rec, applySimilar) {
 
 $('#btnSave').onclick = async () => {
   const f = $('#formAdd'), old = expenses.find(x => x.id === editing);
-  const r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: f.category.value, note: f.note.value, need: f.need.value, source: old?.source, key: old?.key });
+  const r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: pickedCategory(f), note: f.note.value, need: f.need.value, source: old?.source, key: old?.key });
   const names = { date: 'a data', amount: 'o valor', category: 'a categoria' };
   if (!r.ok) { $('#addMsg').className = 'msg bad'; $('#addMsg').textContent = 'Confira ' + names[r.error] + '.'; return; }
   try {

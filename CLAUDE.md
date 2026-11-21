@@ -71,7 +71,7 @@ Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre
 
 ## Extrato do banco (feito)
 
-**Não há importação na página.** O dono pede ao Claude para importar o extrato (PDF ou CSV, um mês ou vários) e usa a skill `.claude/skills/importar-extrato/SKILL.md`: o Claude lê o arquivo (mais confiável que um parser rígido), decide o que é gasto (poupança, depósitos a prazo e transferências próprias ficam de fora), classifica e grava com `tools/expenses.mjs` (`rules` lista as regras aprendidas; `push` simula e `--apply` grava via `POST /v1/c/expenses`). Roda no computador do dono com `VAULT_URL`/`VAULT_TOKEN` no ambiente. **Só data e valor são verdade**; categoria e tipo são palpites (`auto:true`, "revisar" na tela) até o dono editar ou confirmar; isso grava uma regra em `expense-rules`, que o script reaplica nas próximas importações. Ids determinísticos (`bankId` em `lib/classify.js`: data+valor+descrição): reimportar nunca duplica nem sobrescreve edições. Dados do carro não entram em Gastos nem na home. Dados reais de extrato nunca entram no git, na skill nem em testes.
+**Não há importação na página.** O dono pede ao Claude para importar o extrato (PDF ou CSV, um mês ou vários) e usa a skill `.claude/skills/importar-extrato/SKILL.md`: o Claude lê o arquivo (mais confiável que um parser rígido), decide o que é gasto (poupança, depósitos a prazo e transferências próprias ficam de fora), classifica e grava com `tools/expenses.mjs` (`rules` lista as regras aprendidas; `push` simula e `--apply` grava via `POST /v1/c/expenses`). Roda no computador do dono com `VAULT_URL`/`VAULT_TOKEN` no ambiente. **Só data e valor são verdade**; categoria e tipo são palpites (`auto:true`, "revisar" na tela) até o dono editar ou confirmar; isso grava uma regra em `expense-rules`, que o script reaplica nas próximas importações. Regra com `skip:true` = "não é gasto" (poupança, depósito a prazo, conta da esposa, transferência própria): o `push` descarta; criadas com `tools/expenses.mjs rule <chave> --skip`. A categoria no formulário é dropdown fechado (`categoryOptions`/`canonicalCategory` em `lib/expenses-core.js`) com "+ Nova categoria…" no fim, para não duplicar por erro de digitação. Ids determinísticos (`bankId` em `lib/classify.js`: data+valor+descrição): reimportar nunca duplica nem sobrescreve edições. Dados do carro não entram em Gastos nem na home. Dados reais de extrato nunca entram no git, na skill nem em testes.
 
 ## Ideias futuras (não decididas)
 
@@ -99,7 +99,7 @@ node test/expenses.test.mjs   gastos (8)
 node test/home.test.mjs       resumo da home (4)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
 node test/fuelio.test.mjs     importação do Fuelio (4)
-node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (6)
+node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (7)
 node test/classify.test.mjs   classificação e plano de importação (7)
 ```
 

@@ -1,6 +1,6 @@
 // node test/expenses.test.mjs
 import assert from 'node:assert/strict';
-import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn } from '../lib/expenses-core.js';
+import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 const E = (date, amount, category) => ({ id: date + amount, date, amount, category });
 
@@ -41,5 +41,16 @@ t('delta against previous month, including January', () => {
 t('categoriesIn keeps defaults and adds custom ones once', () => {
   const c = categoriesIn([E('2026-01-01', 1, 'Pets'), E('2026-01-02', 1, 'Mercado')]);
   assert.ok(c.includes('Pets')); assert.equal(c.filter(x => x === 'Mercado').length, 1);
+});
+t('categoryOptions: sem repetir por caixa/acento, sem "Sem categoria", Outros por último', () => {
+  const o = categoryOptions([E('2026-01-01', 1, 'mercado'), E('2026-01-01', 1, 'Pets'), E('2026-01-01', 1, 'Sem categoria'), E('2026-01-01', 1, ' ')]);
+  assert.equal(o.filter(x => x.toLowerCase() === 'mercado').length, 1); assert.ok(o.includes('Pets'));
+  assert.ok(!o.includes('Sem categoria')); assert.equal(o.at(-1), 'Outros');
+  assert.deepEqual(o.slice(0, -1), [...o.slice(0, -1)].sort((a, b) => a.localeCompare(b, 'pt')));
+});
+t('canonicalCategory: reaproveita a grafia existente, ignorando caixa e acento', () => {
+  const o = ['Saúde', 'Mercado'];
+  assert.equal(canonicalCategory('saude', o), 'Saúde'); assert.equal(canonicalCategory('  MERCADO ', o), 'Mercado');
+  assert.equal(canonicalCategory('Pets  e   Bichos', o), 'Pets e Bichos');
 });
 console.log(`\n${n} passed`);

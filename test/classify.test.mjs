@@ -39,4 +39,10 @@ t('buildRecords: entrada inválida (valor negativo, sem data) vira erro, não re
   const p = buildRecords([{ date: '05/03', amount: 1, desc: 'x' }, { date: '2026-03-05', amount: -3, desc: 'x' }]);
   assert.equal(p.records.length, 0); assert.equal(p.errors.length, 2);
 });
+t('buildRecords: regra skip descarta o lançamento ("não é gasto") e conta', () => {
+  const learned = new Map([['loja-exemplo', { skip: true }]]);
+  const p = buildRecords(E, new Set(), learned);
+  assert.equal(p.skipped, 2); assert.equal(p.records.length, 2);
+  assert.ok(p.records.every(r => r.key !== 'loja-exemplo'));
+});
 console.log(`\n${n} passed`);

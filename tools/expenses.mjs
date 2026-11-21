@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Ponte entre o Claude (que lê o extrato) e o cofre. Roda no computador do dono; dados nunca vão para o git.
 //
-//   node tools/expenses.mjs rules                       lista as regras aprendidas (categoria/tipo por comerciante) e as categorias em uso
+//   node tools/expenses.mjs rules                       lista as regras (categoria/tipo ou "não é gasto" por comerciante) e as categorias em uso
+//   node tools/expenses.mjs rule <chave> --skip [rótulo]            grava regra "não é gasto" (poupança, transferência própria...)
+//   node tools/expenses.mjs rule <chave> <categoria> <essential|flexible|-> [rótulo]   grava regra de categoria
 //   node tools/expenses.mjs push <entradas.json>        simulação: mostra o que seria gravado
 //   node tools/expenses.mjs push <entradas.json> --apply   grava no cofre
 //
@@ -12,6 +14,7 @@ import { buildRecords } from '../lib/classify.js';
 import { expenseRecord } from '../lib/expenses-core.js';
 
 const [cmd, file, ...flags] = process.argv.slice(2);
+const plainKey = s => /^[a-z0-9-]{1,40}$/.test(s);
 const url = (process.env.VAULT_URL || '').replace(/\/$/, ''), token = process.env.VAULT_TOKEN;
 const haveVault = /^https:\/\//.test(url) && !!token;
 
@@ -31,10 +34,19 @@ if (cmd === 'rules') {
   need();
   const [r, e] = await Promise.all([call('GET', '/v1/c/expense-rules'), call('GET', '/v1/c/expenses')]);
   console.log('# regras aprendidas: chave | categoria | tipo | exemplo');
-  for (const x of r.items.sort((a, b) => a.id.localeCompare(b.id))) console.log([x.id, x.category, x.need || '-', x.label || ''].join(' | '));
+  for (const x of r.items.sort((a, b) => a.id.localeCompare(b.id))) console.log([x.id, x.skip ? 'NÃO É GASTO' : x.category, x.skip ? '-' : x.need || '-', x.label || ''].join(' | '));
   const cats = new Map(); for (const x of e.items) cats.set(x.category, (cats.get(x.category) || 0) + 1);
   console.log('\n# categorias em uso (qtd)');
   for (const [c, n] of [...cats].sort((a, b) => b[1] - a[1])) console.log(`${c} (${n})`);
+} else if (cmd === 'rule' && file) {
+  need();
+  if (!plainKey(file)) { console.error('chave inválida (minúsculas, números e hífens, até 40)'); process.exit(1); }
+  const [a, b, ...rest] = flags;
+  const rec = a === '--skip' ? { id: file, skip: true, label: (b ? [b, ...rest].join(' ') : '').slice(0, 60) }
+    : a ? { id: file, category: a.trim().slice(0, 40), need: b === 'essential' || b === 'flexible' ? b : '', label: rest.join(' ').slice(0, 60) } : null;
+  if (!rec) { console.error('uso: rule <chave> --skip [rótulo] | rule <chave> <categoria> <essential|flexible|-> [rótulo]'); process.exit(1); }
+  await call('PUT', `/v1/c/expense-rules/${rec.id}`, rec);
+  console.log('Regra gravada:', rec.skip ? `${rec.id} → não é gasto` : `${rec.id} → ${rec.category} (${rec.need || 'sem tipo'})`);
 } else if (cmd === 'push' && file) {
   const entries = JSON.parse(readFileSync(file, 'utf8'));
   let existing = new Set(), learned = new Map();
@@ -42,17 +54,17 @@ if (cmd === 'rules') {
     const [r, e] = await Promise.all([call('GET', '/v1/c/expense-rules'), call('GET', '/v1/c/expenses')]);
     existing = new Set(e.items.map(x => x.id)); learned = new Map(r.items.map(x => [x.id, x]));
   } else console.log('(sem VAULT_URL/VAULT_TOKEN: não consegui checar duplicados nem regras aprendidas)');
-  const { records, duplicates, errors } = buildRecords(entries, existing, learned);
+  const { records, duplicates, skipped, errors } = buildRecords(entries, existing, learned);
   const bad = records.map(r => expenseRecord(r)).filter(x => !x.ok);
   errors.forEach(x => console.error('ERRO ' + x));
   if (errors.length || bad.length) { console.error('Corrija as entradas e rode de novo. Nada foi enviado.'); process.exit(1); }
   const byMonth = new Map(); for (const r of records) { const m = r.date.slice(0, 7); const v = byMonth.get(m) || { n: 0, sum: 0 }; v.n++; v.sum += r.amount; byMonth.set(m, v); }
   for (const [m, v] of [...byMonth].sort()) console.log(`${m}: ${v.n} gastos, ${v.sum.toFixed(2)} €`);
-  console.log(`Novos: ${records.length} | já no cofre (mantidos): ${duplicates}`);
+  console.log(`Novos: ${records.length} | já no cofre (mantidos): ${duplicates} | descartados por regra "não é gasto": ${skipped}`);
   if (!flags.includes('--apply')) { console.log('\nSimulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
   need();
   for (let i = 0; i < records.length; i += 200) await call('POST', '/v1/c/expenses', { items: records.slice(i, i + 200) });
   console.log(`Gravados ${records.length} gastos no cofre.`);
 } else {
-  console.error('uso: node tools/expenses.mjs rules | push <entradas.json> [--apply]'); process.exit(1);
+  console.error('uso: node tools/expenses.mjs rules | rule <chave> ... | push <entradas.json> [--apply]'); process.exit(1);
 }
