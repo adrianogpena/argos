@@ -1,6 +1,6 @@
 // node test/expenses.test.mjs
 import assert from 'node:assert/strict';
-import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
+import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory, byLabel, labelOptions, cleanLabel } from '../lib/expenses-core.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 const E = (date, amount, category) => ({ id: date + amount, date, amount, category });
 
@@ -52,5 +52,15 @@ t('canonicalCategory: reaproveita a grafia existente, ignorando caixa e acento',
   const o = ['Saúde', 'Mercado'];
   assert.equal(canonicalCategory('saude', o), 'Saúde'); assert.equal(canonicalCategory('  MERCADO ', o), 'Mercado');
   assert.equal(canonicalCategory('Pets  e   Bichos', o), 'Pets e Bichos');
+});
+t('rótulo: expenseRecord limpa e limita; byLabel agrupa por categoria > rótulo; labelOptions prioriza a categoria', () => {
+  const r = expenseRecord({ id: 'x', date: '2026-03-01', amount: 5, category: 'Transporte', label: '  Combustível  ' });
+  assert.equal(r.rec.label, 'Combustível'); assert.equal('label' in expenseRecord({ id: 'x', date: '2026-03-01', amount: 5, category: 'A' }).rec, false);
+  assert.equal(cleanLabel('x'.repeat(50)).length, 30);
+  const it = [{ ...E('2026-03-01', 10, 'Transporte'), label: 'Combustível' }, { ...E('2026-03-02', 4, 'Transporte'), label: 'Estacionamento' }, E('2026-03-03', 2, 'Transporte'), { ...E('2026-03-04', 20, 'Saúde'), label: 'Farmácia' }, { ...E('2026-02-04', 99, 'Saúde'), label: 'Dentista' }];
+  const b = byLabel(it, '2026-03');
+  assert.deepEqual(b.map(c => [c.category, c.amount]), [['Saúde', 20], ['Transporte', 16]]);
+  assert.deepEqual(b[1].labels, [{ label: 'Combustível', amount: 10 }, { label: 'Estacionamento', amount: 4 }, { label: '', amount: 2 }]);
+  assert.deepEqual(labelOptions(it, 'Saúde').slice(0, 2).sort(), ['Dentista', 'Farmácia']);
 });
 console.log(`\n${n} passed`);

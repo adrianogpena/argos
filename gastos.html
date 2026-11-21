@@ -103,9 +103,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
 .chips button{border:1px solid var(--rule);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
 .chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.pill.need{background:var(--surface-2)} .pill.rev{background:var(--warn-bg);color:var(--warn)}
+.pill.need,.pill.lbl{background:var(--surface-2)} .pill.rev{background:var(--warn-bg);color:var(--warn)}
 .list li .acts{display:flex;flex-wrap:wrap;justify-content:flex-end}
 .list button.ok{color:var(--ok);font-weight:700}
+.lblcat{display:flex;justify-content:space-between;margin-top:10px;font-size:14px} .lbl-row{display:flex;justify-content:space-between;padding:2px 0 2px 12px;font-size:13px;color:var(--ink-2)}
 .prev{font-size:14px;color:var(--ink-2);margin:0 0 12px} .prev b{color:var(--ink)}
 details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2)}
 </style>
@@ -128,6 +129,7 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
     <div class="tiles" id="tiles"></div><div class="tag" id="needNote" style="margin:-6px 0 12px"></div>
     <div class="card"><h2>Últimos 12 meses (€)</h2><div id="chMonths"></div><div class="tag">Toque numa barra para escolher o mês.</div></div>
     <div class="card"><h2>Por categoria no mês</h2><div id="chCats"></div></div>
+    <div class="card"><h2>Detalhe por rótulo no mês</h2><div id="chLabels"></div></div>
     <div class="card"><h2>Lançamentos do mês</h2><div class="chips" id="chips"></div><ul class="list" id="list"></ul></div>
     <div class="row"><button class="btn ghost" id="btnExport">Baixar backup (JSON)</button></div>
   </main>
@@ -142,6 +144,7 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
   </div>
   <label class="field"><span>Categoria</span><select name="category" id="catSel" required></select></label>
   <label class="field" id="catNewRow" hidden><span>Nome da nova categoria</span><input name="newCategory" id="catNew" maxlength="40" autocomplete="off"></label>
+  <label class="field"><span>Rótulo (opcional: detalha a categoria, ex.: Combustível, Farmácia)</span><input name="label" maxlength="30" list="labelList" autocomplete="off"><datalist id="labelList"></datalist></label>
   <label class="field"><span>Tipo de gasto</span><select name="need"><option value="">Não definido</option><option value="essential">Essencial (aluguel, luz, mercado…)</option><option value="flexible">Flexível (lazer, assinaturas…)</option></select></label>
   <label class="field"><span>Descrição (opcional)</span><input name="note" maxlength="120"></label>
   <label class="check" id="similarRow" hidden><input type="checkbox" name="similar" checked> <span id="similarTxt">Aplicar aos lançamentos parecidos</span></label>
@@ -153,7 +156,7 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
 <script type="module">
 import { initTheme } from "./lib/theme.js"; initTheme();
 import { createVault, newId } from './lib/vault.js';
-import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory } from './lib/expenses-core.js';
+import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory, byLabel, labelOptions } from './lib/expenses-core.js';
 import { UNCAT, NEEDS } from './lib/classify.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -194,6 +197,7 @@ function render() {
   const cats = byCategory(items, month), max = Math.max(...cats.map(c => c.amount), 1);
   $('#chCats').innerHTML = cats.length ? cats.map(c => `<div class="hbar"><span class="name" title="${esc(c.category)}">${esc(c.category)}</span><div class="track"><div class="fill" style="width:${(c.amount / max * 100).toFixed(1)}%"></div></div><span class="val">${eur(c.amount)} · ${Math.round(c.share * 100)}%</span></div>`).join('') : '<div class="empty">Sem gastos neste mês.</div>';
 
+  $('#chLabels').innerHTML = byLabel(inMonth).map(c => `<div class="lblcat"><b>${esc(c.category)}</b> <span>${eur(c.amount)}</span></div>` + c.labels.map(l => `<div class="lbl-row"><span>${l.label ? esc(l.label) : '<i>sem rótulo</i>'}</span><span>${eur(l.amount)}</span></div>`).join('')).join('') || '<div class="empty">Sem gastos neste mês.</div>';
   const nRev = inMonth.filter(x => x.auto).length;
   if (filter === 'review' && !nRev) filter = 'all';
   $('#chips').innerHTML = [['all', 'Todos'], ['review', `Revisar (${nRev})`], ['essential', 'Essenciais'], ['flexible', 'Flexíveis']].map(([k, l]) => `<button type="button" data-filter="${k}" aria-pressed="${filter === k}">${l}</button>`).join('');
@@ -202,7 +206,7 @@ function render() {
   $('#list').innerHTML = sorted.length ? sorted.map(x => {
     const unc = x.category === UNCAT;
     return `<li><div class="main">${esc(x.category)} · ${eur(x.amount)}<div class="sub">${dateBR(x.date)}${x.note ? ' · ' + esc(x.note) : ''}</div>` +
-      `<div>${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
+      `<div>${x.label ? `<span class="pill lbl">${esc(x.label)}</span> ` : ''}${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
       `<div class="acts">${x.auto && !unc ? `<button class="ok" data-ok="${esc(x.id)}" title="Confirmar categoria e tipo">✓ Confirmar</button>` : ''}<button data-edit="${esc(x.id)}">Editar</button><button data-del="${esc(x.id)}">Apagar</button></div></li>`;
   }).join('') : '<li class="empty">Nenhum lançamento.</li>';
 }
@@ -241,7 +245,7 @@ function pickedCategory(f) {
 
 function openForm(x) {
   editing = x?.id || null; const f = $('#formAdd'); f.reset();
-  f.date.value = x?.date || (month === today().slice(0, 7) ? today() : month + '-01'); f.amount.value = x ? String(x.amount).replace('.', ',') : ''; fillCategories(x && x.category !== UNCAT ? x.category : ''); f.note.value = x?.note || ''; f.need.value = x?.need || '';
+  f.date.value = x?.date || (month === today().slice(0, 7) ? today() : month + '-01'); f.amount.value = x ? String(x.amount).replace('.', ',') : ''; fillCategories(x && x.category !== UNCAT ? x.category : ''); f.note.value = x?.note || ''; f.label.value = x?.label || ''; $('#labelList').innerHTML = labelOptions(expenses, x?.category).map(l => `<option value="${esc(l)}">`).join(''); f.need.value = x?.need || '';
   const sim = x?.key ? expenses.filter(y => y.key === x.key && y.id !== x.id && y.auto).length : 0;
   $('#similarRow').hidden = !x?.key; $('#similarTxt').textContent = sim ? `Aplicar aos ${sim} lançamentos parecidos ainda não confirmados` : 'Lembrar para os próximos extratos';
   $('#addTitle').textContent = x ? 'Editar gasto' : 'Novo gasto'; $('#addMsg').textContent = ''; $('#dlgAdd').showModal();
@@ -252,15 +256,15 @@ const msgBad = (el, e) => { el.className = 'msg bad'; el.textContent = e.kind ==
 /** Guarda a decisão do dono como regra e, se pedido, aplica aos parecidos ainda não confirmados. */
 async function learn(rec, applySimilar) {
   if (!rec.key || rec.category === UNCAT) return;
-  await vault.put('expense-rules', { id: rec.key, category: rec.category, need: rec.need || '', label: rec.note.slice(0, 60) });
+  await vault.put('expense-rules', { id: rec.key, category: rec.category, need: rec.need || '', label: rec.note.slice(0, 60), ...(rec.label && { tag: rec.label }) });
   if (!applySimilar) return;
-  const same = expenses.filter(y => y.key === rec.key && y.id !== rec.id && y.auto).map(y => ({ ...y, category: rec.category, need: rec.need || '', auto: undefined }));
+  const same = expenses.filter(y => y.key === rec.key && y.id !== rec.id && y.auto).map(y => ({ ...y, category: rec.category, need: rec.need || '', ...(rec.label && { label: rec.label }), auto: undefined }));
   if (same.length) await vault.putMany('expenses', same);
 }
 
 $('#btnSave').onclick = async () => {
   const f = $('#formAdd'), old = expenses.find(x => x.id === editing);
-  const r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: pickedCategory(f), note: f.note.value, need: f.need.value, source: old?.source, key: old?.key });
+  const r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: pickedCategory(f), note: f.note.value, need: f.need.value, label: f.label.value, source: old?.source, key: old?.key });
   const names = { date: 'a data', amount: 'o valor', category: 'a categoria' };
   if (!r.ok) { $('#addMsg').className = 'msg bad'; $('#addMsg').textContent = 'Confira ' + names[r.error] + '.'; return; }
   try {
