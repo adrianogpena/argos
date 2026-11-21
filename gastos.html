@@ -110,6 +110,17 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .lblcat{display:flex;justify-content:space-between;margin-top:10px;font-size:14px} .lbl-row{display:flex;justify-content:space-between;padding:2px 0 2px 12px;font-size:13px;color:var(--ink-2)}
 .prev{font-size:14px;color:var(--ink-2);margin:0 0 12px} .prev b{color:var(--ink)}
 details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2)}
+.fc-h{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 4px;font-weight:700} .fc-h:first-child{margin-top:0}
+.fc-h small{font-weight:400;color:var(--ink-3);font-size:12px}
+.fc-r{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:14px} .fc-r span:first-child{color:var(--ink-2)} .fc-r .num{white-space:nowrap}
+.fc-r.big{border-top:1px solid var(--rule);margin-top:4px;padding-top:8px;font-size:16px;font-weight:700} .fc-r.big span:first-child{color:var(--ink)}
+.fc-r.done{color:var(--ink-3);text-decoration:line-through}
+.fc-note{font-size:12px;color:var(--ink-3);margin:6px 0 0}
+.pace{height:10px;border-radius:5px;background:var(--surface-2);position:relative;margin:8px 0 4px;overflow:hidden} .pace i{position:absolute;left:0;top:0;bottom:0;background:var(--series)}
+.cmp{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-size:14px;align-items:baseline} .cmp .h{font-size:12px;color:var(--ink-3)} .cmp .num{text-align:right}
+.chart .s1{fill:var(--series)} .chart .s2{fill:var(--warn)} .chart .s3{fill:var(--ink-3)}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:6px 0 0} .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
 </style>
 </head>
 <body>
@@ -128,6 +139,12 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
       <span class="msg" id="sync" role="status"></span></div>
     <div class="month"><button class="btn ghost" id="prev" aria-label="Mês anterior">‹</button><div class="label" id="monthLabel"></div><button class="btn ghost" id="next" aria-label="Próximo mês">›</button></div>
     <div class="tiles" id="tiles"></div><div class="tag" id="needNote" style="margin:-6px 0 12px"></div>
+    <div class="card"><h2>Previsão: quanto fica livre</h2><div id="fc"></div></div>
+    <div class="card" id="cardPace" hidden><h2>Ritmo do mês atual</h2><div id="pace"></div></div>
+    <div class="card"><h2>Gastos fixos (média dos últimos meses)</h2><div id="fixed"></div></div>
+    <div class="card"><h2>Contra a sua média</h2><div id="cmp"></div></div>
+    <div class="card"><h2>Maiores comerciantes</h2><div class="chips" id="mchips"></div><div id="merch"></div></div>
+    <div class="card"><h2>Essencial x flexível, mês a mês (€)</h2><div id="chNeed"></div><div class="leg"><span><i style="background:var(--series)"></i>Essencial</span><span><i style="background:var(--warn)"></i>Flexível</span><span><i style="background:var(--ink-3)"></i>Sem tipo</span></div></div>
     <div class="card"><h2>Últimos 12 meses (€)</h2><div id="chMonths"></div><div class="tag">Toque numa barra para escolher o mês.</div></div>
     <div class="card"><h2>Por categoria no mês</h2><div id="chCats"></div></div>
     <div class="card"><h2>Detalhe por rótulo no mês</h2><div id="chLabels"></div></div>
@@ -159,6 +176,7 @@ import { initTheme } from "./lib/theme.js"; initTheme();
 import { createVault, newId } from './lib/vault.js';
 import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory, byLabel, labelOptions, instText } from './lib/expenses-core.js';
 import { UNCAT, NEEDS } from './lib/classify.js';
+import { salaryPlan, forecast, projection, recurring, topMerchants, categoryVsAverage, needByMonth, addMonths, nowKey } from './lib/expenses-report.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -170,13 +188,26 @@ const dateBR = s => s.split('-').reverse().join('/');
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const monthName = k => { const n = MONTHS[+k.slice(5) - 1]; return n[0].toUpperCase() + n.slice(1) + ' de ' + k.slice(0, 4); };
 
-let expenses = [], rules = new Map(), month = today().slice(0, 7), editing = null, filter = 'all';
+let expenses = [], rules = new Map(), month = today().slice(0, 7), editing = null, filter = 'all', plan = null, planErr = '', mrange = 'month';
 
 async function load() {
   const [e, r] = await Promise.all([vault.list('expenses'), vault.list('expense-rules')]);
   expenses = e.items; rules = new Map(r.items.map(x => [x.id, x]));
   $('#setup').hidden = true; $('#app').hidden = false;
   $('#sync').textContent = e.stale ? 'Offline: salvo neste aparelho.' : '';
+  render();
+  await loadSalary();
+}
+/** O salário vem das entradas do extrato (bank-lines). Lido direto, sem guardar no aparelho: são ~4 mil linhas e só interessam as de salário. */
+async function loadSalary() {
+  if (plan) return;
+  try {
+    const { url, token } = vault.config();
+    const res = await fetch(url + '/v1/c/bank-lines', { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error(res.status);
+    plan = salaryPlan((await res.json()).items.map(l => ({ date: l.date, desc: l.desc, amount: l.amount })));
+    planErr = plan ? '' : 'Não achei o salário nas entradas do extrato.';
+  } catch (e) { planErr = 'Não consegui ler as entradas do extrato (sem rede?).'; }
   render();
 }
 const all = () => expenses;
@@ -193,6 +224,7 @@ function render() {
     `<div class="tile"><div class="k">Flexíveis</div><div><span class="v">${eur(ns.flexible)}</span></div></div>`;
   $('#needNote').textContent = ns.none > 0.005 ? `Sem tipo definido: ${eur(ns.none)}. Edite os lançamentos para classificar.` : '';
 
+  reports(items);
   const ms = monthly(items, 12, new Date(+month.slice(0, 4), +month.slice(5) - 1, 15));
   $('#chMonths').innerHTML = bars(ms);
   const cats = byCategory(items, month), max = Math.max(...cats.map(c => c.amount), 1);
@@ -210,6 +242,69 @@ function render() {
       `<div>${x.card ? `<span class="pill card">Cartão de crédito</span> ` : ''}${x.inst ? `<span class="pill ${x.inst.last ? 'last' : 'inst'}">${esc(instText(x.inst, eur))}</span> ` : ''}${x.label ? `<span class="pill lbl">${esc(x.label)}</span> ` : ''}${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
       `<div class="acts">${x.auto && !unc ? `<button class="ok" data-ok="${esc(x.id)}" title="Confirmar categoria e tipo">✓ Confirmar</button>` : ''}<button data-edit="${esc(x.id)}">Editar</button><button data-del="${esc(x.id)}">Apagar</button></div></li>`;
   }).join('') : '<li class="empty">Nenhum lançamento.</li>';
+}
+
+const dayBR = s => s.slice(8) + '/' + s.slice(5, 7);
+const sgn = n => (n < 0 ? '−' : '+') + eur(Math.abs(n));
+
+function reports(items) {
+  const now = new Date(), cur = nowKey(now), nxt = addMonths(cur, 1);
+  // 1) Previsão: o que falta no mês atual e o mês seguinte inteiro.
+  const block = f => {
+    const title = `<div class="fc-h"><span>${monthName(f.month)}</span><small>${f.isCurrent ? 'o que ainda falta' : 'mês seguinte'}</small></div>`;
+    const inc = f.income ? `<div class="fc-r"><span>Salário previsto ~${dayBR(f.income.date)}${f.income.double ? ' <b>(com 13º/14º)</b>' : ''}</span><span class="num down">${f.isCurrent && !f.incomePending ? 'já recebido' : sgn(f.incomePending)}</span></div>` : '';
+    const rows = f.rows.map(r => `<div class="fc-r${r.done ? ' done' : ''}"><span>${dayBR(r.date)} · ${esc(r.name)}</span><span class="num">${eur(r.amount)}</span></div>`).join('');
+    return title + inc + `<details><summary>Fixos ${f.isCurrent ? 'que faltam' : ''}: <b class="num">−${eur(f.fixedTotal)}</b> (${f.rows.filter(r => !r.done).length})</summary>${rows || '<div class="empty">Nenhum fixo detectado.</div>'}</details>` +
+      `<div class="fc-r big"><span>Livre para outros gastos</span><span class="num ${f.free < 0 ? 'up' : 'down'}">${eur(f.free)}</span></div>` +
+      `<div class="fc-r"><span>Gasto variável típico (média de 3 meses)</span><span class="num">−${eur(f.variable)}</span></div>` +
+      `<div class="fc-r"><span>Se gastar o típico, sobra</span><span class="num ${f.afterVariable < 0 ? 'up' : 'down'}">${eur(f.afterVariable)}</span></div>`;
+  };
+  $('#fc').innerHTML = plan ? block(forecast(items, plan, cur, now)) + block(forecast(items, plan, nxt, now)) +
+    `<div class="fc-note">Salário e 13º/14º (junho e novembro) pelo histórico do extrato; fixos = comerciantes de valor estável em 4 dos últimos 6 meses. "Livre" = receita - fixos, antes de mercado, restaurantes e demais variáveis.</div>`
+    : `<div class="empty">${esc(planErr || 'Carregando…')}</div>`;
+
+  // 2) Ritmo do mês atual.
+  const pr = projection(items, now);
+  $('#cardPace').hidden = !pr;
+  if (pr) {
+    const diff = pr.spent - pr.prevSameDay;
+    $('#pace').innerHTML = `<div class="prev">Extrato até <b>${pr.day}/${pr.month.slice(5)}</b>: gasto <b>${eur(pr.spent)}</b>. Mesmo ponto do mês anterior: ${eur(pr.prevSameDay)} (<span class="${diff > 0 ? 'up' : 'down'}">${sgn(diff)}</span>).</div>` +
+      `<div class="pace" role="img" aria-label="Gasto até agora contra a previsão"><i style="width:${Math.min(100, pr.spent / Math.max(pr.projected, 1) * 100).toFixed(1)}%"></i></div>` +
+      `<div class="fc-r"><span>Previsão de fechar o mês</span><span class="num"><b>${eur(pr.projected)}</b></span></div><div class="fc-r"><span>Mês anterior fechou em</span><span class="num">${eur(pr.prevTotal)}</span></div>` +
+      `<div class="fc-note">Previsão = fixos esperados (${eur(pr.fixedTotal)}) + gasto variável até agora no mesmo ritmo.</div>`;
+  }
+
+  // 3) Fixos.
+  const fx = recurring(items, now), fxTotal = fx.reduce((s, x) => s + x.amount, 0);
+  $('#fixed').innerHTML = fx.length ? fx.map(x => `<div class="fc-r"><span>${esc(x.name)} <span class="tag">· ${esc(x.category)} · dia ${x.day} · ${x.months}/6 meses</span></span><span class="num">${eur(x.amount)}</span></div>`).join('') +
+    `<div class="fc-r big"><span>Total fixo por mês</span><span class="num">${eur(fxTotal)}</span></div>` : '<div class="empty">Ainda não há meses suficientes.</div>';
+
+  // 4) Contra a média dos 3 meses anteriores.
+  const cv = categoryVsAverage(items, month, now).filter(c => Math.abs(c.diff) >= 1 || c.amount >= 1).slice(0, 8);
+  $('#cmp').innerHTML = cv.length ? '<div class="cmp"><span class="h">Categoria</span><span class="h num">Este mês</span><span class="h num">Média 3m</span>' +
+    cv.map(c => `<span>${esc(c.category)} <span class="${c.diff > 0 ? 'up' : 'down'}">${c.diff > 0 ? '▲' : '▼'} ${eur(Math.abs(c.diff))}</span></span><span class="num">${eur(c.amount)}</span><span class="num">${eur(c.avg)}</span>`).join('') + '</div>' +
+    (month === cur ? '<div class="fc-note">Mês em andamento: a média considera só até o mesmo dia dos meses anteriores.</div>' : '') : '<div class="empty">Sem dados.</div>';
+
+  // 5) Maiores comerciantes.
+  const from = mrange === 'month' ? month : mrange === '12m' ? addMonths(month, -11) : month.slice(0, 4) + '-01', to = mrange === 'year' ? month.slice(0, 4) + '-12' : month;
+  const tm = topMerchants(items, from, to, 10), mx = Math.max(...tm.rows.map(r => r.amount), 1);
+  $('#mchips').innerHTML = [['month', 'Mês'], ['12m', '12 meses'], ['year', 'Ano ' + month.slice(0, 4)]].map(([k, l]) => `<button type="button" data-mrange="${k}" aria-pressed="${mrange === k}">${l}</button>`).join('');
+  $('#merch').innerHTML = tm.rows.length ? tm.rows.map(r => `<div class="hbar" style="grid-template-columns:1fr 1fr auto"><span class="name" title="${esc(r.name)} · ${esc(r.category)}">${esc(r.name)}</span><div class="track"><div class="fill" style="width:${(r.amount / mx * 100).toFixed(1)}%"></div></div><span class="val">${eur(r.amount)} · ${r.count}x</span></div>`).join('') +
+    `<div class="fc-note">Os 10 maiores somam ${Math.round(tm.rows.reduce((s, r) => s + r.share, 0) * 100)}% do total do período (${eur(tm.total)}).</div>` : '<div class="empty">Sem gastos no período.</div>';
+
+  // 6) Essencial x flexível, 12 meses.
+  $('#chNeed').innerHTML = stacked(needByMonth(items, 12, month));
+}
+
+function stacked(data) {
+  const W = 520, H = 170, L = 38, B = 22, T = 8, max = Math.max(...data.map(d => d.essential + d.flexible + d.none), 1) * 1.1, step = (W - L) / data.length, bw = Math.min(26, step - 6);
+  const y = v => T + (H - T - B) * (1 - v / max);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Essencial e flexível por mês">` +
+    [0, .5, 1].map(f => { const t = max / 1.1 * f; return `<line class="grid" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${eur0(t)}</text>`; }).join('') +
+    data.map((d, i) => { const x = L + i * step + (step - bw) / 2; let acc = 0;
+      const tip = `${monthName(d.month)}: essencial ${eur(d.essential)} · flexível ${eur(d.flexible)}${d.none > 0.005 ? ' · sem tipo ' + eur(d.none) : ''}`;
+      const seg = [['s1', d.essential], ['s2', d.flexible], ['s3', d.none]].map(([c, v]) => { const y1 = y(acc + v), y0 = y(acc); acc += v; return v > 0 ? `<rect class="${c}" x="${x}" y="${y1}" width="${bw}" height="${Math.max(y0 - y1, 0)}"/>` : ''; }).join('');
+      return `<g tabindex="0" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${seg}<rect x="${x - 2}" y="${T}" width="${bw + 4}" height="${H - B - T}" fill="transparent"/></g><text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${d.month.slice(5)}</text>`; }).join('') + '</svg>';
 }
 
 function bars(data) {
@@ -279,6 +374,7 @@ document.addEventListener('click', async e => {
   const m = e.target.closest('[data-month]'); if (m) { month = m.dataset.month; render(); return; }
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.filter) { filter = b.dataset.filter; render(); }
+  else if (b.dataset.mrange) { mrange = b.dataset.mrange; render(); }
   else if (b.dataset.ok) {
     const x = expenses.find(y => y.id === b.dataset.ok); if (!x) return;
     try { const { auto, ...rest } = x; await vault.put('expenses', rest); await learn({ ...rest }, true); await load(); } catch (err) { alert(err.message); }
