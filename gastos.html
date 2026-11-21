@@ -103,6 +103,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
 .chips button{border:1px solid var(--rule);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
 .chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pill.card{background:var(--ink);color:var(--bg)} .pill.inst{background:var(--warn-bg);color:var(--warn)} .pill.last{background:var(--ok-bg,var(--surface-2));color:var(--ok,var(--ink))}
 .pill.need,.pill.lbl{background:var(--surface-2)} .pill.rev{background:var(--warn-bg);color:var(--warn)}
 .list li .acts{display:flex;flex-wrap:wrap;justify-content:flex-end}
 .list button.ok{color:var(--ok);font-weight:700}
@@ -156,7 +157,7 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
 <script type="module">
 import { initTheme } from "./lib/theme.js"; initTheme();
 import { createVault, newId } from './lib/vault.js';
-import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory, byLabel, labelOptions } from './lib/expenses-core.js';
+import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory, byLabel, labelOptions, instText } from './lib/expenses-core.js';
 import { UNCAT, NEEDS } from './lib/classify.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -206,7 +207,7 @@ function render() {
   $('#list').innerHTML = sorted.length ? sorted.map(x => {
     const unc = x.category === UNCAT;
     return `<li><div class="main">${esc(x.category)} · ${eur(x.amount)}<div class="sub">${dateBR(x.date)}${x.note ? ' · ' + esc(x.note) : ''}</div>` +
-      `<div>${x.label ? `<span class="pill lbl">${esc(x.label)}</span> ` : ''}${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
+      `<div>${x.card ? `<span class="pill card">Cartão de crédito</span> ` : ''}${x.inst ? `<span class="pill ${x.inst.last ? 'last' : 'inst'}">${esc(instText(x.inst, eur))}</span> ` : ''}${x.label ? `<span class="pill lbl">${esc(x.label)}</span> ` : ''}${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
       `<div class="acts">${x.auto && !unc ? `<button class="ok" data-ok="${esc(x.id)}" title="Confirmar categoria e tipo">✓ Confirmar</button>` : ''}<button data-edit="${esc(x.id)}">Editar</button><button data-del="${esc(x.id)}">Apagar</button></div></li>`;
   }).join('') : '<li class="empty">Nenhum lançamento.</li>';
 }

@@ -31,3 +31,10 @@ t('monthReport: saldos, totais, fora de Gastos e manuais', () => {
   assert.equal(r.incomeGroups[0].total, 1000);
 });
 console.log(`\n${n} testes ok`);
+
+// gastos do cartão: contam à parte e não aparecem como "sem linha do banco"
+{
+  const r = monthReport('2026-03', L, [...site, { id: 'c1', date: '2026-03-10', amount: 10.5, source: 'card', card: true }, { id: 'c2', date: '2026-03-20', amount: 4, source: 'card', card: true }]);
+  assert.deepEqual(r.card, { n: 2, total: 14.5 }); assert.deepEqual(r.siteNotInBank.map(x => x.id), ['manual1']); assert.deepEqual(r.site, { n: 1, total: 20 });
+  console.log('ok  monthReport: gastos do cartão à parte');
+}

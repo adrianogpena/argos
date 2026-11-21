@@ -159,4 +159,13 @@ t('applyDecisions: decisão no id do grupo vale para todas as chaves (uma regra 
   assert.ok(r.updates.every(u => u.key !== 'bazar' && !('auto' in u)));         // chave crua preservada (ids e regras seguem valendo)
   assert.ok(r.rules.every(x => x.tag === 'Casa'));
 });
+t('applyDecisions: Outros confirmado vale para intermediário e transferência (esta sem regra); outra categoria continua recusada', () => {
+  const r = applyDecisions(MX, [
+    { key: 'hipay-exemplo', category: 'Outros', label: 'Pagamento online', confirm: true },
+    { key: 'trf', category: 'Outros', label: 'Transferência', confirm: true }]);
+  assert.equal(r.errors.length, 0);
+  assert.ok(r.updates.length >= 2 && r.updates.every(u => !u.auto && u.category === 'Outros'));
+  assert.deepEqual(r.rules.map(x => x.id), ['hipay-exemplo']);                 // 'trf' confirma os lançamentos mas não vira regra
+  assert.equal(applyDecisions(MX, [{ key: 'trf', category: 'Compras', confirm: true }]).errors.length, 1);
+});
 console.log(`\n${n} passed`);

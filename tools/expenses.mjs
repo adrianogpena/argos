@@ -12,6 +12,8 @@
 //   node tools/expenses.mjs month AAAA-MM [--lines]     relatório de conferência do mês (saldos, em Gastos x fora, entradas) para validar com o banco
 //   node tools/expenses.mjs validate AAAA-MM [nota] [--undo] [--apply]   marca o mês como validado (guarda os totais); --undo reabre
 //   node tools/expenses.mjs raw <linhas.json> [--file=nome.pdf] [--apply]   arquiva (cada linha leva stmt=AAAA-MM do extrato e file) TODAS as linhas do extrato em `bank-lines` (invisível nas telas; só para conferência)
+//   node tools/expenses.mjs card <cartao.json> [--apply]   grava gastos do cartão de crédito (source 'card', data da compra): [{date,amount,desc,category,need,label,inst:{n,of,left,last}}]
+//   node tools/expenses.mjs drop <chave> <AAAA-MM> <AAAA-MM> [--apply]   apaga os gastos do extrato com essa chave entre os dois meses (ex.: o pagamento único do cartão que foi detalhado)
 //   node tools/expenses.mjs push <entradas.json>        simulação: mostra o que seria gravado
 //   node tools/expenses.mjs push <entradas.json> --apply   grava no cofre
 //
@@ -20,7 +22,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { monthReport, isMonth, MONTH_STATUS } from '../lib/bank-month.js';
-import { buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels, displayName, searchUrl, inferBranch, recurrenceHint, isIntermediary, canonMotivo, GENERIC_KEYS } from '../lib/classify.js';
+import { bankId, descKey, buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels, displayName, searchUrl, inferBranch, recurrenceHint, isIntermediary, canonMotivo, GENERIC_KEYS } from '../lib/classify.js';
 import { expenseRecord, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 
 const [cmd, file, ...flags] = process.argv.slice(2);
@@ -146,6 +148,32 @@ if (cmd === 'rules') {
   need();
   for (let i = 0; i < records.length; i += 200) await call('POST', '/v1/c/expenses', { items: records.slice(i, i + 200) });
   console.log(`Gravados ${records.length} gastos no cofre.`);
+} else if (cmd === 'card' && file) {
+  // Gastos do cartão de crédito: ficam na data da compra e substituem o pagamento único da fatura (ver `drop`). Id estável: repetir sobrescreve.
+  const entries = JSON.parse(readFileSync(file, 'utf8')), seen = new Map(), items = [];
+  for (const [i, e] of entries.entries()) {
+    const amount = Math.round(Number(e.amount) * 100) / 100, desc = String(e.desc || '').replace(/s+/g, ' ').trim();
+    const id = 'c' + bankId(e.date, amount, desc, seen).slice(1);
+    const r = expenseRecord({ id, date: e.date, amount, category: e.category, need: e.need, label: e.label, note: desc, source: 'card', card: true, inst: e.inst, key: descKey(desc) });
+    if (!r.ok) { console.error(`ERRO entrada ${i + 1}: ${r.error}. Nada foi enviado.`); process.exit(1); }
+    items.push(r.rec);
+  }
+  const byMonth = new Map(); for (const r of items) { const m = r.date.slice(0, 7); byMonth.set(m, (byMonth.get(m) || 0) + r.amount); }
+  for (const [m, v] of [...byMonth].sort()) console.log(`${m}: ${v.toFixed(2)} €`);
+  console.log(`Total: ${items.reduce((a, r) => a + r.amount, 0).toFixed(2)} € em ${items.length} lançamentos do cartão`);
+  if (!flags.includes('--apply')) { console.log('\nSimulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
+  need();
+  await call('POST', '/v1/c/expenses', { items });
+  console.log(`Gravados ${items.length} gastos do cartão.`);
+} else if (cmd === 'drop' && file && isMonth(flags[0]) && isMonth(flags[1])) {
+  need();
+  const e = await call('GET', '/v1/c/expenses');
+  const hit = e.items.filter(x => x.source === 'bank' && x.key === file && x.date.slice(0, 7) >= flags[0] && x.date.slice(0, 7) <= flags[1]);
+  for (const x of hit.sort((a, b) => a.date.localeCompare(b.date))) console.log([x.date, x.amount.toFixed(2), x.note, x.id].join(' | '));
+  console.log(`Total: ${hit.reduce((a, x) => a + x.amount, 0).toFixed(2)} € em ${hit.length} lançamentos`);
+  if (!flags.includes('--apply')) { console.log('\nSimulação: nada foi apagado. Acrescente --apply.'); process.exit(0); }
+  for (const x of hit) await call('DELETE', '/v1/c/expenses/' + x.id);
+  console.log(`Apagados ${hit.length}.`);
 } else if (cmd === 'months') {
   // Estado de cada mês do extrato em `bank-months`: arquivado (só em bank-lines) | pendente (já em Gastos, falta validar) | validado.
   need();
@@ -175,6 +203,7 @@ if (cmd === 'rules') {
   console.log(`# ${file} | estado: ${rec ? rec.status : '(sem registro)'} | arquivo: ${r.file || '-'}`);
   for (const a of r.accounts) console.log(`conta ${a.account}: saldo ${eur(a.opening)} → ${eur(a.closing)} | ${a.lines} linhas | entradas ${eur(a.credits)} | saídas ${eur(a.debits)} | ${a.balanced ? 'fecha' : 'NÃO FECHA'}`);
   console.log(`\nSaídas da conta à vista: ${eur(r.bankDebits)}  =  em Gastos ${eur(r.site.total)} (${r.site.n} lançamentos, ${r.pendingReview} ainda "revisar")  +  fora de Gastos ${eur(r.outside.total)} (${r.outside.n})`);
+  if (r.card.n) console.log(`Gastos do cartão de crédito com data neste mês (fora da conta à vista, não entram na linha acima): ${eur(r.card.total)} (${r.card.n} lançamentos)`);
   console.log('\n# fora de Gastos (regra "não é gasto" ou não importado): chave | qtd | total | exemplo');
   for (const g of r.outsideGroups) console.log([g.key, g.n, g.total.toFixed(2), g.example].join(' | '));
   console.log('\n# entradas (nunca são gasto): chave | qtd | total | exemplo');

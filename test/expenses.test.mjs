@@ -64,3 +64,18 @@ t('rótulo: expenseRecord limpa e limita; byLabel agrupa por categoria > rótulo
   assert.deepEqual(labelOptions(it, 'Saúde').slice(0, 2).sort(), ['Dentista', 'Farmácia']);
 });
 console.log(`\n${n} passed`);
+
+// --- cartão de crédito: parcelamento (dados fictícios)
+import { instText } from '../lib/expenses-core.js';
+{
+  const base = { id: 'c1', date: '2026-01-31', amount: 1.14, category: 'Cartão de crédito', source: 'card', card: true };
+  const r = expenseRecord({ ...base, inst: { n: 2, of: 6, left: 133.564, last: false } });
+  assert.ok(r.ok); assert.equal(r.rec.card, true); assert.deepEqual(r.rec.inst, { of: 6, n: 2, left: 133.56 });
+  assert.equal(instText(r.rec.inst), 'Parcela 2/6 · faltam 133,56 €');
+  const l = expenseRecord({ ...base, inst: { n: 6, of: 6, left: 0, last: true } }).rec.inst;
+  assert.equal(l.last, true); assert.equal(instText(l), 'Última parcela (6/6) · quitado');
+  assert.equal(instText({ n: 0, of: 6, left: 199 }), 'Compra em 6x · faltam 199,00 €');
+  assert.equal(expenseRecord({ ...base, inst: { n: 9, of: 6 } }).rec.inst, undefined);   // parcela fora do plano: ignora
+  assert.equal(expenseRecord({ ...base }).rec.inst, undefined);
+  console.log('ok  cartão: parcelamento (inst) e texto');
+}
