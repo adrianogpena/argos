@@ -4,14 +4,16 @@
 //   node tools/expenses.mjs rules                       lista as regras (categoria/tipo ou "não é gasto" por comerciante) e as categorias em uso
 //   node tools/expenses.mjs rule <chave> --skip [rótulo]            grava regra "não é gasto" (poupança, transferência própria...)
 //   node tools/expenses.mjs rule <chave> <categoria> <essential|flexible|-> [rótulo]   grava regra de categoria
+//   node tools/expenses.mjs review                      lista os gastos pendentes (palpite a confirmar) agrupados por comerciante
+//   node tools/expenses.mjs confirm <decisoes.json> [--apply]   aplica decisões [{key, category, need, confirm}] (simula sem --apply)
 //   node tools/expenses.mjs push <entradas.json>        simulação: mostra o que seria gravado
 //   node tools/expenses.mjs push <entradas.json> --apply   grava no cofre
 //
 // <entradas.json> = [{ "date":"AAAA-MM-DD", "amount":12.5, "desc":"texto do banco", "category":"Mercado", "need":"essential|flexible" }]
 // amount sempre positivo (só gastos). VAULT_URL e VAULT_TOKEN vêm do ambiente; o token nunca é escrito em arquivo nem exibido.
 import { readFileSync } from 'node:fs';
-import { buildRecords } from '../lib/classify.js';
-import { expenseRecord } from '../lib/expenses-core.js';
+import { buildRecords, pendingGroups, applyDecisions } from '../lib/classify.js';
+import { expenseRecord, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 
 const [cmd, file, ...flags] = process.argv.slice(2);
 const plainKey = s => /^[a-z0-9-]{1,40}$/.test(s);
@@ -38,6 +40,28 @@ if (cmd === 'rules') {
   const cats = new Map(); for (const x of e.items) cats.set(x.category, (cats.get(x.category) || 0) + 1);
   console.log('\n# categorias em uso (qtd)');
   for (const [c, n] of [...cats].sort((a, b) => b[1] - a[1])) console.log(`${c} (${n})`);
+} else if (cmd === 'review') {
+  need();
+  const e = await call('GET', '/v1/c/expenses');
+  const g = pendingGroups(e.items);
+  console.log(`# pendentes: ${e.items.filter(x => x.auto).length} lançamentos em ${g.length} comerciantes (chave | qtd | total € | categoria atual | tipo | exemplo)`);
+  for (const x of g) console.log([x.key, x.n, x.total.toFixed(2), x.category, x.need || '-', x.example].join(' | '));
+} else if (cmd === 'confirm' && file) {
+  need();
+  const decisions = JSON.parse(readFileSync(file, 'utf8'));
+  const e = await call('GET', '/v1/c/expenses');
+  const opts = categoryOptions(e.items);
+  const r = applyDecisions(e.items, decisions, c => canonicalCategory(c, opts));
+  r.errors.forEach(x => console.error('AVISO ' + x));
+  const bad = r.updates.map(u => expenseRecord(u)).filter(x => !x.ok);
+  if (bad.length) { console.error('Registro inválido; nada foi enviado.'); process.exit(1); }
+  const news = [...new Set(r.updates.map(u => u.category))].filter(c => !opts.includes(c));
+  console.log(`Confirmados: ${r.confirmed} (viram regra: ${r.rules.length}) | com dúvida (seguem "revisar"): ${r.doubtful} | avisos: ${r.errors.length}`);
+  if (news.length) console.log('Categorias novas: ' + news.join(', '));
+  if (!flags.includes('--apply')) { console.log('\nSimulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
+  for (let i = 0; i < r.updates.length; i += 200) await call('POST', '/v1/c/expenses', { items: r.updates.slice(i, i + 200) });
+  for (const x of r.rules) await call('PUT', `/v1/c/expense-rules/${x.id}`, x);
+  console.log(`Gravados ${r.updates.length} lançamentos e ${r.rules.length} regras.`);
 } else if (cmd === 'rule' && file) {
   need();
   if (!plainKey(file)) { console.error('chave inválida (minúsculas, números e hífens, até 40)'); process.exit(1); }
@@ -66,5 +90,5 @@ if (cmd === 'rules') {
   for (let i = 0; i < records.length; i += 200) await call('POST', '/v1/c/expenses', { items: records.slice(i, i + 200) });
   console.log(`Gravados ${records.length} gastos no cofre.`);
 } else {
-  console.error('uso: node tools/expenses.mjs rules | rule <chave> ... | push <entradas.json> [--apply]'); process.exit(1);
+  console.error('uso: node tools/expenses.mjs rules | rule <chave> ... | review | confirm <decisoes.json> | push <entradas.json> [--apply]'); process.exit(1);
 }

@@ -1,6 +1,6 @@
 // node test/classify.test.mjs  (dados fictícios)
 import assert from 'node:assert/strict';
-import { descKey, bankId, buildRecords, UNCAT } from '../lib/classify.js';
+import { descKey, bankId, buildRecords, pendingGroups, applyDecisions, UNCAT } from '../lib/classify.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 
 t('descKey ignora números, datas e palavras de banco', () => {
@@ -44,5 +44,26 @@ t('buildRecords: regra skip descarta o lançamento ("não é gasto") e conta', (
   const p = buildRecords(E, new Set(), learned);
   assert.equal(p.skipped, 2); assert.equal(p.records.length, 2);
   assert.ok(p.records.every(r => r.key !== 'loja-exemplo'));
+});
+const X = (id, key, amount, o = {}) => ({ id, date: '2026-03-0' + id.slice(-1), amount, category: 'Compras', need: 'flexible', note: 'COMPRA ' + key, source: 'bank', auto: true, key, ...o });
+const EXP = [X('a1', 'loja-a', 10), X('a2', 'loja-a', 5), X('b3', 'loja-b', 7, { category: UNCAT, need: '' }), X('c4', 'loja-c', 3, { auto: undefined }), X('d5', 'trf', 1, { note: 'TRF MB WAY P/ *****1' })];
+t('pendingGroups: só pendentes, agrupados por chave, maiores primeiro', () => {
+  const g = pendingGroups(EXP);
+  assert.deepEqual(g.map(x => [x.key, x.n, x.total]), [['loja-a', 2, 15], ['trf', 1, 1], ['loja-b', 1, 7]].sort((a, b) => b[2] - a[2]));
+});
+t('applyDecisions: confirm vira regra e tira auto; dúvida mantém auto e não cria regra', () => {
+  const r = applyDecisions(EXP, [{ key: 'loja-a', category: 'Mercado', need: 'essential', confirm: true }, { key: 'loja-b', category: 'Lazer', confirm: false }]);
+  assert.equal(r.confirmed, 2); assert.equal(r.doubtful, 1); assert.deepEqual(r.errors, []);
+  assert.ok(r.updates.filter(u => u.key === 'loja-a').every(u => u.category === 'Mercado' && u.need === 'essential' && !('auto' in u)));
+  const b = r.updates.find(u => u.key === 'loja-b'); assert.deepEqual([b.category, b.need, b.auto], ['Lazer', '', true]);
+  assert.deepEqual(r.rules.map(x => [x.id, x.category, x.need]), [['loja-a', 'Mercado', 'essential']]);
+});
+t('applyDecisions: não toca no confirmado pelo dono, recusa chave genérica, categoria vazia ou sem pendentes', () => {
+  const r = applyDecisions(EXP, [{ key: 'loja-c', category: 'X', confirm: true }, { key: 'trf', category: 'X', confirm: true }, { key: 'loja-a', category: '', confirm: true }, { key: 'loja-b', category: UNCAT, confirm: true }]);
+  assert.equal(r.updates.length, 0); assert.equal(r.errors.length, 4);
+});
+t('applyDecisions: canon normaliza a grafia da categoria', () => {
+  const r = applyDecisions(EXP, [{ key: 'loja-a', category: 'mercado', confirm: true }], c => c === 'mercado' ? 'Mercado' : c);
+  assert.equal(r.updates[0].category, 'Mercado');
 });
 console.log(`\n${n} passed`);

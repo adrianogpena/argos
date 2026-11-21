@@ -1,6 +1,6 @@
 ---
 name: importar-extrato
-description: Lê extratos bancários (PDF, CSV ou texto; um mês ou vários meses num arquivo) e grava os gastos no cofre do Argos (coleção `expenses`), com categoria e tipo. Use quando o dono pedir para importar, ler, atualizar ou lançar extrato(s) do banco na aba Gastos.
+description: Lê extratos bancários (PDF, CSV ou texto; um mês ou vários meses num arquivo) e grava os gastos no cofre do Argos (coleção `expenses`), com categoria e tipo. Também revisa os gastos pendentes ("palpite: confira" e "Sem categoria"): pesquisa o nome do comerciante e confirma sozinha os de alta confiança. Use quando o dono pedir para importar, ler, atualizar, lançar, revisar ou confirmar extrato(s)/gastos do banco na aba Gastos.
 ---
 
 # Importar extrato para o cofre
@@ -30,7 +30,18 @@ A aba Gastos só mostra dados; **não tem mais importação**. Quem lê o extrat
 7. **Montar o JSON** em arquivo temporário (fora do git): `[{"date":"AAAA-MM-DD","amount":12.5,"desc":"texto do banco, sem encurtar","category":"Mercado","need":"essential"}]`. `amount` positivo. Mantenha `desc` fiel ao texto do banco (o id e a chave do comerciante saem dele; reimportar o mesmo lançamento gera o mesmo id, então não duplica nem sobrescreve edições).
 8. **Simular e mostrar ao dono**: `node tools/expenses.mjs push entradas.json` (usa `VAULT_URL`/`VAULT_TOKEN` do ambiente para checar duplicados e regras; sem eles ainda simula). Mostre total por mês, quantos lançamentos entraram quantos o `push` descartou por regra "não é gasto" e o que você mesmo deixou de fora e por quê (dúvidas novas). Só depois de o dono aprovar:
 9. **Gravar**: `node tools/expenses.mjs push entradas.json --apply`. Se faltar `VAULT_URL`/`VAULT_TOKEN`, peça ao dono para rodar o comando com `!` no prompt (ele tem as variáveis). **Nunca peça, escreva nem registre o token.** O Worker precisa estar com `POST /v1/c/:colecao` (`wrangler deploy` em `vault/`).
-10. **Apagar** os arquivos temporários com texto do extrato ao terminar.
+10. **Revisar os pendentes (fase 2, sempre depois de gravar)**: tudo que entra pelo `push` fica "palpite: confira" (`auto`). Não deixe o dono confirmar um por um o que dá para verificar:
+    1. `node tools/expenses.mjs review` lista os pendentes agrupados por comerciante (chave, quantidade, total, categoria atual, tipo, exemplo do texto do banco).
+    2. Para cada comerciante, descubra **o que ele é**, pelo nome: use o seu conhecimento (redes, marcas, bancos, operadoras conhecidas não precisam de busca) e, para nomes que você não conhece, `WebSearch` com **só o nome do estabelecimento (e a localidade, se ajudar a desambiguar)**. Também vale cruzar referências dentro do próprio extrato (ex.: o mesmo número de apólice ou contrato em dois lançamentos). Isso vale para os "Sem categoria" (descobrir a categoria) e para os que já têm palpite (conferir se o palpite está certo: as regras por palavra-chave erram, p. ex. uma palavra de operadora dentro do nome de um cinema).
+    3. **Privacidade na busca:** envie só o nome limpo do comerciante. Nunca valores, datas, números de cartão, referências, IBAN, nem nomes de pessoas. **Transferências para pessoas e MB Way para números mascarados não se pesquisam**: ficam para o dono.
+    4. **Grau de confiança** decide o `confirm`:
+       - **Alta** (confirme, `confirm:true`): marca ou rede conhecida, a busca identificou claramente o negócio e o ramo, o texto do próprio banco diz o que é (farmácia, restaurante, prestação, imposto), ou é o mesmo comerciante de uma regra que o dono já confirmou. Vira regra aprendida e vale nas próximas importações.
+       - **Dúvida** (`confirm:false`): a busca não achou, achou homônimos, o nome serve para mais de um ramo, ou é intermediário de pagamento (gateways, agregadores) que não diz o que foi comprado. Se tiver um palpite razoável, grave a categoria com `confirm:false` (continua "revisar" para o dono); se não tiver nenhum, **não inclua** na decisão e deixe como está. Em dúvida, nunca confirme.
+       - Busca web só acha bem empresas registradas e marcas; comércio pequeno de bairro quase nunca aparece. Não force: deixe para o dono.
+    5. Monte `decisoes.json` (fora do git): `[{"key":"chave-do-comerciante","category":"Mercado","need":"essential","confirm":true}]`. Chaves genéricas (como transferências MB Way) são recusadas pelo script de propósito. Reuse categorias existentes (`rules` as lista); só crie categoria nova quando for clara e nenhuma existente servir, e avise o dono.
+    6. Simule: `node tools/expenses.mjs confirm decisoes.json` (mostra quantos serão confirmados, quantos ficam com dúvida e categorias novas). Mostre o resumo ao dono e aplique com `--apply` (a confirmação automática de alta confiança já foi autorizada pelo dono; mesmo assim, avise o que fez). Só mexe em lançamentos ainda pendentes; o que o dono confirmou nunca é alterado.
+    7. Ao final, relate: quantos confirmados, quantos ficaram com dúvida e **quais comerciantes** restaram para o dono (com a sua melhor hipótese), e as correções de palpite que você fez.
+11. **Apagar** os arquivos temporários com texto do extrato e `decisoes.json` ao terminar.
 
 ## Cuidados
 
