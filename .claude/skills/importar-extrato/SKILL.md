@@ -42,7 +42,8 @@ A aba Gastos só mostra dados; **não tem mais importação**. Quem lê o extrat
     5. Monte `decisoes.json` (fora do git): `[{"key":"chave-do-comerciante","category":"Mercado","need":"essential","label":"Supermercado","confirm":true}]` (`label` opcional: omitido mantém o rótulo atual; `""` remove). Chaves genéricas (como transferências MB Way) são recusadas pelo script de propósito. Reuse categorias existentes (`rules` as lista); só crie categoria nova quando for clara e nenhuma existente servir, e avise o dono.
     6. Simule: `node tools/expenses.mjs confirm decisoes.json` (mostra quantos serão confirmados, quantos ficam com dúvida e categorias novas). Mostre o resumo ao dono e aplique com `--apply` (a confirmação automática de alta confiança já foi autorizada pelo dono; mesmo assim, avise o que fez). Só mexe em lançamentos ainda pendentes; o que o dono confirmou nunca é alterado.
     7. Ao final, relate: quantos confirmados, quantos ficaram com dúvida e **quais comerciantes** restaram para o dono (com a sua melhor hipótese), e as correções de palpite que você fez.
-11. **Apagar** os arquivos temporários com texto do extrato e `decisoes.json` ao terminar.
+11. **Arquivar o extrato inteiro (sempre)**: além dos gastos, grave **todas** as linhas do extrato (gastos, entradas, poupança, transferências, todas as contas) na coleção `bank-lines`, que não aparece em tela nem relatório e só serve para conferir o original. Gere `linhas.json` (fora do git) com `[{account,accountNo,period,date,valueDate,desc,amount(com sinal: negativo = saída),balance,seq}]` e rode `node tools/expenses.mjs raw linhas.json --apply` (ids estáveis: reimportar não duplica). Assim nada que a regra "não é gasto" descartou se perde.
+12. **Apagar** os arquivos temporários com texto do extrato e `decisoes.json` ao terminar.
 
 ## Rótulos
 

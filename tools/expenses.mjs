@@ -8,12 +8,14 @@
 //   node tools/expenses.mjs groups                      lista TODOS os gastos por comerciante (chave, qtd, total, categoria, tipo, rótulo, exemplo)
 //   node tools/expenses.mjs label <rotulos.json> [--apply]    rotula gastos já gravados: [{key|id, label}] (simula sem --apply)
 //   node tools/expenses.mjs confirm <decisoes.json> [--apply]   aplica decisões [{key, category, need, confirm}] (simula sem --apply)
+//   node tools/expenses.mjs raw <linhas.json> [--file=nome.pdf] [--apply]   arquiva (cada linha leva stmt=AAAA-MM do extrato e file) TODAS as linhas do extrato em `bank-lines` (invisível nas telas; só para conferência)
 //   node tools/expenses.mjs push <entradas.json>        simulação: mostra o que seria gravado
 //   node tools/expenses.mjs push <entradas.json> --apply   grava no cofre
 //
 // <entradas.json> = [{ "date":"AAAA-MM-DD", "amount":12.5, "desc":"texto do banco", "category":"Mercado", "need":"essential|flexible", "label":"Supermercado" }]
 // amount sempre positivo (só gastos). VAULT_URL e VAULT_TOKEN vêm do ambiente; o token nunca é escrito em arquivo nem exibido.
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels } from '../lib/classify.js';
 import { expenseRecord, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 
@@ -112,6 +114,24 @@ if (cmd === 'rules') {
   need();
   for (let i = 0; i < records.length; i += 200) await call('POST', '/v1/c/expenses', { items: records.slice(i, i + 200) });
   console.log(`Gravados ${records.length} gastos no cofre.`);
+} else if (cmd === 'raw' && file) {
+  // Arquivo morto do extrato: TODA linha (gastos, entradas, poupança, transferências), fiel ao banco. Coleção `bank-lines`,
+  // que nenhuma tela nem relatório lê; serve só para conferir o extrato original. Id = hash estável: reimportar não duplica.
+  const lines = JSON.parse(readFileSync(file, 'utf8'));
+  const seen = new Map();
+  const srcFile = (flags.find(f => f.startsWith('--file=')) || '').slice(7);   // arquivo de origem (opcional)
+  const items = lines.map(l => {
+    const base = [l.accountNo, l.date, l.valueDate, l.desc, l.amount.toFixed(2), l.balance.toFixed(2)].join('|');
+    const n = seen.get(base) || 0; seen.set(base, n + 1);
+    const stmt = l.stmt || l.period.split('/')[1].slice(0, 7);   // mês do extrato (AAAA-MM), pelo fim do período da seção
+    return { id: 'b' + createHash('sha1').update(base + '|' + n).digest('hex').slice(0, 20), ...l, stmt, ...(srcFile ? { file: srcFile } : {}) };
+  });
+  const byYear = new Map(); for (const x of items) byYear.set(x.date.slice(0, 7), (byYear.get(x.date.slice(0, 7)) || 0) + 1);
+  console.log(`${items.length} linhas (${[...byYear].sort().map(([m, n]) => m + ':' + n).join(' ')})`);
+  if (!flags.includes('--apply')) { console.log('Simulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
+  need();
+  for (let i = 0; i < items.length; i += 200) await call('POST', '/v1/c/bank-lines', { items: items.slice(i, i + 200) });
+  console.log(`Gravadas ${items.length} linhas em bank-lines.`);
 } else {
-  console.error('uso: node tools/expenses.mjs rules | rule <chave> ... | review | groups | label <rotulos.json> | confirm <decisoes.json> | push <entradas.json> [--apply]'); process.exit(1);
+  console.error('uso: node tools/expenses.mjs rules | rule <chave> ... | review | groups | label <rotulos.json> | confirm <decisoes.json> | push <entradas.json> [--apply] | raw <linhas.json> [--apply]'); process.exit(1);
 }
