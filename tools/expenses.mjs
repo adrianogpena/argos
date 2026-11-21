@@ -4,10 +4,10 @@
 //   node tools/expenses.mjs rules                       lista as regras (categoria/tipo ou "não é gasto" por comerciante) e as categorias em uso
 //   node tools/expenses.mjs rule <chave> --skip [rótulo]            grava regra "não é gasto" (poupança, transferência própria...)
 //   node tools/expenses.mjs rule <chave> <categoria> <essential|flexible|-> [rótulo]   grava regra de categoria
-//   node tools/expenses.mjs review                      lista os gastos pendentes (palpite a confirmar) agrupados por comerciante
+//   node tools/expenses.mjs review [AAAA-MM] [--motivo=X|--sem-motivo] [--links] [--html=f.html] [--sugerir=decisoes.json]   pendentes por comerciante (chaves unificadas), maiores primeiro; --html gera tela com links de busca; --sugerir grava as decisões de alta confiança (ramo no texto do banco)
 //   node tools/expenses.mjs groups                      lista TODOS os gastos por comerciante (chave, qtd, total, categoria, tipo, rótulo, exemplo)
 //   node tools/expenses.mjs label <rotulos.json> [--apply]    rotula gastos já gravados: [{key|id, label}] (simula sem --apply)
-//   node tools/expenses.mjs confirm <decisoes.json> [--apply]   aplica decisões [{key, category, need, confirm}] (simula sem --apply)
+//   node tools/expenses.mjs confirm <decisoes.json> [--apply]   aplica decisões [{key, keys?, category, need, label, confirm, motivo}] (simula sem --apply)
 //   node tools/expenses.mjs months [--init]            estado de cada mês do extrato (arquivado | pendente | validado); --init cria os registros em `bank-months`
 //   node tools/expenses.mjs month AAAA-MM [--lines]     relatório de conferência do mês (saldos, em Gastos x fora, entradas) para validar com o banco
 //   node tools/expenses.mjs validate AAAA-MM [nota] [--undo] [--apply]   marca o mês como validado (guarda os totais); --undo reabre
@@ -17,10 +17,10 @@
 //
 // <entradas.json> = [{ "date":"AAAA-MM-DD", "amount":12.5, "desc":"texto do banco", "category":"Mercado", "need":"essential|flexible", "label":"Supermercado" }]
 // amount sempre positivo (só gastos). VAULT_URL e VAULT_TOKEN vêm do ambiente; o token nunca é escrito em arquivo nem exibido.
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { monthReport, isMonth, MONTH_STATUS } from '../lib/bank-month.js';
-import { buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels } from '../lib/classify.js';
+import { buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels, displayName, searchUrl, inferBranch, recurrenceHint, isIntermediary, canonMotivo, GENERIC_KEYS } from '../lib/classify.js';
 import { expenseRecord, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 
 const [cmd, file, ...flags] = process.argv.slice(2);
@@ -49,11 +49,38 @@ if (cmd === 'rules') {
   console.log('\n# categorias em uso (qtd)');
   for (const [c, n] of [...cats].sort((a, b) => b[1] - a[1])) console.log(`${c} (${n})`);
 } else if (cmd === 'review') {
+  // review [AAAA-MM] [--motivo=X|--sem-motivo] [--links] [--html=arquivo.html] [--sugerir=decisoes.json]
   need();
+  const month = isMonth(file) ? file : '', fl = isMonth(file) ? flags : [file, ...flags].filter(Boolean);
+  const opt = n => (fl.find(f => f.startsWith('--' + n + '=')) || '').slice(n.length + 3);
   const e = await call('GET', '/v1/c/expenses');
-  const g = pendingGroups(e.items);
-  console.log(`# pendentes: ${e.items.filter(x => x.auto).length} lançamentos em ${g.length} comerciantes (chave | qtd | total € | categoria atual | tipo | rótulo | exemplo)`);
-  for (const x of g) console.log([x.key, x.n, x.total.toFixed(2), x.category, x.need || '-', x.label || '-', x.example].join(' | '));
+  let g = pendingGroups(e.items, { merge: true, month });
+  const mo = opt('motivo'); if (mo) g = g.filter(x => x.motivo === canonMotivo(mo)); if (fl.includes('--sem-motivo')) g = g.filter(x => !x.motivo);
+  const nAuto = e.items.filter(x => x.auto && (!month || x.date.startsWith(month))).length;
+  const rows = g.map(x => { const nm = displayName(x.example), person = x.motivo === 'pessoa' || x.keys.some(k => GENERIC_KEYS.has(k));
+    return { ...x, nm, url: person ? '' : searchUrl(nm), ramo: person ? null : inferBranch(x.example, x.keys[0]), hint: recurrenceHint(x), interm: x.keys.some(isIntermediary) }; });
+  console.log(`# pendentes${month ? ' de ' + month : ''}: ${nAuto} lançamentos em ${rows.length} comerciantes, maiores primeiro. Grupo = chaves unificadas (use o id do grupo no confirm).`);
+  console.log('# id do grupo (chaves) | qtd | total € | média € | de → a | categoria atual | tipo | rótulo | motivo | sinais | exemplo');
+  for (const x of rows) {
+    console.log([x.key + (x.keys.length > 1 ? ' (' + x.keys.join(',') + ')' : ''), x.n, x.total.toFixed(2), x.avg.toFixed(2), x.from + '→' + x.to, x.category + (x.mixed ? '*' : ''), x.need || '-', x.label || '-', x.motivo || '-',
+      [x.interm && 'intermediário', x.ramo && 'ramo-no-texto:' + x.ramo.label, x.hint].filter(Boolean).join(';') || '-', x.example].join(' | '));
+    if (fl.includes('--links') && x.url) console.log('    ' + x.url);
+  }
+  const sug = opt('sugerir');
+  if (sug) {
+    const d = rows.filter(x => x.ramo && !x.interm && x.keys.every(k => !GENERIC_KEYS.has(k)) && !x.motivo).map(x => ({ key: x.key, category: x.ramo.category, need: x.ramo.need, label: x.ramo.label, confirm: true }));
+    writeFileSync(sug, JSON.stringify(d, null, 1));
+    console.log('');
+    console.log(`Sugeridas ${d.length} decisões de alta confiança (ramo declarado no texto do banco) em ${sug}.`);
+  }
+  const html = opt('html');
+  if (html) {
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const tr = rows.map(x => `<tr><td><b>${esc(x.nm)}</b><br><small>${esc(x.keys.join(', '))}</small></td><td>${x.n}</td><td>${x.total.toFixed(2)}</td><td>${x.from}<br>${x.to}</td><td>${esc(x.category)}${x.label ? ' › ' + esc(x.label) : ''}</td><td>${esc(x.motivo || '')}${x.interm ? ' intermediário' : ''}${x.hint ? '<br><small>' + esc(x.hint) + '</small>' : ''}</td><td>${x.url ? '<a target="_blank" rel="noopener" href="' + esc(x.url) + '">pesquisar</a>' : '—'}</td></tr>`).join('\n');
+    writeFileSync(html, `<!doctype html><meta charset="utf-8"><title>Pendentes ${esc(month)}</title><style>body{font:14px system-ui;margin:1rem}table{border-collapse:collapse}td,th{border-bottom:1px solid #8884;padding:.35rem .6rem;text-align:left;vertical-align:top}th{position:sticky;top:0;background:Canvas}</style><h1>Pendentes ${esc(month)} (${rows.length} comerciantes)</h1><table><tr><th>Comerciante<th>Qtd<th>Total €<th>Datas<th>Proposta<th>Dúvida<th>Busca</tr>${tr}</table>`);
+    console.log('');
+    console.log('Página gerada: ' + html + ' (fora do git; contém dados reais).');
+  }
 } else if (cmd === 'groups') {
   need();
   const e = await call('GET', '/v1/c/expenses');
@@ -81,12 +108,13 @@ if (cmd === 'rules') {
   const e = await call('GET', '/v1/c/expenses');
   const opts = categoryOptions(e.items);
   const r = applyDecisions(e.items, decisions, c => canonicalCategory(c, opts));
-  r.errors.forEach(x => console.error('AVISO ' + x));
+  r.errors.forEach(x => console.error('RECUSADA ' + x)); r.warnings.forEach(x => console.error('AVISO ' + x));
   const bad = r.updates.map(u => expenseRecord(u)).filter(x => !x.ok);
   if (bad.length) { console.error('Registro inválido; nada foi enviado.'); process.exit(1); }
   const news = [...new Set(r.updates.map(u => u.category))].filter(c => !opts.includes(c));
   console.log(`Confirmados: ${r.confirmed} (viram regra: ${r.rules.length}) | com dúvida (seguem "revisar"): ${r.doubtful} | avisos: ${r.errors.length}`);
   if (news.length) console.log('Categorias novas: ' + news.join(', '));
+  if (r.doubtful) console.log('Dúvidas por motivo: ' + Object.entries(r.byMotivo).map(([m, n]) => m + ' ' + n).join(' | '));
   if (!flags.includes('--apply')) { console.log('\nSimulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
   for (let i = 0; i < r.updates.length; i += 200) await call('POST', '/v1/c/expenses', { items: r.updates.slice(i, i + 200) });
   for (let i = 0; i < r.rules.length; i += 200) await call('POST', '/v1/c/expense-rules', { items: r.rules.slice(i, i + 200) });  // lote: 1 gravação no KV, não 1 por regra

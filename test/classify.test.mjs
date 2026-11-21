@@ -1,6 +1,6 @@
 // node test/classify.test.mjs  (dados fictícios)
 import assert from 'node:assert/strict';
-import { descKey, bankId, buildRecords, pendingGroups, applyDecisions, applyLabels, merchantGroups, UNCAT } from '../lib/classify.js';
+import { descKey, bankId, buildRecords, pendingGroups, applyDecisions, applyLabels, merchantGroups, keyGroups, displayName, searchUrl, inferBranch, recurrenceHint, isIntermediary, canonMotivo, UNCAT } from '../lib/classify.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 
 t('descKey ignora números, datas e palavras de banco', () => {
@@ -89,5 +89,74 @@ t('applyLabels: rotula por chave ou por id, atualiza tag da regra, não confirma
   const r2 = applyLabels(ex, [{ key: 'loja-a', label: '' }], new Map([['loja-a', { id: 'loja-a', category: 'Mercado', tag: 'velho' }]]));
   assert.equal('label' in r2.updates[1], false); assert.equal('tag' in r2.rules[0], false);
   assert.equal(merchantGroups(ex).find(g => g.key === 'loja-a').n, 2);
+});
+
+const M = (id, key, amount, date, note, o = {}) => ({ id, date, amount, category: UNCAT, need: '', note, source: 'bank', auto: true, key, ...o });
+const MX = [
+  M('m1', 'casa-exemplo-pedros', 20, '2024-01-05', 'COMPRA 5061 CASA EXEMPLO 4415-230 PEDROS'),
+  M('m2', 'casa-exemplo-contactless', 30, '2024-02-09', 'COMPRA 5061 CASA EXEMPLO330 CONTACTLESS'),
+  M('m3', 'padaria-ficticia', 3, '2024-01-06', 'COMPRA 5061 PADARIA FICTICIA CONTACTLESS'),
+  M('m4', 'hipay-exemplo', 50, '2024-01-07', 'COMPRA 5061 HIPAY EXEMPLO'),
+  M('m5', 'trf', 9, '2024-01-08', 'TRF P/ PESSOA EXEMPLO'),
+];
+t('keyGroups: une localidade/sufixo e nome truncado, mas não palavras genéricas nem gateways', () => {
+  const g = keyGroups(['expoente-pedros', 'expoente-contactless', 'schlicht-soa-obri', 'schlichting-soarestel-contactless', 'partilha-conceitos-contactless', 'partilha-conceitos-pedroso',
+    'google-play-apps', 'google-payment-ireland', 'sumup-a', 'sumup-b', 'cafe-a', 'cafe-b', 'curto-a', 'curto-b', 'loja-x']);
+  assert.equal(g.get('expoente-pedros'), 'expoente'); assert.equal(g.get('expoente-contactless'), 'expoente');
+  assert.equal(g.get('schlicht-soa-obri'), g.get('schlichting-soarestel-contactless'));
+  assert.equal(g.get('partilha-conceitos-pedroso'), g.get('partilha-conceitos-contactless'));
+  for (const k of ['google-play-apps', 'google-payment-ireland', 'sumup-a', 'sumup-b', 'cafe-a', 'cafe-b', 'curto-a', 'curto-b', 'loja-x']) assert.equal(g.get(k), k);
+});
+t('merchantGroups: merge unifica, month filtra mantendo o id do grupo, ordena por total; sem opções nada muda', () => {
+  assert.equal(pendingGroups(MX).length, 5);
+  assert.equal(pendingGroups(MX, { merge: true }).length, 5);                  // 'casa' é genérica: não une
+  const Y = [M('y1', 'bazar-exemplo-pedros', 20, '2024-01-05', 'BAZAR EXEMPLO PEDROS'), M('y2', 'bazar-exemplo-contactless', 30, '2024-02-09', 'BAZAR EXEMPLO'),
+    M('y3', 'bazar-exemplo-lisboa', 5, '2024-03-01', 'BAZAR EXEMPLO LISBOA'), M('y4', 'outro-lugar', 99, '2024-01-02', 'OUTRO LUGAR')];
+  const g = pendingGroups(Y, { merge: true });
+  const b = g.find(x => x.key === 'bazar'); assert.deepEqual([b.n, b.total, b.from, b.to, b.avg, b.keys.length], [3, 55, '2024-01-05', '2024-03-01', 18.33, 3]);
+  const jan = pendingGroups(Y, { merge: true, month: '2024-01' });
+  assert.equal(jan.find(x => x.key === 'bazar').n, 1);                         // id estável apesar do filtro
+  assert.deepEqual(jan.map(x => x.total), [99, 20]);
+});
+t('displayName e searchUrl: nome limpo, sem cartão/contactless/números; link só com o nome', () => {
+  assert.equal(displayName('COMPRA 5061 CASA EXEMPLO4415-230 PEDROS'), 'CASA EXEMPLO PEDROS');
+  assert.equal(displayName('COMPRA 5061 BAR FICTICIO CONTACTLESS'), 'BAR FICTICIO');
+  assert.equal(displayName('PAG SERV 12101/273840846 HIPAY SAS'), 'HIPAY SAS');
+  assert.equal(searchUrl('BAR FICTICIO PORTO'), 'https://www.google.com/search?q=BAR+FICTICIO+PORTO');
+});
+t('inferBranch: só quando o texto do banco declara o ramo; nunca intermediário nem transferência', () => {
+  assert.deepEqual(inferBranch('COMPRA 5061 PASTELARIA FICTICIA PORTO'), { category: 'Restaurantes', need: 'flexible', label: 'Café' });
+  assert.equal(inferBranch('COMPRA 5061 SUPERMERCADO EXEMPLO').label, 'Supermercado');
+  assert.equal(inferBranch('COMPRA 5061 LOJA EXEMPLO'), null);
+  assert.equal(inferBranch('COMPRA 5061 HIPAY RESTAURANTE'), null);
+  assert.equal(inferBranch('TRF P/ RESTAURANTE', 'trf'), null);
+});
+t('recurrenceHint: só apoio (n>=3 e média baixa)', () => {
+  assert.ok(recurrenceHint({ n: 4, avg: 2.5 })); assert.equal(recurrenceHint({ n: 2, avg: 2 }), ''); assert.equal(recurrenceHint({ n: 5, avg: 30 }), '');
+});
+t('motivo: canonMotivo aceita sem acento; intermediário reconhecido', () => {
+  assert.equal(canonMotivo('intermediario'), 'intermediário'); assert.equal(canonMotivo('homonimos'), 'homónimos'); assert.equal(canonMotivo('xyz'), '');
+  assert.ok(isIntermediary('https-hipay-com')); assert.ok(!isIntermediary('loja-exemplo'));
+});
+t('applyDecisions: motivo gravado na dúvida e limpo ao confirmar; recusa motivo+confirm, intermediário, motivo inválido; avisa dúvida sem motivo', () => {
+  const r = applyDecisions(MX, [
+    { key: 'hipay-exemplo', category: 'Compras', confirm: false, motivo: 'intermediário' },
+    { key: 'trf', category: 'Outros', confirm: false, motivo: 'pessoa' },
+    { key: 'padaria-ficticia', category: 'Restaurantes', confirm: false }]);
+  assert.equal(r.errors.length, 1);                                            // 'trf' é chave genérica
+  assert.equal(r.updates.find(u => u.id === 'm4').motivo, 'intermediário'); assert.equal(r.warnings.length, 1);
+  assert.deepEqual(r.byMotivo, { 'intermediário': 1, '(sem motivo)': 1 });
+  const bad = applyDecisions(MX, [{ key: 'hipay-exemplo', category: 'Compras', confirm: true }, { key: 'padaria-ficticia', category: 'Restaurantes', confirm: true, motivo: 'homónimos' }, { key: 'padaria-ficticia', category: 'Restaurantes', confirm: false, motivo: 'zzz' }]);
+  assert.equal(bad.errors.length, 3); assert.equal(bad.updates.length, 0);
+  const prev = MX.map(x => x.id === 'm3' ? { ...x, motivo: 'ramo-ambíguo' } : x);
+  const ok = applyDecisions(prev, [{ key: 'padaria-ficticia', category: 'Restaurantes', need: 'flexible', label: 'Café', confirm: true }]);
+  assert.ok(!('motivo' in ok.updates[0]) && !('auto' in ok.updates[0]));
+});
+t('applyDecisions: decisão no id do grupo vale para todas as chaves (uma regra por chave crua); keys explícitas unem o resto', () => {
+  const G = [M('g1', 'bazar-exemplo-pedros', 10, '2024-01-01', 'COMPRA BAZAR EXEMPLO PEDROS'), M('g2', 'bazar-exemplo-contactless', 12, '2024-02-01', 'COMPRA BAZAR EXEMPLO'), M('g3', 'outra-grafia', 7, '2024-03-01', 'OUTRA GRAFIA')];
+  const r = applyDecisions(G, [{ key: 'bazar', keys: ['outra-grafia'], category: 'Compras', need: 'flexible', label: 'Casa', confirm: true }]);
+  assert.equal(r.confirmed, 3); assert.deepEqual(r.rules.map(x => x.id).sort(), ['bazar-exemplo-contactless', 'bazar-exemplo-pedros', 'outra-grafia']);
+  assert.ok(r.updates.every(u => u.key !== 'bazar' && !('auto' in u)));         // chave crua preservada (ids e regras seguem valendo)
+  assert.ok(r.rules.every(x => x.tag === 'Casa'));
 });
 console.log(`\n${n} passed`);
