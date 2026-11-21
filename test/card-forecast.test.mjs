@@ -59,4 +59,19 @@ t('stampRatio e monthsBetween', () => {
   near(stampRatio([{ interest: 10, stamp: 1.4 }, { interest: 0, stamp: 0 }, { interest: 20, stamp: 2.6 }]), 4 / 30, 0.001);
   assert.equal(stampRatio([]), 0.1373); assert.equal(monthsBetween('2029-11', '2030-02'), 3);
 });
+t('plano: extra mensal e extra em jun/nov encurtam o prazo e cortam juros; auto + extra = parcela', () => {
+  const base = simulate(ST(), { mode: 'min' });
+  const mo = simulate(ST(), { mode: 'min', extra: 100 }), sp = simulate(ST(), { mode: 'min', special: 500 });
+  assert.equal(mo.rows[0].payment, 130); assert.equal(mo.rows[0].auto, 30); assert.equal(mo.rows[0].extra, 100);
+  assert.ok(mo.months < base.months && mo.futureCharges < base.futureCharges);
+  // 2030-02 (1ª parcela) não é jun/nov: sem extra especial; o mês de junho e o de novembro levam +500
+  assert.equal(sp.rows[0].extra, 0); const jun = sp.rows.find(r => r.month.endsWith('-06')); assert.equal(jun.extra, 500);
+  assert.ok(sp.rows.filter(r => r.month.endsWith('-11')).every(r => r.extra === 500 || r.balanceAfter === 0));
+  for (const r of mo.rows) near(r.payment, r.auto + r.extra, 0.011);
+});
+t('plano: compras novas aumentam saldo e prazo; se superam o pagamento a dívida nunca fecha', () => {
+  const a = simulate(ST(), { mode: 'min', extra: 100 }), b = simulate(ST(), { mode: 'min', extra: 100, purchases: 50 });
+  assert.ok(b.months > a.months); near(b.futureCharges, b.totalPaid - 1000 - b.bought);
+  assert.equal(simulate(ST(), { mode: 'min', purchases: 400, maxMonths: 60 }).capped, true);
+});
 console.log(n + ' grupos ok');

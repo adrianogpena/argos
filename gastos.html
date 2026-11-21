@@ -138,10 +138,14 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
     <div class="row"><button class="btn" id="btnAdd">+ Gasto</button>
       <span class="msg" id="sync" role="status"></span></div>
     <div class="month"><button class="btn ghost" id="prev" aria-label="Mês anterior">‹</button><div class="label" id="monthLabel"></div><button class="btn ghost" id="next" aria-label="Próximo mês">›</button></div>
+    <div id="forecast" hidden>
+      <div class="card"><h2>Previsão: quanto fica livre</h2><div id="fc"></div></div>
+      <div class="card"><h2>Gastos fixos esperados (média dos últimos meses)</h2><div id="fixed"></div></div>
+      <div class="tag" style="margin:0 0 12px">Este mês ainda não tem extrato, então só há previsão. Os gastos reais aparecem aqui depois que o extrato for importado.</div>
+    </div>
+    <div id="actual">
     <div class="tiles" id="tiles"></div><div class="tag" id="needNote" style="margin:-6px 0 12px"></div>
-    <div class="card"><h2>Previsão: quanto fica livre</h2><div id="fc"></div></div>
     <div class="card" id="cardPace" hidden><h2>Ritmo do mês atual</h2><div id="pace"></div></div>
-    <div class="card"><h2>Gastos fixos (média dos últimos meses)</h2><div id="fixed"></div></div>
     <div class="card"><h2>Contra a sua média</h2><div id="cmp"></div></div>
     <div class="card"><h2>Maiores comerciantes</h2><div class="chips" id="mchips"></div><div id="merch"></div></div>
     <div class="card"><h2>Essencial x flexível, mês a mês (€)</h2><div id="chNeed"></div><div class="leg"><span><i style="background:var(--series)"></i>Essencial</span><span><i style="background:var(--warn)"></i>Flexível</span><span><i style="background:var(--ink-3)"></i>Sem tipo</span></div></div>
@@ -149,6 +153,7 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
     <div class="card"><h2>Por categoria no mês</h2><div id="chCats"></div></div>
     <div class="card"><h2>Detalhe por rótulo no mês</h2><div id="chLabels"></div></div>
     <div class="card"><h2>Lançamentos do mês</h2><div class="chips" id="chips"></div><ul class="list" id="list"></ul></div>
+    </div>
     <div class="row"><button class="btn ghost" id="btnExport">Baixar backup (JSON)</button></div>
   </main>
   <p class="priv">Os dados ficam no seu cofre (Cloudflare) e uma cópia fica neste aparelho para funcionar sem internet.</p>
@@ -188,11 +193,12 @@ const dateBR = s => s.split('-').reverse().join('/');
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const monthName = k => { const n = MONTHS[+k.slice(5) - 1]; return n[0].toUpperCase() + n.slice(1) + ' de ' + k.slice(0, 4); };
 
-let expenses = [], rules = new Map(), month = today().slice(0, 7), editing = null, filter = 'all', plan = null, planErr = '', mrange = 'month';
+let expenses = [], rules = new Map(), month = today().slice(0, 7), started = false, editing = null, filter = 'all', plan = null, planErr = '', mrange = 'month';
 
 async function load() {
   const [e, r] = await Promise.all([vault.list('expenses'), vault.list('expense-rules')]);
   expenses = e.items; rules = new Map(r.items.map(x => [x.id, x]));
+  if (!started) { started = true; month = fcMonth(expenses); }   // abre no mês de previsão
   $('#setup').hidden = true; $('#app').hidden = false;
   $('#sync').textContent = e.stale ? 'Offline: salvo neste aparelho.' : '';
   render();
@@ -211,12 +217,20 @@ async function loadSalary() {
   render();
 }
 const all = () => expenses;
+/** Último mês com extrato (gastos do banco ou do cartão; lançamento manual não conta). O mês seguinte é só previsão. */
+const dataMonth = items => items.reduce((m, x) => (x.source === 'bank' || x.source === 'card') && x.date.slice(0, 7) > m ? x.date.slice(0, 7) : m, '');
+const fcMonth = items => { const d = dataMonth(items); return d ? addMonths(d, 1) : today().slice(0, 7); };
 
 function render() {
-  const items = all(), total = monthTotal(items, month), d = delta(items, month), ns = needSplit(items, month);
+  const items = all(), F = fcMonth(items);
+  if (month > F) month = F;
+  const isFc = month >= F;
+  $('#monthLabel').textContent = monthName(month) + (isFc ? ' · previsão' : '');
+  $('#next').disabled = month >= F;
+  $('#actual').hidden = isFc; $('#forecast').hidden = !isFc; $('#btnAdd').hidden = isFc;
+  if (isFc) { forecastView(items, F); return; }
+  const total = monthTotal(items, month), d = delta(items, month), ns = needSplit(items, month);
   const inMonth = items.filter(x => x.date.startsWith(month));
-  $('#monthLabel').textContent = monthName(month);
-  $('#next').disabled = month >= today().slice(0, 7);
   $('#tiles').innerHTML =
     `<div class="tile"><div class="k">Total do mês</div><div><span class="v">${eur(total)}</span></div></div>` +
     `<div class="tile"><div class="k">Contra o mês anterior</div><div><span class="v ${d == null ? '' : d > 0 ? 'up' : 'down'}">${d == null ? '–' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d * 100)) + '%'}</span></div></div>` +
@@ -247,37 +261,40 @@ function render() {
 const dayBR = s => s.slice(8) + '/' + s.slice(5, 7);
 const sgn = n => (n < 0 ? '−' : '+') + eur(Math.abs(n));
 
-function reports(items) {
-  const now = new Date(), cur = nowKey(now), nxt = addMonths(cur, 1);
-  // 1) Previsão: o que falta no mês atual e o mês seguinte inteiro.
+/** Mês sem extrato: só a previsão (salário, fixos, o típico de variável) e os fixos esperados. Âncora = meio do mês previsto, para a janela de histórico terminar no último mês com extrato. */
+function forecastView(items, F) {
+  const anchor = new Date(+F.slice(0, 4), +F.slice(5) - 1, 15);
   const block = f => {
-    const title = `<div class="fc-h"><span>${monthName(f.month)}</span><small>${f.isCurrent ? 'o que ainda falta' : 'mês seguinte'}</small></div>`;
+    const title = `<div class="fc-h"><span>${monthName(f.month)}</span><small>previsão</small></div>`;
     const inc = f.income ? `<div class="fc-r"><span>Salário previsto ~${dayBR(f.income.date)}${f.income.double ? ' <b>(com 13º/14º)</b>' : ''}</span><span class="num down">${f.isCurrent && !f.incomePending ? 'já recebido' : sgn(f.incomePending)}</span></div>` : '';
     const rows = f.rows.map(r => `<div class="fc-r${r.done ? ' done' : ''}"><span>${dayBR(r.date)} · ${esc(r.name)}</span><span class="num">${eur(r.amount)}</span></div>`).join('');
-    return title + inc + `<details><summary>Fixos ${f.isCurrent ? 'que faltam' : ''}: <b class="num">−${eur(f.fixedTotal)}</b> (${f.rows.filter(r => !r.done).length})</summary>${rows || '<div class="empty">Nenhum fixo detectado.</div>'}</details>` +
+    return title + inc + `<details><summary>Fixos${f.isCurrent ? ' que faltam' : ''}: <b class="num">−${eur(f.fixedTotal)}</b> (${f.rows.filter(r => !r.done).length})</summary>${rows || '<div class="empty">Nenhum fixo detectado.</div>'}</details>` +
       `<div class="fc-r big"><span>Livre para outros gastos</span><span class="num ${f.free < 0 ? 'up' : 'down'}">${eur(f.free)}</span></div>` +
       `<div class="fc-r"><span>Gasto variável típico (média de 3 meses)</span><span class="num">−${eur(f.variable)}</span></div>` +
       `<div class="fc-r"><span>Se gastar o típico, sobra</span><span class="num ${f.afterVariable < 0 ? 'up' : 'down'}">${eur(f.afterVariable)}</span></div>`;
   };
-  $('#fc').innerHTML = plan ? block(forecast(items, plan, cur, now)) + block(forecast(items, plan, nxt, now)) +
+  $('#fc').innerHTML = plan ? block(forecast(items, plan, F, anchor, { future: true })) +
     `<div class="fc-note">Salário e 13º/14º (junho e novembro) pelo histórico do extrato; fixos = comerciantes de valor estável em 4 dos últimos 6 meses. "Livre" = receita - fixos, antes de mercado, restaurantes e demais variáveis.</div>`
     : `<div class="empty">${esc(planErr || 'Carregando…')}</div>`;
 
-  // 2) Ritmo do mês atual.
+  const fx = recurring(items, anchor), fxTotal = fx.reduce((s, x) => s + x.amount, 0);
+  $('#fixed').innerHTML = fx.length ? fx.map(x => `<div class="fc-r"><span>${esc(x.name)} <span class="tag">· ${esc(x.category)} · dia ${x.day} · ${x.months}/6 meses</span></span><span class="num">${eur(x.amount)}</span></div>`).join('') +
+    `<div class="fc-r big"><span>Total fixo por mês</span><span class="num">${eur(fxTotal)}</span></div>` : '<div class="empty">Ainda não há meses suficientes.</div>';
+}
+
+/** Relatórios de um mês com extrato: só o que aconteceu nele (e a comparação com a média dos meses anteriores). */
+function reports(items) {
+  const now = new Date(), cur = nowKey(now);
+  // 2) Ritmo: só para o mês em andamento que já tem lançamentos parciais.
   const pr = projection(items, now);
-  $('#cardPace').hidden = !pr;
-  if (pr) {
+  $('#cardPace').hidden = !(pr && pr.month === month);
+  if (pr && pr.month === month) {
     const diff = pr.spent - pr.prevSameDay;
     $('#pace').innerHTML = `<div class="prev">Extrato até <b>${pr.day}/${pr.month.slice(5)}</b>: gasto <b>${eur(pr.spent)}</b>. Mesmo ponto do mês anterior: ${eur(pr.prevSameDay)} (<span class="${diff > 0 ? 'up' : 'down'}">${sgn(diff)}</span>).</div>` +
       `<div class="pace" role="img" aria-label="Gasto até agora contra a previsão"><i style="width:${Math.min(100, pr.spent / Math.max(pr.projected, 1) * 100).toFixed(1)}%"></i></div>` +
       `<div class="fc-r"><span>Previsão de fechar o mês</span><span class="num"><b>${eur(pr.projected)}</b></span></div><div class="fc-r"><span>Mês anterior fechou em</span><span class="num">${eur(pr.prevTotal)}</span></div>` +
       `<div class="fc-note">Previsão = fixos esperados (${eur(pr.fixedTotal)}) + gasto variável até agora no mesmo ritmo.</div>`;
   }
-
-  // 3) Fixos.
-  const fx = recurring(items, now), fxTotal = fx.reduce((s, x) => s + x.amount, 0);
-  $('#fixed').innerHTML = fx.length ? fx.map(x => `<div class="fc-r"><span>${esc(x.name)} <span class="tag">· ${esc(x.category)} · dia ${x.day} · ${x.months}/6 meses</span></span><span class="num">${eur(x.amount)}</span></div>`).join('') +
-    `<div class="fc-r big"><span>Total fixo por mês</span><span class="num">${eur(fxTotal)}</span></div>` : '<div class="empty">Ainda não há meses suficientes.</div>';
 
   // 4) Contra a média dos 3 meses anteriores.
   const cv = categoryVsAverage(items, month, now).filter(c => Math.abs(c.diff) >= 1 || c.amount >= 1).slice(0, 8);

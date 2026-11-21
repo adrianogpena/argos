@@ -81,6 +81,14 @@ button{cursor:pointer}
 .pill.up{background:var(--danger-bg);color:var(--danger)} .pill.down{background:var(--surface-2);color:var(--ok)}
 .empty{color:var(--ink-3);font-size:14px;padding:4px 0}
 .priv{font-size:12px;color:var(--ink-3);margin-top:18px}
+.field{display:block;margin:0 0 10px} .field>span{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
+.field input{width:100%;border:1px solid var(--rule);background:var(--bg);border-radius:10px;padding:10px 12px;font-family:var(--mono)}
+.field small{display:block;color:var(--ink-3);font-size:12px;margin-top:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fc-r{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:14px} .fc-r span:first-child{color:var(--ink-2)} .fc-r .num{white-space:nowrap}
+.fc-r.big{border-top:1px solid var(--rule);margin-top:4px;padding-top:8px;font-weight:700} .fc-r.big span:first-child{color:var(--ink)}
+.warn{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:8px;padding:6px 10px;margin:0 0 10px}
+.chart .line2{fill:none;stroke:var(--series-2);stroke-width:2;stroke-dasharray:5 4}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -99,6 +107,12 @@ button{cursor:pointer}
     <div class="msg" id="sync" role="status"></div>
     <div class="chips" id="modes" role="group" aria-label="Quanto pagar por mês"></div>
     <div class="tiles" id="tiles"></div>
+    <div class="card"><h2>Meu plano: 3% automático + pagamento manual</h2>
+      <p class="lead">O débito automático fica no mínimo (3% do saldo) e você complementa à mão quando puder.</p>
+      <div class="two"><label class="field"><span>Extra por mês (€)</span><input id="pExtra" inputmode="decimal" autocomplete="off"></label>
+        <label class="field"><span>Extra em junho e novembro (€)</span><input id="pSpecial" inputmode="decimal" autocomplete="off"><small>13º e 14º salário</small></label></div>
+      <label class="field"><span>Compras novas no cartão por mês (€)</span><input id="pBuy" inputmode="decimal" autocomplete="off"><small id="pBuyHint"></small></label>
+      <div id="planOut"></div></div>
     <div class="card"><h2>Parcelas até quitar (€)</h2><div id="chPay"></div>
       <div class="leg"><span><i style="background:var(--series)"></i>Capital</span><span><i style="background:var(--series-2)"></i>Juros e selo</span></div><div class="note" id="payNote"></div></div>
     <div class="card"><h2>Dívida restante (€)</h2><div id="chDebt"></div></div>
@@ -127,6 +141,12 @@ const mmyy = k => k.slice(5) + '/' + k.slice(2, 4), mmyyyy = k => k.slice(5) + '
 const span = n => n >= 12 ? `${Math.floor(n / 12)} ano${n >= 24 ? 's' : ''}${n % 12 ? ` e ${n % 12} m` : ''}` : `${n} m`;
 
 let stmts = [], detail = {}, stamp, mode = 'percent', last = null, linesErr = '';
+const PLAN_KEY = 'cartao.plan', plan = { extra: 100, special: 1000, buy: 0 };
+try { Object.assign(plan, JSON.parse(localStorage.getItem(PLAN_KEY)) || {}); } catch (e) {}
+const money = s => { const n = Number(String(s).trim().replace(/\s/g, '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? Math.min(n, 100000) : 0; };
+const fmtIn = n => String(n || 0).replace('.', ',');
+$('#pExtra').value = fmtIn(plan.extra); $('#pSpecial').value = fmtIn(plan.special); $('#pBuy').value = fmtIn(plan.buy);
+for (const [id, k] of [['#pExtra', 'extra'], ['#pSpecial', 'special'], ['#pBuy', 'buy']]) $(id).addEventListener('input', e => { plan[k] = money(e.target.value); try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch (x) {} renderPlan(); });
 
 async function load() {
   const r = await vault.list('card-statements');
@@ -158,6 +178,7 @@ async function loadDetail() {
 }
 
 function render() {
+  renderPlan();
   if (!last) { $('#tiles').innerHTML = '<div class="empty">Nenhum extrato do cartão no cofre.</div>'; return; }
   const pct = last.optionPct || 15, sim = simulate(last, { mode, stamp }), mined = paidMode(stmts);
   $('#modes').innerHTML = [['percent', `Parcela do banco (${pct}%)`], ['min', `Só o mínimo (${(pct * 0.2).toFixed(0)}%)`]].map(([k, l]) =>
@@ -185,6 +206,40 @@ function render() {
   const m = MODES[mode];
   $('#how').innerHTML = `Previsão "${esc(m)}" sem nenhuma compra nova a partir do extrato de ${monthName(last.stmt)}. A 1ª parcela é a que o próprio extrato informa; as seguintes seguem a regra do banco (${mode === 'min' ? 'mínimo = 20% da parcela, nunca menos de 10 €' : `${last.optionPct || 15}% do saldo, nunca menos de 10 €`}). ` +
     `Juros do extrato = (saldo − parcela paga) × TAN ÷ 12 e selo ≈ ${(stamp * 100).toFixed(1).replace('.', ',')}% dos juros; conferido contra os extratos de 2025-11 a 2026-10. Se a TAN mudar, a previsão muda. Taxas novas (combustível, limite excedido) não entram.`;
+}
+
+/** Meu plano: débito automático no mínimo + extras manuais, contra pagar só o mínimo (mesmas compras novas). */
+function renderPlan() {
+  if (!last) return;
+  const buys = stmts.slice(-6).map(s => detail[s.stmt] && detail[s.stmt].purchases).filter(v => v != null);
+  $('#pBuyHint').textContent = buys.length ? `0 = parar de usar o cartão. Média dos últimos ${buys.length} extratos: ${eur(buys.reduce((a, b) => a + b, 0) / buys.length)}.` : '0 = parar de usar o cartão.';
+  const o = { mode: 'min', stamp, purchases: plan.buy }, base = simulate(last, o), mine = simulate(last, { ...o, extra: plan.extra, special: plan.special });
+  if (!mine) { $('#planOut').innerHTML = '<div class="empty">Sem dívida no último extrato.</div>'; return; }
+  const t = (k, v, s) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+  const endTxt = s => s.end ? mmyyyy(s.end) : 'não quita', moTxt = s => s.end ? `${s.months} meses (${span(s.months)})` : 'a dívida só cresce';
+  const first = mine.rows[0], saved = base.end && mine.end ? base.futureCharges - mine.futureCharges : null;
+  const warn = plan.buy > 0 && mine.capped ? '<div class="warn">As compras novas passam do que você paga: a dívida cresce todo mês e nunca quita.</div>' : '';
+  $('#planOut').innerHTML = warn + '<div class="tiles">' +
+    t('Quitação no plano', endTxt(mine), moTxt(mine)) + t('Só o mínimo', endTxt(base), moTxt(base)) +
+    t('Juros e selo no plano', eur(mine.futureCharges), saved != null ? `economiza ${eur(saved)} contra só o mínimo` : 'mais que o mínimo sozinho') +
+    t('Sai da sua conta por mês', eur(first.auto + plan.extra), `${eur(first.auto)} automático + ${eur(plan.extra)} manual`) + '</div>' +
+    planChart(mine, base, last) +
+    '<div class="leg"><span><i style="background:var(--series)"></i>Plano</span><span><i style="background:var(--series-2)"></i>Só o mínimo</span></div>' +
+    '<div class="fc-r" style="margin-top:10px"><b>Próximos pagamentos</b></div>' +
+    mine.rows.slice(0, 12).map(r => `<div class="fc-r"><span>${monthName(r.month)} · ${eur(r.auto)} automático${r.extra ? ` + <b>${eur(r.extra)}</b> manual` : ''}</span><span class="num">${eur(r.payment)}</span></div>`).join('') +
+    `<div class="fc-r big"><span>Total pago até quitar</span><span class="num">${eur(mine.totalPaid)}</span></div>` +
+    '<div class="note">O pagamento manual vale para o mês em que você o fizer. O extrato de novembro ainda não foi importado, então a 1ª linha parte do saldo de outubro.</div>';
+}
+
+function planChart(mine, base, st) {
+  const hz = mine.end ? Math.min(Math.max(mine.months + 6, 18), 120) : 60, series = s => [{ v: st.balance }, ...s.rows.slice(0, hz).map(r => ({ v: r.balanceAfter }))];
+  const A = series(mine), Bs = series(base), labels = [st.stmt, ...mine.rows.slice(0, hz).map(r => r.month)];
+  const W = 520, H = 170, L = 38, Bm = 22, T = 8, max = Math.max(st.balance, 1) * 1.1, sx = i => L + (W - L - 6) * i / Math.max(hz, 1), y = v => T + (H - T - Bm) * (1 - v / max);
+  const path = pts => pts.map((p, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+  const every = hz > 60 ? 24 : hz > 30 ? 12 : 6, grid = [0, .5, 1].map(f => { const v = max / 1.1 * f; return `<line class="grid" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${eur0(v)}</text>`; }).join('');
+  const ticks = labels.map((m, i) => i % every === 0 ? `<text x="${sx(i)}" y="${H - 6}" text-anchor="${i ? 'middle' : 'start'}">${mmyy(m)}</text>` : '').join('');
+  const hit = A.map((p, i) => { const tipTxt = `${mmyyyy(labels[i])}: plano ${eur(p.v)}${Bs[i] ? ' · só o mínimo ' + eur(Bs[i].v) : ''}`; return `<g tabindex="0" data-tip="${esc(tipTxt)}" aria-label="${esc(tipTxt)}"><rect x="${sx(i) - 5}" y="${T}" width="10" height="${H - Bm - T}" fill="transparent"/></g>`; }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Dívida restante no plano contra só o mínimo">${grid}<path class="line2" d="${path(Bs)}"/><path class="line" d="${path(A)}"/>${ticks}${hit}</svg>`;
 }
 
 function frame(W, H, L, B, T, max) {

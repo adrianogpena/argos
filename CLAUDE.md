@@ -11,8 +11,8 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Início (resumo) | `index.html` | pronto |
 | Ônibus | `onibus.html` | pronto (herdado de Paragem) |
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
-| Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; o carro **não** entra) | `gastos.html` | pronto |
-| Cartão (previsão das parcelas futuras sem compras novas, data de quitação, acréscimo x baixa por extrato) | `cartao.html` | pronto; lê `card-statements`/`card-lines`; lógica em `lib/card-forecast.js` |
+| Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; o carro **não** entra; meses com extrato mostram só dados reais, e o mês seguinte ao último extrato mostra só a previsão) | `gastos.html` | pronto |
+| Cartão (previsão das parcelas futuras sem compras novas, data de quitação, acréscimo x baixa por extrato, "meu plano" = débito automático no mínimo + extras manuais) | `cartao.html` | pronto; lê `card-statements`/`card-lines`; lógica em `lib/card-forecast.js` |
 | Saúde (peso e altura de pessoas e bichos) | `saude.html` | pronto; dados importados do Supabase uma única vez |
 
 Nome escolhido: **Argos** (o gigante de cem olhos). Cada módulo é uma página própria, sem build, sem framework. Lógica pura em `lib/*.js` (módulos ES, testáveis em Node).
@@ -110,8 +110,8 @@ node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabas
 node test/classify.test.mjs   classificação e plano de importação (7)
 node test/bank-month.test.mjs conferência mensal do extrato (3)
 node test/card-month.test.mjs extrato do cartão: parser, conferências, vínculo com o banco (13)
-node test/card-forecast.test.mjs previsão do cartão: parcelas, quitação, acréscimo x baixa (9)
-node test/expenses-report.test.mjs relatórios de Gastos: salário com 13º/14º, fixos, previsão, ritmo (9)
+node test/card-forecast.test.mjs previsão do cartão: parcelas, quitação, acréscimo x baixa, plano com extras (11)
+node test/expenses-report.test.mjs relatórios de Gastos: salário com 13º/14º, fixos, previsão, ritmo (10)
 ```
 
 Rode todos antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.

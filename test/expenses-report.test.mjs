@@ -73,4 +73,10 @@ t('needByMonth fills empty months and splits by type', () => {
   assert.deepEqual(r.map(x => x.month), ['2026-09', '2026-10', '2026-11']);
   assert.deepEqual(r[1], { month: '2026-10', essential: 5, flexible: 7, none: 1 }); assert.equal(r[0].essential + r[2].flexible, 0);
 });
+t('forecast com future:true trata o mês como futuro mesmo ancorado nele (extrato ainda não chegou)', () => {
+  const p = salaryPlan(LINES), items = [X('2026-10-05', 500, 'aluguel', 'Moradia')];
+  const a = forecast(items, p, '2026-11', NOW), b = forecast(items, p, '2026-11', NOW, { future: true });
+  assert.equal(a.isCurrent, true); assert.equal(b.isCurrent, false);
+  assert.equal(b.received, 0); assert.equal(b.incomePending, 2000); assert.ok(b.rows.every(r => !r.done));
+});
 console.log(n + ' tests passed');
