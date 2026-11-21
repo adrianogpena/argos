@@ -122,7 +122,7 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
   </section>
 
   <main id="app" hidden>
-    <div class="row"><button class="btn" id="btnAdd">+ Gasto</button><button class="btn ghost" id="btnImport">Importar extrato</button>
+    <div class="row"><button class="btn" id="btnAdd">+ Gasto</button>
       <span class="msg" id="sync" role="status"></span></div>
     <div class="month"><button class="btn ghost" id="prev" aria-label="Mês anterior">‹</button><div class="label" id="monthLabel"></div><button class="btn ghost" id="next" aria-label="Próximo mês">›</button></div>
     <div class="tiles" id="tiles"></div><div class="tag" id="needNote" style="margin:-6px 0 12px"></div>
@@ -149,30 +149,12 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnSave">Salvar</button></div>
 </form></dialog>
 
-<dialog id="dlgImport"><div class="sheet">
-  <h3>Importar extrato do banco</h3>
-  <p class="tag" style="margin:0 0 12px">Arquivo CSV do mês (ou de vários meses). Ele é lido aqui no aparelho; só os lançamentos vão para o cofre. Valor e dia vêm do banco; categoria e tipo são palpites que você pode corrigir depois.</p>
-  <label class="field"><span>Arquivo do extrato</span><input type="file" id="stmtFile" accept=".csv,.txt,.tsv,text/csv,text/plain"></label>
-  <div id="stmtPrev" class="prev" role="status"></div>
-  <details id="stmtMap" hidden><summary>Ajustar colunas</summary>
-    <div class="two" style="margin-top:10px">
-      <label class="field"><span>Data</span><select id="mDate"></select></label>
-      <label class="field"><span>Descrição</span><select id="mDesc"></select></label>
-      <label class="field"><span>Valor</span><select id="mAmount"></select></label>
-      <label class="field"><span>Débito (se separado)</span><select id="mDebit"></select></label>
-    </div>
-    <label class="check"><input type="checkbox" id="mInvert"> inverter o sinal (saídas aparecem como positivas)</label>
-  </details>
-  <div class="msg" id="stmtMsg" role="status"></div>
-  <div class="actions"><button class="btn ghost" type="button" id="stmtCancel">Fechar</button><button class="btn" type="button" id="stmtGo" disabled>Importar</button></div>
-</div></dialog>
 
 <script type="module">
 import { initTheme } from "./lib/theme.js"; initTheme();
 import { createVault, newId } from './lib/vault.js';
 import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn } from './lib/expenses-core.js';
-import { parseStatement, decodeText } from './lib/statement.js';
-import { planImport, descKey, UNCAT, NEEDS } from './lib/classify.js';
+import { UNCAT, NEEDS } from './lib/classify.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -274,61 +256,6 @@ $('#btnSave').onclick = async () => {
   } catch (e) { msgBad($('#addMsg'), e); }
 };
 
-// ---- importar extrato ----
-let stmt = null;   // { text, parsed }
-const colOpts = (headers, withNone) => (withNone ? '<option value="-1">—</option>' : '') + headers.map((h, i) => `<option value="${i}">${esc(h || 'coluna ' + (i + 1))}</option>`).join('');
-function renderStmt() {
-  const p = stmt?.parsed, prev = $('#stmtPrev'), go = $('#stmtGo');
-  go.disabled = true; $('#stmtMsg').textContent = '';
-  if (!p) { prev.textContent = ''; $('#stmtMap').hidden = true; return; }
-  $('#stmtMap').hidden = false;
-  if (p.error === 'empty') { prev.textContent = 'O arquivo está vazio.'; return; }
-  if (p.error === 'columns' || p.error === 'rows') {
-    prev.innerHTML = p.error === 'columns' ? 'Não reconheci as colunas. Escolha abaixo qual é a data, a descrição e o valor.' : 'Não encontrei lançamentos com essas colunas. Confira a escolha abaixo.';
-    $('#stmtMap').open = true; return;
-  }
-  const plan = planImport(p.rows, new Set(expenses.map(x => x.id)), rules);
-  stmt.plan = plan;
-  const total = plan.records.reduce((s, r) => s + r.amount, 0), unc = plan.records.filter(r => r.category === UNCAT).length;
-  const dates = p.rows.map(r => r.date).sort(), sample = plan.records.slice(0, 3).map(r => `${dateBR(r.date)} · ${esc(r.note)} · ${eur(r.amount)}`).join('<br>');
-  prev.innerHTML = `Período: <b>${dateBR(dates[0])}</b> a <b>${dateBR(dates[dates.length - 1])}</b><br>` +
-    `<b>${plan.records.length}</b> gastos novos, somando <b>${eur(total)}</b>` +
-    (plan.duplicates ? `<br>${plan.duplicates} já importados antes (mantidos como estão)` : '') +
-    (plan.income ? `<br>${plan.income} entradas ignoradas (salário, estornos…)` : '') +
-    (unc ? `<br>${unc} sem categoria: você define depois, na lista` : '') +
-    (sample ? `<br><span class="tag">Exemplo:<br>${sample}</span>` : '');
-  go.disabled = !plan.records.length;
-}
-function setStmt(override) {
-  const parsed = parseStatement(stmt.text, override); stmt.parsed = parsed;
-  const h = parsed.headers || [], c = parsed.cols || {};
-  const fill = (id, withNone, v) => { const el = $(id); el.innerHTML = colOpts(h, withNone); el.value = String(v ?? (withNone ? -1 : 0)); };
-  fill('#mDate', false, c.date); fill('#mDesc', true, c.desc); fill('#mAmount', true, c.amount); fill('#mDebit', true, c.debit);
-  stmt.headerIndex = c.headerIndex ?? parsed.headerIndex ?? 0; renderStmt();
-}
-$('#btnImport').onclick = () => { stmt = null; $('#stmtFile').value = ''; renderStmt(); $('#dlgImport').showModal(); };
-$('#stmtCancel').onclick = () => $('#dlgImport').close();
-$('#stmtFile').onchange = async e => {
-  const file = e.target.files[0]; if (!file) return;
-  try { stmt = { text: decodeText(await file.arrayBuffer()) }; setStmt(); }
-  catch (err) { stmt = null; renderStmt(); $('#stmtMsg').className = 'msg bad'; $('#stmtMsg').textContent = 'Não consegui ler o arquivo.'; }
-};
-['#mDate', '#mDesc', '#mAmount', '#mDebit', '#mInvert'].forEach(id => $(id).onchange = () => {
-  if (!stmt) return; const n = id => +$(id).value;
-  const amount = n('#mAmount'), debit = n('#mDebit');
-  setStmt({ headerIndex: stmt.headerIndex, date: n('#mDate'), desc: n('#mDesc'), amount, debit, credit: -1, invert: $('#mInvert').checked });
-});
-$('#stmtGo').onclick = async () => {
-  const plan = stmt?.plan; if (!plan?.records.length) return;
-  const msg = $('#stmtMsg'); msg.className = 'msg'; msg.textContent = 'Enviando ao cofre…'; $('#stmtGo').disabled = true;
-  try {
-    await vault.putMany('expenses', plan.records.map(r => expenseRecord(r).rec).filter(Boolean));
-    month = plan.records.map(r => r.date.slice(0, 7)).sort().pop(); $('#dlgImport').close(); filter = 'review'; await load();
-  } catch (e) {
-    $('#stmtGo').disabled = false; msg.className = 'msg bad';
-    msg.textContent = e.kind === 'network' ? 'Sem conexão: a importação precisa de internet. Tente de novo.' : /404|405/.test(e.message) ? 'O Worker do cofre precisa ser atualizado (npx wrangler deploy na pasta vault/).' : e.kind === 'auth' ? 'Token recusado. Reconecte o cofre.' : e.message;
-  }
-};
 document.addEventListener('click', async e => {
   const m = e.target.closest('[data-month]'); if (m) { month = m.dataset.month; render(); return; }
   const b = e.target.closest('button'); if (!b) return;

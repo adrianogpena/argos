@@ -11,7 +11,7 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Início (resumo) | `index.html` | pronto |
 | Ônibus | `onibus.html` | pronto (herdado de Paragem) |
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
-| Gastos (gráfico mensal e por categoria; importa extrato do banco em CSV; o carro **não** entra) | `gastos.html` | pronto |
+| Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; o carro **não** entra) | `gastos.html` | pronto |
 | Saúde (peso e altura de pessoas e bichos) | `saude.html` | pronto; dados importados do Supabase uma única vez |
 
 Nome escolhido: **Argos** (o gigante de cem olhos). Cada módulo é uma página própria, sem build, sem framework. Lógica pura em `lib/*.js` (módulos ES, testáveis em Node).
@@ -71,11 +71,11 @@ Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre
 
 ## Extrato do banco (feito)
 
-Todo mês o dono importa o extrato do mês anterior (na primeira vez, vários meses) em Gastos → Importar extrato. CSV lido no navegador (`lib/statement.js`: cabeçalho achado sozinho, ajuste manual de colunas, UTF-8 ou Windows-1252); só saídas viram gasto, entradas são ignoradas. **Só data e valor são verdade**; categoria e tipo são palpites (`lib/classify.js`): regra aprendida > regra embutida por palavra-chave > "Sem categoria". Palpite fica `auto:true` ("revisar") até o dono editar ou confirmar; editar/confirmar grava uma regra em `expense-rules` e pode aplicar aos parecidos ainda não confirmados. Ids determinísticos (data+valor+descrição): reimportar nunca duplica nem sobrescreve edições. Dados do carro não entram em Gastos nem na home (o banco já paga combustível, evita contar em dobro). Dados reais de extrato nunca entram em testes.
+**Não há importação na página.** O dono pede ao Claude para importar o extrato (PDF ou CSV, um mês ou vários) e usa a skill `.claude/skills/importar-extrato/SKILL.md`: o Claude lê o arquivo (mais confiável que um parser rígido), decide o que é gasto (poupança, depósitos a prazo e transferências próprias ficam de fora), classifica e grava com `tools/expenses.mjs` (`rules` lista as regras aprendidas; `push` simula e `--apply` grava via `POST /v1/c/expenses`). Roda no computador do dono com `VAULT_URL`/`VAULT_TOKEN` no ambiente. **Só data e valor são verdade**; categoria e tipo são palpites (`auto:true`, "revisar" na tela) até o dono editar ou confirmar; isso grava uma regra em `expense-rules`, que o script reaplica nas próximas importações. Ids determinísticos (`bankId` em `lib/classify.js`: data+valor+descrição): reimportar nunca duplica nem sobrescreve edições. Dados do carro não entram em Gastos nem na home. Dados reais de extrato nunca entram no git, na skill nem em testes.
 
 ## Ideias futuras (não decididas)
 
-- Gastos: orçamento por categoria com alerta; gastos recorrentes (aluguel, assinaturas); importar extrato bancário em CSV (processar no navegador, nunca enviar a terceiros).
+- Gastos: orçamento por categoria com alerta; gastos recorrentes (aluguel, assinaturas).
 - Carro: custo total por km incluindo manutenção; lembrete de seguro, IPVA/imposto e inspeção periódica.
 - Outros módulos: saúde (peso, consultas, medicação), contas a vencer, treinos. Cada um é uma coleção nova no cofre e uma página nova, sem mudar o Worker.
 - Criptografia no navegador para módulos sensíveis.
@@ -100,7 +100,6 @@ node test/home.test.mjs       resumo da home (4)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
 node test/fuelio.test.mjs     importação do Fuelio (4)
 node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (6)
-node test/statement.test.mjs  leitura de extrato CSV (7)
 node test/classify.test.mjs   classificação e plano de importação (7)
 ```
 
