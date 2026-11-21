@@ -43,7 +43,8 @@ A aba Gastos só mostra dados; **não tem mais importação**. Quem lê o extrat
     6. Simule: `node tools/expenses.mjs confirm decisoes.json` (mostra quantos serão confirmados, quantos ficam com dúvida e categorias novas). Mostre o resumo ao dono e aplique com `--apply` (a confirmação automática de alta confiança já foi autorizada pelo dono; mesmo assim, avise o que fez). Só mexe em lançamentos ainda pendentes; o que o dono confirmou nunca é alterado.
     7. Ao final, relate: quantos confirmados, quantos ficaram com dúvida e **quais comerciantes** restaram para o dono (com a sua melhor hipótese), e as correções de palpite que você fez.
 11. **Arquivar o extrato inteiro (sempre)**: além dos gastos, grave **todas** as linhas do extrato (gastos, entradas, poupança, transferências, todas as contas) na coleção `bank-lines`, que não aparece em tela nem relatório e só serve para conferir o original. Gere `linhas.json` (fora do git) com `[{account,accountNo,period,date,valueDate,desc,amount(com sinal: negativo = saída),balance,seq}]` e rode `node tools/expenses.mjs raw linhas.json --apply` (ids estáveis: reimportar não duplica). Assim nada que a regra "não é gasto" descartou se perde.
-12. **Apagar** os arquivos temporários com texto do extrato e `decisoes.json` ao terminar.
+12. **Mês a mês (extratos novos)**: depois de arquivar em `bank-lines`, rode `node tools/expenses.mjs months --init` para criar o registro do mês em `bank-months`. O mês só entra em Gastos (`push`) depois que o dono conferir `node tools/expenses.mjs month AAAA-MM` com o extrato do banco; ao aprovar, `validate AAAA-MM --apply`.
+13. **Apagar** os arquivos temporários com texto do extrato e `decisoes.json` ao terminar.
 
 ## Rótulos
 

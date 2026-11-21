@@ -8,6 +8,9 @@
 //   node tools/expenses.mjs groups                      lista TODOS os gastos por comerciante (chave, qtd, total, categoria, tipo, rótulo, exemplo)
 //   node tools/expenses.mjs label <rotulos.json> [--apply]    rotula gastos já gravados: [{key|id, label}] (simula sem --apply)
 //   node tools/expenses.mjs confirm <decisoes.json> [--apply]   aplica decisões [{key, category, need, confirm}] (simula sem --apply)
+//   node tools/expenses.mjs months [--init]            estado de cada mês do extrato (arquivado | pendente | validado); --init cria os registros em `bank-months`
+//   node tools/expenses.mjs month AAAA-MM [--lines]     relatório de conferência do mês (saldos, em Gastos x fora, entradas) para validar com o banco
+//   node tools/expenses.mjs validate AAAA-MM [nota] [--undo] [--apply]   marca o mês como validado (guarda os totais); --undo reabre
 //   node tools/expenses.mjs raw <linhas.json> [--file=nome.pdf] [--apply]   arquiva (cada linha leva stmt=AAAA-MM do extrato e file) TODAS as linhas do extrato em `bank-lines` (invisível nas telas; só para conferência)
 //   node tools/expenses.mjs push <entradas.json>        simulação: mostra o que seria gravado
 //   node tools/expenses.mjs push <entradas.json> --apply   grava no cofre
@@ -16,6 +19,7 @@
 // amount sempre positivo (só gastos). VAULT_URL e VAULT_TOKEN vêm do ambiente; o token nunca é escrito em arquivo nem exibido.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { monthReport, isMonth, MONTH_STATUS } from '../lib/bank-month.js';
 import { buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels } from '../lib/classify.js';
 import { expenseRecord, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 
@@ -114,6 +118,55 @@ if (cmd === 'rules') {
   need();
   for (let i = 0; i < records.length; i += 200) await call('POST', '/v1/c/expenses', { items: records.slice(i, i + 200) });
   console.log(`Gravados ${records.length} gastos no cofre.`);
+} else if (cmd === 'months') {
+  // Estado de cada mês do extrato em `bank-months`: arquivado (só em bank-lines) | pendente (já em Gastos, falta validar) | validado.
+  need();
+  const [bl, ex, bm] = await Promise.all([call('GET', '/v1/c/bank-lines'), call('GET', '/v1/c/expenses'), call('GET', '/v1/c/bank-months')]);
+  const have = new Map(bm.items.map(x => [x.id, x]));
+  const stmts = [...new Set(bl.items.map(x => x.stmt))].sort();
+  const created = [];
+  for (const s of stmts) if (!have.has(s)) {
+    const inSite = ex.items.some(e => e.source === 'bank' && e.date.slice(0, 7) === s);
+    const rec = { id: s, stmt: s, status: inSite ? MONTH_STATUS.pending : MONTH_STATUS.archived, file: bl.items.find(x => x.stmt === s).file || '', updatedAt: Date.now() };
+    created.push(rec); have.set(s, rec);
+  }
+  if (created.length && [file, ...flags].includes('--init')) { await call('POST', '/v1/c/bank-months', { items: created }); console.log(`Criados ${created.length} meses em bank-months.\n`); }
+  else if (created.length) console.log(`(${created.length} meses ainda sem registro; rode com --init para criar)\n`);
+  console.log('# mês | estado | linhas no banco | gastos em Gastos | arquivo | validado em');
+  for (const s of stmts) {
+    const m = have.get(s);
+    console.log([s, m.status, bl.items.filter(x => x.stmt === s).length, ex.items.filter(e => e.source === 'bank' && e.date.slice(0, 7) === s).length, m.file || '-', m.validatedAt ? new Date(m.validatedAt).toISOString().slice(0, 10) : '-'].join(' | '));
+  }
+} else if (cmd === 'month' && isMonth(file)) {
+  // Relatório de conferência de um mês: confira com o extrato do banco e depois rode `validate`.
+  need();
+  const [bl, ex, bm] = await Promise.all([call('GET', '/v1/c/bank-lines'), call('GET', '/v1/c/expenses'), call('GET', '/v1/c/bank-months')]);
+  const r = monthReport(file, bl.items, ex.items), rec = bm.items.find(x => x.id === file);
+  if (!r.accounts.length) { console.error('Nenhuma linha do banco para ' + file); process.exit(1); }
+  const eur = n => n.toFixed(2) + ' €';
+  console.log(`# ${file} | estado: ${rec ? rec.status : '(sem registro)'} | arquivo: ${r.file || '-'}`);
+  for (const a of r.accounts) console.log(`conta ${a.account}: saldo ${eur(a.opening)} → ${eur(a.closing)} | ${a.lines} linhas | entradas ${eur(a.credits)} | saídas ${eur(a.debits)} | ${a.balanced ? 'fecha' : 'NÃO FECHA'}`);
+  console.log(`\nSaídas da conta à vista: ${eur(r.bankDebits)}  =  em Gastos ${eur(r.site.total)} (${r.site.n} lançamentos, ${r.pendingReview} ainda "revisar")  +  fora de Gastos ${eur(r.outside.total)} (${r.outside.n})`);
+  console.log('\n# fora de Gastos (regra "não é gasto" ou não importado): chave | qtd | total | exemplo');
+  for (const g of r.outsideGroups) console.log([g.key, g.n, g.total.toFixed(2), g.example].join(' | '));
+  console.log('\n# entradas (nunca são gasto): chave | qtd | total | exemplo');
+  for (const g of r.incomeGroups) console.log([g.key, g.n, g.total.toFixed(2), g.example].join(' | '));
+  if (r.siteNotInBank.length) { console.log('\n# em Gastos neste mês SEM linha do banco (manuais ou de outra origem): data | valor | nota'); for (const x of r.siteNotInBank) console.log([x.date, x.amount.toFixed(2), x.note || x.id].join(' | ')); }
+  if (flags.includes('--lines')) { console.log('\n# todas as saídas: data | valor | em Gastos? | texto do banco'); for (const d of r.debitLines) console.log([d.date, (-d.amount).toFixed(2), d.inExpenses ? 'sim' : 'NÃO', d.desc].join(' | ')); }
+} else if (cmd === 'validate' && isMonth(file)) {
+  // Marca o mês como validado (ou reabre com --undo), guardando os totais do momento para detectar mudança depois.
+  need();
+  const [bl, ex, bm] = await Promise.all([call('GET', '/v1/c/bank-lines'), call('GET', '/v1/c/expenses'), call('GET', '/v1/c/bank-months')]);
+  const r = monthReport(file, bl.items, ex.items), old = bm.items.find(x => x.id === file);
+  if (!r.accounts.length) { console.error('Nenhuma linha do banco para ' + file); process.exit(1); }
+  const undo = flags.includes('--undo'), note = flags.filter(f => !f.startsWith('--')).join(' ');
+  const rec = undo ? { ...(old || { id: file, stmt: file }), status: MONTH_STATUS.pending, validatedAt: null, updatedAt: Date.now() }
+    : { ...(old || { id: file, stmt: file, file: r.file }), status: MONTH_STATUS.validated, validatedAt: Date.now(), updatedAt: Date.now(), ...(note && { note }),
+        snapshot: { bankDebits: r.bankDebits, siteTotal: r.site.total, siteN: r.site.n, outsideTotal: r.outside.total, pendingReview: r.pendingReview, closing: r.accounts.find(a => a.account === 'SIMPLES')?.closing ?? null } };
+  console.log(`${file}: ${undo ? 'reabrir (pendente)' : 'validar'} | em Gastos ${r.site.total.toFixed(2)} € (${r.site.n}) | fora ${r.outside.total.toFixed(2)} € | ainda "revisar": ${r.pendingReview}`);
+  if (!flags.includes('--apply')) { console.log('Simulação: nada foi gravado. Acrescente --apply.'); process.exit(0); }
+  await call('PUT', `/v1/c/bank-months/${file}`, rec);
+  console.log('Gravado em bank-months.');
 } else if (cmd === 'raw' && file) {
   // Arquivo morto do extrato: TODA linha (gastos, entradas, poupança, transferências), fiel ao banco. Coleção `bank-lines`,
   // que nenhuma tela nem relatório lê; serve só para conferir o extrato original. Id = hash estável: reimportar não duplica.
@@ -133,5 +186,5 @@ if (cmd === 'rules') {
   for (let i = 0; i < items.length; i += 200) await call('POST', '/v1/c/bank-lines', { items: items.slice(i, i + 200) });
   console.log(`Gravadas ${items.length} linhas em bank-lines.`);
 } else {
-  console.error('uso: node tools/expenses.mjs rules | rule <chave> ... | review | groups | label <rotulos.json> | confirm <decisoes.json> | push <entradas.json> [--apply] | raw <linhas.json> [--apply]'); process.exit(1);
+  console.error('uso: node tools/expenses.mjs rules | rule <chave> ... | review | groups | label <rotulos.json> | confirm <decisoes.json> | push <entradas.json> [--apply] | months | month AAAA-MM | validate AAAA-MM | raw <linhas.json> [--apply]'); process.exit(1);
 }
