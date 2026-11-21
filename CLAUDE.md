@@ -12,6 +12,7 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Ônibus | `onibus.html` | pronto (herdado de Paragem) |
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
 | Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; o carro **não** entra) | `gastos.html` | pronto |
+| Cartão (previsão das parcelas futuras sem compras novas, data de quitação, acréscimo x baixa por extrato) | `cartao.html` | pronto; lê `card-statements`/`card-lines`; lógica em `lib/card-forecast.js` |
 | Saúde (peso e altura de pessoas e bichos) | `saude.html` | pronto; dados importados do Supabase uma única vez |
 
 Nome escolhido: **Argos** (o gigante de cem olhos). Cada módulo é uma página própria, sem build, sem framework. Lógica pura em `lib/*.js` (módulos ES, testáveis em Node).
@@ -109,6 +110,7 @@ node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabas
 node test/classify.test.mjs   classificação e plano de importação (7)
 node test/bank-month.test.mjs conferência mensal do extrato (3)
 node test/card-month.test.mjs extrato do cartão: parser, conferências, vínculo com o banco (13)
+node test/card-forecast.test.mjs previsão do cartão: parcelas, quitação, acréscimo x baixa (9)
 node test/expenses-report.test.mjs relatórios de Gastos: salário com 13º/14º, fixos, previsão, ritmo (9)
 ```
 
