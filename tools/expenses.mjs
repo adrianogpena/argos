@@ -152,7 +152,7 @@ if (cmd === 'rules') {
   // Gastos do cartão de crédito: ficam na data da compra e substituem o pagamento único da fatura (ver `drop`). Id estável: repetir sobrescreve.
   const entries = JSON.parse(readFileSync(file, 'utf8')), seen = new Map(), items = [];
   for (const [i, e] of entries.entries()) {
-    const amount = Math.round(Number(e.amount) * 100) / 100, desc = String(e.desc || '').replace(/s+/g, ' ').trim();
+    const amount = Math.round(Number(e.amount) * 100) / 100, desc = String(e.desc || '').replace(/\s+/g, ' ').trim();
     const id = 'c' + bankId(e.date, amount, desc, seen).slice(1);
     const r = expenseRecord({ id, date: e.date, amount, category: e.category, need: e.need, label: e.label, note: desc, source: 'card', card: true, inst: e.inst, key: descKey(desc) });
     if (!r.ok) { console.error(`ERRO entrada ${i + 1}: ${r.error}. Nada foi enviado.`); process.exit(1); }

@@ -90,9 +90,28 @@ Para um gasto que já está no cofre (confirmado ou não), sem passar pelo `push
 4. `node tools/expenses.mjs label rotulos.json` simula (contagem por categoria > rótulo); com `--apply` grava. Não muda categoria, tipo nem `auto`; atualiza a `tag` da regra existente e só cria regra nova para gasto já confirmado pelo dono (palpite não vira regra por aqui).
 5. Apague `rotulos.json` ao terminar.
 
+## Extrato do cartão de crédito (VISA ActivoBank)
+
+**Regra de ouro: guarde TUDO que o extrato traz no cofre, mesmo o que nenhuma tela mostra. O dono não quer voltar ao PDF.** Para o cartão isso já é feito por `tools/card.mjs` (parser em `lib/card-month.js`); não leia o PDF "à mão" nem monte JSON de cartão.
+
+Onde fica cada coisa (tudo no cofre, nada no git):
+- `card-statements` (1 por extrato, id AAAA-MM): nº, período, emissão, data de pagamento, opção (%), **TAN, limite de crédito e saldos do extrato (mudam com o tempo; guarde sempre o que o extrato diz)**, total/mínimo a pagar, saldo anterior/créditos/débitos/saldo, **imputação do que foi pago (capital, juros, selo, comissões)**, detalhe da dívida, **próximo pagamento decomposto**, plano de parcelas, resultado das conferências, estado (arquivado | pendente | validado) e totais da validação.
+- `card-lines` (toda linha de movimento): data, data-valor, descrição, valor, `kind` (purchase | service | interest | stamp | fee | payment | refund) e, nos pagamentos, `bankLineId`/`bankDate` (a saída correspondente em `bank-lines`).
+- `expenses` (source `card`): compras e serviços na **data da compra**; **juros, imposto do selo e taxas como itens próprios** (categoria Cartão de crédito, rótulos Juros do cartão / Imposto do selo do cartão / Taxa de limite excedido / Taxa de posto de combustível; campo `ck` = interest | stamp | fee para somar os encargos). Estorno abate a compra do mesmo comerciante; o que não casa é só informativo.
+- O **pagamento** do cartão (e o "limite excedido" pago pela conta) **não é gasto**: é o caixa pagando a dívida. Regras `vis-credito` e `vis-limite-excedido` (não é gasto) mantêm essas saídas da conta fora de Gastos. Identidade do mês: pagamento do mês M = amortização de capital + juros + selo + comissões do extrato M−1.
+
+Fluxo para extratos novos (um mês, ou vários):
+1. `node tools/card.mjs import <pdf...>` simula: confere saldo (anterior + débitos − créditos = atual), soma das linhas e imputação. **Falha = pare**, ache a linha perdida (`pdftotext -raw`); o layout mudou antes (datas AAAA/MM/DD → MM/DD, descrição em 2 linhas) e o parser pode precisar de ajuste + teste. Com `--apply` grava `card-statements` e `card-lines` e liga cada pagamento a uma linha do banco (precisa do extrato do banco já arquivado em `bank-lines`; sem ele, depois rode `node tools/card.mjs link --apply`).
+2. `node tools/card.mjs bank-payments --apply` (uma vez; repita só se aparecer outra chave): regras de "não é gasto" + apaga de Gastos o pagamento do cartão vindo da conta.
+3. `node tools/card.mjs expenses [AAAA-MM] --apply`: gera os gastos a partir de `card-lines` (ids `k...` estáveis; regras aprendidas valem; compras sem regra ficam `auto`). Meses já lançados à mão (ids `c...`, parcelamento 2023-24) são pulados.
+4. Revise os pendentes pela fase 2 normal (`expenses.mjs review AAAA-MM`; compras do cartão e do banco são o mesmo tipo de comerciante).
+5. `node tools/card.mjs month AAAA-MM` (conferência) e `validate AAAA-MM --apply`: só valida se o extrato fecha, todo pagamento tem linha no banco, Gastos bate com o esperado (considerando regras "não é gasto") e não há pendentes. Quem valida é você.
+`months` lista todos; `tan` compara o TAN impresso com a taxa implícita nos juros (o TAN e o limite mudam com o tempo; os valores ficam só no cofre).
+
 ## Cuidados
 
 - Valores em euro, ponto decimal no JSON. Espaço como separador de milhar (`1 505.68`) é do banco, não do JSON.
 - Mesmo comerciante, mesmo dia, mesmo valor: são lançamentos distintos (o script numera). Não deduplique você.
 - Ao final, informe quantos lançamentos o extrato tinha, quantos viraram gasto e a soma por mês, para o dono conferir com o banco.
 - Dados do carro não entram em Gastos (o banco já paga o combustível).
+- **Tudo que o extrato traz é salvo no cofre, mesmo o que não aparece em tela** (saldos, taxas, TAN, limite, imputação, linhas do cartão e do banco): as coleções `bank-lines`, `bank-months`, `card-statements` e `card-lines` existem para isso. Nunca descarte um campo por "não ser usado agora".
