@@ -89,6 +89,12 @@ Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre
 - Valores em euro (`€`), formatados com `pt-BR`. Aceitar vírgula decimal nas entradas.
 - Toda lógica nova vai em `lib/*.js` com teste em `test/*.test.mjs`.
 
+## Git
+
+- Push direto na `main` é permitido (sem PR obrigatório), mas **sempre pergunte ao dono antes de cada push**: a `main` publica no Cloudflare Pages. Commitar localmente não precisa de pergunta; o push precisa, toda vez (aprovação anterior não vale para o próximo push).
+- Antes de commitar: rodar todos os testes e conferir que o diff não leva dado pessoal (regra número um).
+
+
 ## Testes
 
 ```
@@ -103,6 +109,7 @@ node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabas
 node test/classify.test.mjs   classificação e plano de importação (7)
 node test/bank-month.test.mjs conferência mensal do extrato (3)
 node test/card-month.test.mjs extrato do cartão: parser, conferências, vínculo com o banco (13)
+node test/expenses-report.test.mjs relatórios de Gastos: salário com 13º/14º, fixos, previsão, ritmo (9)
 ```
 
 Rode todos antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
