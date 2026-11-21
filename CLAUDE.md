@@ -96,6 +96,10 @@ Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre
 - Antes de commitar: rodar todos os testes e conferir que o diff não leva dado pessoal (regra número um).
 
 
+## Erro 500 ao gravar no cofre = limite diário de gravações do KV
+
+Se `tools/*.mjs` ou qualquer `PUT`/`POST`/`DELETE` no cofre responder **500** com página HTML da Cloudflare (não JSON do Worker) enquanto as leituras (`GET`) funcionam, a causa é o limite diário de gravações do KV (plano gratuito, ~1000 por dia, zera à meia-noite UTC). O dono confirmou: pode tratar como certo, sem investigar mais. Não insistir em loop nem trocar de método (PUT/POST sofrem igual); avisar o dono, não mexer em nada e retomar depois que a cota zerar. Para gastar menos cota: gravar em lote (`POST` com `items`, até 500) em vez de um registro por vez.
+
 ## Testes
 
 ```
