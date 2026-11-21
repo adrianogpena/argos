@@ -73,7 +73,7 @@ if (cmd === 'rules') {
   console.log(`Rotulados: ${out.labeled} | regras atualizadas: ${out.rules.length} | avisos: ${out.errors.length}`);
   if (!flags.includes('--apply')) { console.log('\nSimulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
   for (let i = 0; i < out.updates.length; i += 200) await call('POST', '/v1/c/expenses', { items: out.updates.slice(i, i + 200) });
-  for (const x of out.rules) await call('PUT', `/v1/c/expense-rules/${x.id}`, x);
+  for (let i = 0; i < out.rules.length; i += 200) await call('POST', '/v1/c/expense-rules', { items: out.rules.slice(i, i + 200) });  // lote: 1 gravação no KV, não 1 por regra
   console.log(`Gravados ${out.updates.length} lançamentos e ${out.rules.length} regras.`);
 } else if (cmd === 'confirm' && file) {
   need();
@@ -89,7 +89,7 @@ if (cmd === 'rules') {
   if (news.length) console.log('Categorias novas: ' + news.join(', '));
   if (!flags.includes('--apply')) { console.log('\nSimulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
   for (let i = 0; i < r.updates.length; i += 200) await call('POST', '/v1/c/expenses', { items: r.updates.slice(i, i + 200) });
-  for (const x of r.rules) await call('PUT', `/v1/c/expense-rules/${x.id}`, x);
+  for (let i = 0; i < r.rules.length; i += 200) await call('POST', '/v1/c/expense-rules', { items: r.rules.slice(i, i + 200) });  // lote: 1 gravação no KV, não 1 por regra
   console.log(`Gravados ${r.updates.length} lançamentos e ${r.rules.length} regras.`);
 } else if (cmd === 'rule' && file) {
   need();
