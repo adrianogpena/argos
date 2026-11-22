@@ -97,12 +97,18 @@ t('desconto extra de refeição abate o total', () => {
   const txt = `Artigos\nRESTAURAÇÃO\nD PRATO EXEMPLO 5,00\nD SOBREMESA EXEMPLO 2,00\nDescontos Extra\nACOMPANHAMENTO (1,50)\nResumo\nTOTAL 7,00\nTOTAL PAGO 5,50\nPINGO DOCE\n1-X\n26-03-05 12:00:00 Per1\n003 2026-03-05 12:00 0\nFS 1/1`;
   const r = parseReceipt(txt); assert.ok(r.check.ok); assert.equal(r.items[2].kind, 'discount'); assert.equal(r.items[2].net, -1.5);
 });
+t('desconto "Exclusivo POUPA Shaker" abate o item anterior', () => {
+  const txt = `Artigos\nMERCEARIA + PET FOOD\nE MAIO EXEMPLO 416G 4,84\nExclusivo POUPA Shaker (2,42)\nResumo\nTOTAL 4,84\nTOTAL PAGO 2,42\nPINGO DOCE\n1-X\n26-03-05 12:00:00 Per1\n003 2026-03-05 12:00 0\nFS 1/1`;
+  const r = parseReceipt(txt); assert.ok(r.check.ok); assert.equal(r.items[0].discount, 2.42); assert.equal(r.items[0].net, 2.42);
+});
 t('categorize: ordem das regras e seção da loja', () => {
+  assert.equal(categorize('PHALAENOPSIS 1 HASTE').category, 'Casa e bazar');
   const c = (name, sec = '') => categorize(name, sec).category;
   assert.equal(c('PAO DE QUEIJO UN'), 'Pastelaria e salgados'); assert.equal(c('PAO DE LEITE 8 UNID.'), 'Pão'); assert.equal(c('BRASILEIRO 100G', 'PADARIA/PASTELARIA'), 'Pão'); assert.equal(c('MANTEIGA COM SAL 250'), 'Lácteos e ovos');
   assert.equal(c('COCA-COLA ZERO 33CL', 'RESTAURAÇÃO'), 'Refeições na loja'); assert.equal(c('VINAGRE VINHO 500ML'), 'Mercearia');
   assert.equal(c('TAB.CHOC. LEITE 200G'), 'Doces e snacks'); assert.equal(c('JOGO QUALQUER'), 'Lazer e brinquedos'); assert.equal(c('PIZZA ATUM PD 350G'), 'Refeições prontas');
   assert.equal(c('XPTO DESCONHECIDO'), UNCAT); assert.equal(c('XPTO DESCONHECIDO', 'BAZAR'), 'Casa e bazar');
+  for (const [n, k] of [['NOODLES GALINHA 61G', 'Mercearia'], ['SUSPIROS 70G', 'Doces e snacks'], ["LAY'S 3'DS 136G", 'Doces e snacks'], ['AIR FRY CHEESY CHIPS', 'Doces e snacks'], ['CACETINHO DE TRIGO 8', 'Pão'], ['NATA UHT LIGHT 200ML', 'Lácteos e ovos'], ['REF.C/GAS GUARLATA 0', 'Refrigerantes'], ['BL WC AUTOCLISMO AGU', 'Higiene e limpeza'], ['DET.MAQ.LOICA CLASSI', 'Higiene e limpeza'], ['SUCULENTO AIRFRYER C', 'Carnes e charcutaria'], ['SANDALIA HOMEM 369/4', 'Casa e bazar'], ['GENGIBRE KG', 'Frutas e vegetais']]) assert.equal(c(n), k, n);
   assert.equal(categorize('ARROZ AGULHA 1KG').need, 'essential'); assert.equal(categorize('COLA ZERO LATA 33').need, 'flexible'); assert.equal(categorize('XPTO').need, '');
 });
 t('receiptRecords: ids estáveis, linhas com tudo e soma das linhas = total pago', () => {
