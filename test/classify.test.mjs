@@ -7,6 +7,7 @@ t('descKey ignora números, datas e palavras de banco', () => {
   assert.equal(descKey('COMPRA 1234 Loja Exemplo Lda 05-03'), 'loja-exemplo');
   assert.equal(descKey('Compra Loja Exemplo 9999'), descKey('COMPRA 1234 Loja Exemplo Lda'));
   assert.equal(descKey('123 456'), 'sem-descricao');
+  assert.equal(descKey('COMPRA 5061 730-CARVALHOS 2238 -V N CONTACTLESS'), descKey('COMPRA 7565 PINGO DOCE 2238 -V NV DE')); // código da loja = Pingo Doce
 });
 t('bankId: estável, e idênticos no mesmo dia ganham ids distintos', () => {
   assert.equal(bankId('2026-03-05', 23.4, 'LOJA  EXEMPLO'), bankId('2026-03-05', 23.4, 'loja exemplo'));

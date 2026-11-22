@@ -79,6 +79,7 @@ Um rótulo detalha a categoria sem mudar a lista fechada de categorias. Campo `l
   - Roupas: sem rótulo (já é específica)
 - Transferências para pessoas (chave genérica `trf`): rótulo por lançamento (`id`), só se o dono disse o que foi; senão `Transferência`.
 - O rótulo é por comerciante (`key`). Se o mesmo comerciante vende coisas muito diferentes (ex.: hipermercado com farmácia), rotule pelo uso mais comum e deixe o dono corrigir os destoantes na tela.
+- **Mercados que o dono frequenta, com nomes diferentes no banco** (nunca deixe em Outros): o Pingo Doce de Carvalhos também aparece como `730-CARVALHOS 2238 -V N...` (730 = código da loja, confirmado nas faturas de email); `descKey` já unifica isso em `pingo-doce-nv` (Mercado › Supermercado, essencial). Pingo Doce e Intermarché são sempre Mercado. Ao achar um comerciante do banco que não reconhece como mercado, confira as faturas (`tools/receipts.mjs`, `report`): o mesmo valor e data numa fatura de Pingo Doce/Intermarché confirma a loja (fonte lida). Se descobrir outro nome de loja, acrescente-o em `ALIAS` de `lib/classify.js` (com teste), não crie regra por chave que atinja outro comerciante.
 - Tela: o formulário de edição tem o campo Rótulo (com sugestões dos já usados) e a página mostra "Detalhe por rótulo no mês". Ao confirmar/editar um gasto na tela com rótulo, vira `tag` da regra.
 
 ### Rotular gastos já gravados (retroativo)
