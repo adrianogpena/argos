@@ -44,7 +44,7 @@ if (cmd === 'import' && pos.length) {
   }
   parsed.sort((a, b) => a.r.date.localeCompare(b.r.date) || a.r.time.localeCompare(b.r.time));
   const expenses = await get('expenses');
-  const recs = parsed.map(({ r, file }) => receiptRecords(r, { file }));
+  const recs = [...new Map(parsed.map(({ r, file }) => receiptRecords(r, { file })).map(x => [x.receipt.id, x])).values()];   // o mesmo talão baixado duas vezes (ex.: "(1).pdf") vira um só
   const link = linkExpenses(recs.map(x => x.receipt), expenses), byR = new Map(link.pairs.map(p => [p.receiptId, p]));
   let bad = 0;
   console.log('# data hora | loja filial | itens | total pago | conferência | gasto ligado em Gastos');

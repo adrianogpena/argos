@@ -11,3 +11,5 @@ vault/.wrangler/
 .wrangler/
 # Fila de prompts pendentes (podem conter dado pessoal; nunca no git)
 pendentes/
+
+.claude/settings.local.json

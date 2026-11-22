@@ -67,6 +67,52 @@ B 23,00% 0,81 0,19 1,00
 CARTAO: ****1234 TC:BBBB
 A0000000031010 Visa Debit`;
 
+const LIDL = `LIDL & Cia - EXEMPLO - CENTRO
+Rua Exemplo 1
+FATURA SIMPLIFICADA
+Original Data de Venda: 2026-03-07
+No : FS 025600000/000001
+NIF...: CONSUMIDOR FINAL
+----------------------------------
+EUR
+ARROZ EXEMPLO 1,19 B
+Promoção -0,04
+Promoção Lidl Plus -0,15
+------------
+LIMAO EXEMPLO 1,00 B
+kg x
+0,500 2,00 EUR/kg
+EUR
+PAO TIGRE
+0,25
+x
+3
+0,75 B
+Deposito 0.10
+0,10
+x
+2
+0,20 F
+------------
+Total 2,95
+============
+DEPOSITO 0,20
+DINHEIRO 5,00
+TROCO -2,25
+Taxa Base Imp. Val.Total Val.IVA
+%
+6
+B 2,60 2,75 0,15
+%
+0
+F 0,20 0,20 0,00
+¦ Total de promoções e descontos ¦
+¦ 0,19EUR ¦
+ATCUD: AAAA-000001
+000256 000001/
+001 07.03.26 10:15
+Documento válido como recibo.`;
+
 t('Pingo Doce: itens, quantidade, peso, desconto, depósito e conferência do total', () => {
   const r = parseReceipt(PINGO);
   assert.equal(r.store, 'Pingo Doce'); assert.equal(r.branch, 'Exemplo'); assert.equal(r.date, '2026-03-05'); assert.equal(r.time, '18:10');
@@ -132,5 +178,41 @@ t('priceVolume: preço + quantidade + novos − deixados = diferença', () => {
   assert.equal(r.price, 1.5); assert.equal(r.volume, 2); assert.equal(r.newProducts, 1); assert.equal(r.dropped, -2);
   assert.equal(Math.round((r.price + r.volume + r.newProducts + r.dropped) * 100) / 100, r.diff);
   assert.equal(r.common[0].name, 'Leite');
+});
+t('Lidl: promoções, peso, quantidade em 5 linhas, vale depósito e troco', () => {
+  const r = parseReceipt(LIDL);
+  assert.equal(r.store, 'Lidl'); assert.equal(r.branch, 'Exemplo - Centro'); assert.equal(r.date, '2026-03-07'); assert.equal(r.time, '10:15'); assert.equal(r.doc, '025600000/000001');
+  assert.equal(r.items.length, 4); assert.ok(r.check.ok); assert.deepEqual(r.warnings, []);
+  assert.equal(r.checkTotal, 2.95); assert.equal(r.paid, 2.75); assert.equal(r.payment, 'Numerário'); assert.equal(r.gross, 3.14); assert.equal(r.savings, 0.19);
+  const [arroz, limao, pao, dep] = r.items;
+  assert.equal(arroz.discount, 0.19); assert.equal(arroz.net, 1); assert.equal(limao.weightKg, 0.5); assert.equal(limao.unit, 2);
+  assert.equal(pao.qty, 3); assert.equal(pao.unit, 0.25); assert.equal(pao.net, 0.75); assert.equal(dep.kind, 'deposit'); assert.equal(dep.vat, 0); assert.equal(arroz.vat, 6);
+  const { receipt, lines: ls } = receiptRecords(r);
+  assert.equal(receipt.paid, 2.75); assert.equal(receipt.store, 'Lidl'); assert.equal(ls.length, 4);
+  assert.equal(parseReceipt(LIDL.replace('Total 2,95', 'Total 3,95')).check.ok, false);
+});
+
+t('Lidl: quantidade na mesma linha, com o nome em cima ou colado antes', () => {
+  const txt = LIDL.replace(/EUR\nARROZ[\s\S]*?Total 2,95/, 'EUR\nBolachas Exemplo\n1,99 x 2 3,98 A\nPIZZA EXEMPLO1,49 x 3 4,47 A\nPAO TIGRE 0,55 B\n------------\nTotal 8,99').replace('DEPOSITO 0,20\nDINHEIRO 5,00\nTROCO -2,25', 'MULTIBANCO 8,99');
+  const r = parseReceipt(txt);
+  assert.deepEqual(r.warnings, []); assert.ok(r.check.ok); assert.equal(r.items.length, 3);
+  assert.deepEqual([r.items[0].name, r.items[0].qty, r.items[0].unit, r.items[0].gross], ['Bolachas Exemplo', 2, 1.99, 3.98]);
+  assert.deepEqual([r.items[1].name, r.items[1].qty, r.items[1].unit, r.items[1].gross], ['PIZZA EXEMPLO', 3, 1.49, 4.47]);
+});
+
+t('Lidl: quantidade depois do total ("x" e "2 1,99")', () => {
+  const txt = LIDL.replace(/EUR\nARROZ[\s\S]*?Total 2,95/, 'EUR\nBolachas Exemplo 3,98 A\nx\n2 1,99\nPAO TIGRE 0,55 B\n------------\nTotal 4,53').replace('DEPOSITO 0,20\nDINHEIRO 5,00\nTROCO -2,25', 'MULTIBANCO 4,53');
+  const r = parseReceipt(txt);
+  assert.deepEqual(r.warnings, []); assert.ok(r.check.ok); assert.equal(r.items.length, 2);
+  assert.deepEqual([r.items[0].name, r.items[0].qty, r.items[0].unit, r.items[0].gross], ['Bolachas Exemplo', 2, 1.99, 3.98]);
+});
+
+t('categorize: produtos do Lidl (bazar com código, animais, higiene)', () => {
+  assert.equal(categorize('Cama Animal Tam S Cast-0514713').category, 'Animais');
+  assert.equal(categorize('Tabua Cortar Peq 2U-0490572').category, 'Casa e bazar');
+  assert.equal(categorize('Evax Cottonlike Pensos Abas').category, 'Higiene e limpeza');
+  assert.equal(categorize('BOLO DO CACO 0,55 x 2').category, 'Pão');
+  assert.equal(categorize('ENTRECOSTO ASSADO').need, 'essential');
+  for (const [n, k] of [['KINDER BUENO WHITE 2UN', 'Doces e snacks'], ['COLGATE TRIPLE ACTION', 'Higiene e limpeza'], ['MOZZARELLA MINI', 'Lácteos e ovos'], ['PAIO YORK FATIADO', 'Carnes e charcutaria'], ['ESPECIARIAS CEBOLINHO', 'Mercearia'], ['CEBOLINHO', 'Frutas e vegetais'], ['TAGLIATELLE', 'Mercearia'], ['SALADA CESAR', 'Frutas e vegetais'], ['BIMBO FAMILIAR', 'Pão'], ['ISQUEIRO ELECTRONICO', 'Casa e bazar'], ['CARIL EM PO', 'Mercearia'], ['CREME DE LEGUMES', 'Mercearia'], ['ARGOLAS COM COBERTURA', 'Doces e snacks']]) assert.equal(categorize(n).category, k, n);
 });
 console.log(`\n${n} grupos ok`);
