@@ -207,6 +207,20 @@ t('Lidl: quantidade depois do total ("x" e "2 1,99")', () => {
   assert.deepEqual([r.items[0].name, r.items[0].qty, r.items[0].unit, r.items[0].gross], ['Bolachas Exemplo', 2, 1.99, 3.98]);
 });
 
+t('Lidl: fatura com NIF ("VD"), desconto percentual e "Anulacao" (talão lido da tela do app)', () => {
+  const txt = LIDL.replace('FATURA SIMPLIFICADA', 'FATURA').replace('Original Data de Venda', 'Data de Venda').replace('FS 025600000/000001', 'VD 025600000/000002')
+    .replace(/EUR\nARROZ[\s\S]*?Total 2,95/, 'EUR\nCARNE EXEMPLO 6,83 B\nkg x\n1,043 6,55 EUR/kg\nDESCONTO 30% -2,06\nCartas Exemplo 0,02 A\n2 x 0,01\nAnulacao Cartas EUR -0,02\n------------\nTotal 4,77').replace('DEPOSITO 0,20\nDINHEIRO 5,00\nTROCO -2,25', 'MULTIBANCO 4,77');
+  const r = parseReceipt(txt);
+  assert.deepEqual(r.warnings, []); assert.ok(r.check.ok); assert.equal(r.doc, '025600000/000002'); assert.equal(r.items.length, 2);
+  assert.deepEqual([r.items[0].weightKg, r.items[0].discount, r.items[0].net], [1.043, 2.06, 4.77]);
+  assert.deepEqual([r.items[1].qty, r.items[1].discount, r.items[1].net], [2, 0.02, 0]);
+});
+
+t('categorize: nomes do Lidl de 2024 (doces, higiene, vinho, carnes)', () => {
+  for (const [n, k] of [['TWIX SINGLE 50G', 'Doces e snacks'], ['CANDYCAT BOMBONS CREME', 'Doces e snacks'], ['BLOCO SANITARIO EXEMPLO', 'Higiene e limpeza'], ['SANDUICHES GOURMET CLUB', 'Refeições prontas'], ['MACARRONETE', 'Mercearia'], ['COTOVELINHOS', 'Mercearia'], ['Cartas MatchAttax Euro 2024', 'Lazer e brinquedos'], ['LIMAS', 'Frutas e vegetais'], ['MANGA MATURADA', 'Frutas e vegetais'], ['MONTE VILA QUEIJ FLAM P FAM', 'Lácteos e ovos'], ['MAMINHABOVINO UK/ESCOCIA/IR', 'Carnes e charcutaria'], ['REAL LAVRADOR BRANCO SELECT', 'Bebidas']]) assert.equal(categorize(n).category, k, n);
+  assert.equal(categorize('REAL LAVRADOR BRANCO SELECT').need, 'flexible');
+});
+
 t('categorize: produtos do Lidl (bazar com código, animais, higiene)', () => {
   assert.equal(categorize('Cama Animal Tam S Cast-0514713').category, 'Animais');
   assert.equal(categorize('Tabua Cortar Peq 2U-0490572').category, 'Casa e bazar');
