@@ -5,155 +5,102 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Carro</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#101316">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="lib/fonts/saira-600-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="lib/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="lib/argos.css">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('argos.theme') || 'dark'; } catch (e) {}</script>
 <style>
-:root{
-  --bg:#F3F1EA; --surface:#FBFAF6; --surface-2:#ECE9E0;
-  --ink:#15171A; --ink-2:#555A61; --ink-3:#8A8E95; --rule:#D9D5C9;
-  --danger:#A3261C; --danger-bg:#F6E3DF; --ok:#1F6B3A; --warn:#8A5A00; --warn-bg:#F7ECCB;
-  --accent:#F5D24C; --accent-ink:#15171A; --series:#2F6FB3;
-  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-  --r:12px; color-scheme:light;
+/* Específico do Carro */
+.hero { display: grid; gap: 16px; }
+.hero[data-tank="1"] { grid-template-columns: minmax(0, 280px) minmax(0, 1fr); }
+.tank { text-align: center; }
+.tank .lab, .tank .sub { text-align: left; }
+.tank .gauge-box { margin-top: 8px; }
+.tank .gauge-value { font-size: 32px; }
+.tank .cap { margin-top: 8px; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.charts h2 { margin-bottom: 8px; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.acts .btn { flex: 1 1 auto; }
+.acts .msg { flex: 1 1 100%; }
+/* mostrador do painel (réplica do Captur nos formulários; cores fixas porque imita o instrumento real) */
+.dial { width: min(200px, 62%); display: block; margin: 0 auto; touch-action: none; cursor: grab; }
+.dial .ty { stroke: #f2c230; stroke-width: 2; stroke-linecap: butt; }
+.dial .tw { stroke: #f2efe6; stroke-width: 2.4; }
+.dial text { font-family: var(--font-num); font-size: 19px; font-weight: 600; }
+.dial .nd { stroke: #f2c230; stroke-width: 6; }
+#lvRange, #lvRangeF { width: 100%; margin: 6px 0; min-height: 44px; accent-color: var(--cyan-fill); }
+.lvtxt { text-align: center; font-weight: 600; }
+.chart .cbar { fill: var(--cyan-fill); }
+.chart .cbar:hover, .chart .cbar:focus-visible { opacity: .75; }
+.chart .cbar:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.priv { margin: 16px 0 0; }
+@media (max-width: 700px) {
+  .hero[data-tank="1"], .charts { grid-template-columns: minmax(0, 1fr); }
+  .stack, .hero, .charts { gap: 12px; }
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
-    --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
-    --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795; --warn:#E8C26A; --warn-bg:#2E2610; --series:#6FA8E0;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-    --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
-  --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
-  --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795; --warn:#E8C26A; --warn-bg:#2E2610; --series:#6FA8E0;
-  color-scheme:dark;
-}
-.theme-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);display:grid;place-items:center;padding:0}
-.theme-btn svg{width:20px;height:20px}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink)}
-body{font-family:var(--display);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
-.wrap{max-width:560px;margin:0 auto;padding:0 16px 48px}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.top{display:flex;align-items:center;gap:8px;padding:14px 0 10px}
-.brand{font-weight:800;font-stretch:75%;font-size:20px;text-transform:uppercase;margin-right:auto}
-.brand b{display:inline-block;width:10px;height:10px;background:var(--accent);border:1.5px solid var(--ink);border-radius:50%;margin-right:7px}
-.nav{display:flex;gap:3px;margin:0 0 14px;border-bottom:1px solid var(--ink-3)}
-.nav a{border:1px solid var(--rule);border-bottom:0;background:var(--surface-2);color:var(--ink-2);text-decoration:none;border-radius:10px 10px 0 0;padding:11px 8px 10px;font-size:14px;font-weight:600;flex:1 1 auto;text-align:center;white-space:nowrap;margin-bottom:-1px;-webkit-tap-highlight-color:transparent}
-.nav [aria-current="page"]{background:var(--bg);color:var(--ink);border-color:var(--ink-3);border-bottom:1px solid var(--bg);box-shadow:inset 0 3px 0 var(--accent);padding-bottom:11px;font-weight:700}
-.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 16px;font-weight:700}
-.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
-.btn.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
-.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin:0 0 12px}
-.card h2{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
-.tile{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px}
-.tile .k{font-size:12px;color:var(--ink-2)}
-.tile .v{font-family:var(--mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
-.tile .u{font-size:12px;color:var(--ink-3);margin-left:3px}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
-.msg{font-size:14px;min-height:1.2em;color:var(--ink-2)} .msg.bad{color:var(--danger)} .msg.good{color:var(--ok)}
-.field{display:block;margin:0 0 12px} .field>span{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--rule);background:var(--bg);border-radius:10px;padding:10px 12px}
-.field small{display:block;color:var(--ink-3);font-size:12px;margin-top:4px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.check{display:flex;gap:8px;align-items:center;margin:0 0 12px}
-dialog{border:1px solid var(--rule);border-radius:16px;background:var(--surface);color:var(--ink);padding:0;width:min(520px,calc(100vw - 24px))}
-dialog::backdrop{background:rgba(0,0,0,.45)}
-.sheet{padding:18px}
-.sheet h3{margin:0 0 12px}
-.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
-.list{list-style:none;margin:0;padding:0}
-.list li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--rule)}
-.list li:first-child{border-top:0}
-.list .main{flex:1;min-width:0} .list .sub{font-size:13px;color:var(--ink-2)}
-.list button{border:0;background:none;color:var(--ink-3);padding:6px;border-radius:8px}
-.pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--ink-2)}
-.pill.overdue{background:var(--danger-bg);color:var(--danger)} .pill.soon{background:var(--warn-bg);color:var(--warn)}
-.chart{width:100%;height:auto;display:block}
-.chart text{font-family:var(--mono);font-size:10px;fill:var(--ink-3)}
-.chart .grid{stroke:var(--rule);stroke-width:1}
-.chart .bar{fill:var(--series)} .chart .bar:hover,.chart .bar:focus{opacity:.75;outline:none}
-.chart .line{fill:none;stroke:var(--series);stroke-width:2}
-.chart .dot{fill:var(--series);stroke:var(--surface);stroke-width:2}
-.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:4px 8px;border-radius:6px;z-index:9;white-space:nowrap}
-.empty{color:var(--ink-3);font-size:14px;padding:4px 0}
-.gauge{width:min(200px,62%);display:block;margin:0 auto;touch-action:none;cursor:grab}
-.gauge .ty{stroke:#f2c230;stroke-width:2;stroke-linecap:butt}.gauge .tw{stroke:#f2efe6;stroke-width:2.4}
-.gauge text{font-family:var(--mono);font-size:19px;font-weight:700}
-.gauge .nd{stroke:#f2c230;stroke-width:6}
-#lvRange{width:100%;margin:6px 0}.lvtxt{text-align:center;font-weight:700}
-.priv{font-size:12px;color:var(--ink-3);margin-top:18px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface-2);border:1px solid var(--rule);border-radius:12px;padding:4px;margin:0 0 14px}
-.seg button{border:0;background:transparent;color:var(--ink-2);border-radius:9px;padding:9px 6px;font-size:14px;font-weight:600}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.acts3{flex-wrap:nowrap;gap:6px} .acts3 .btn{padding-left:10px;padding-right:10px;font-size:14px;white-space:nowrap;flex:1 1 auto}
-[hidden]{display:none!important}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top"><div class="brand"><b></b>Carro</div><button class="theme-btn" data-theme-btn type="button"></button></div>
-  <nav class="nav" aria-label="Seções"><a href="index.html">Início</a><a href="onibus.html">Ônibus</a><a href="carro.html" aria-current="page">Carro</a><a href="gastos.html">Gastos</a><a href="saude.html">Saúde</a></nav>
+<nav class="nav" data-nav aria-label="Principal"></nav>
+<main class="wrap">
+  <div class="head"><h1>Carro</h1><span class="mu when"></span><button class="theme-btn" data-theme-btn type="button"></button></div>
 
-  <section id="setup" class="card" hidden>
-    <h2>Conectar ao cofre privado</h2>
-    <p style="margin:0 0 12px;color:var(--ink-2);font-size:14px">Seus dados não ficam nesta página pública. Informe o endereço do seu cofre e o token secreto; os dois ficam guardados só neste aparelho.</p>
-    <label class="field"><span>Endereço do cofre</span><input id="cfgUrl" type="url" placeholder="https://vault.seunome.workers.dev" autocomplete="off"></label>
-    <label class="field"><span>Token</span><input id="cfgToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+  <section id="setup" class="panel stack" hidden aria-label="Conectar ao cofre">
+    <h2 class="lab">Conectar ao cofre privado</h2>
+    <p class="mu" style="margin:0">Seus dados não ficam nesta página pública. Informe o endereço do seu cofre e o token secreto; os dois ficam guardados só neste aparelho.</p>
+    <label class="field"><span class="lab">Endereço do cofre</span><input id="cfgUrl" type="url" placeholder="https://vault.seunome.workers.dev" autocomplete="off"></label>
+    <label class="field"><span class="lab">Token</span><input id="cfgToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
     <div class="msg" id="cfgMsg" role="status"></div>
     <div class="actions"><button class="btn" id="btnConnect" type="button">Conectar</button></div>
   </section>
 
-  <main id="app" hidden>
-    <div class="row acts3"><button class="btn" id="btnFuel">+ Abastecer</button><button class="btn ghost" id="btnStatus">+ Odômetro</button><button class="btn ghost" id="btnService">+ Manutenção</button><span class="msg" id="sync" role="status"></span></div>
+  <div id="app" class="stack" hidden>
+    <div class="acts"><button class="btn" id="btnFuel" type="button">+ Abastecer</button><button class="btn ghost" id="btnStatus" type="button">+ Odômetro</button><button class="btn ghost" id="btnService" type="button">+ Manutenção</button><span class="msg" id="sync" role="status"></span></div>
     <div class="seg" role="group" aria-label="Seção do carro"><button type="button" data-view="resumo">Resumo</button><button type="button" data-view="fuel">Abastecimentos</button><button type="button" data-view="reg">Registros</button></div>
-    <div data-v="resumo">
+    <div data-v="resumo" class="stack">
       <div id="remind"></div>
-      <div class="tiles" id="tiles"></div>
-      <div class="card"><h2>Consumo por abastecimento (km/l)</h2><div id="chCons"></div></div>
-      <div class="card"><h2>Gasto por mês (€)</h2><div id="chSpend"></div></div>
-      <div class="card"><h2>Km rodados por mês</h2><div id="chKm"></div></div>
+      <div class="hero" id="hero"><div class="panel tank" id="tank" hidden></div><div class="tiles" id="tiles"></div></div>
+      <div class="charts">
+        <div class="panel"><h2 class="lab">Consumo por abastecimento (km/l)</h2><div id="chCons"></div></div>
+        <div class="panel"><h2 class="lab">Gasto por mês (€)</h2><div id="chSpend"></div></div>
+        <div class="panel"><h2 class="lab">Km rodados por mês</h2><div id="chKm"></div></div>
+      </div>
     </div>
     <div data-v="fuel" hidden>
-      <div class="card"><h2>Abastecimentos</h2><ul class="list" id="fuelList"></ul></div>
+      <div class="panel"><h2 class="lab">Abastecimentos</h2><ul class="list" id="fuelList"></ul></div>
     </div>
-    <div data-v="reg" hidden>
-      <div class="card"><h2>Manutenções</h2><ul class="list" id="svcList"></ul></div>
-      <div class="card"><h2>Leituras do odômetro</h2><ul class="list" id="stList"></ul></div>
+    <div data-v="reg" class="stack" hidden>
+      <div class="panel"><h2 class="lab">Manutenções</h2><ul class="list" id="svcList"></ul></div>
+      <div class="panel"><h2 class="lab">Leituras do odômetro</h2><ul class="list" id="stList"></ul></div>
     </div>
-    <div class="row"><button class="btn ghost" id="btnExport">Baixar backup (JSON)</button></div>
-  </main>
-  <p class="priv">Os dados ficam no seu cofre (Cloudflare) e uma cópia fica neste aparelho para funcionar sem internet.</p>
-</div>
+    <div class="acts"><button class="btn ghost" id="btnExport" type="button">Baixar backup (JSON)</button></div>
+  </div>
+  <p class="priv mu">Os dados ficam no seu cofre (Cloudflare) e uma cópia fica neste aparelho para funcionar sem internet.</p>
+</main>
 
 <dialog id="dlgFuel"><form method="dialog" class="sheet" id="formFuel">
   <h3 id="fuelTitle">Abastecimento</h3>
   <div class="two">
-    <label class="field"><span>Data</span><input name="date" type="date" required></label>
-    <label class="field"><span>Km do odômetro</span><input name="odometer" inputmode="decimal" required></label>
+    <label class="field"><span class="lab">Data</span><input name="date" type="date" required></label>
+    <label class="field"><span class="lab">Km do odômetro</span><input name="odometer" inputmode="decimal" required></label>
   </div>
   <div class="two">
-    <label class="field"><span>Litros</span><input name="liters" inputmode="decimal" required></label>
-    <label class="field"><span>Valor total (€)</span><input name="total" inputmode="decimal" required></label>
+    <label class="field"><span class="lab">Litros</span><input name="liters" inputmode="decimal" required></label>
+    <label class="field"><span class="lab">Valor total (€)</span><input name="total" inputmode="decimal" required></label>
   </div>
-  <label class="field"><span>Posto</span><select name="stationSel" id="stationSel"></select></label>
-  <label class="field" id="stationNewBox" hidden><span>Nome do novo posto</span><input name="stationNew" id="stationNew" maxlength="60"></label>
-  <label class="field"><span>Observação (opcional)</span><input name="note" maxlength="200" placeholder="Combustível aditivado, viagem, preço promocional…"></label>
-  <div class="field"><span>Nível do tanque depois de abastecer</span>
-    <svg id="gaugeF" class="gauge" viewBox="0 0 160 220" role="img" aria-label="Mostrador do combustível"></svg>
+  <label class="field"><span class="lab">Posto</span><select name="stationSel" id="stationSel"></select></label>
+  <label class="field" id="stationNewBox" hidden><span class="lab">Nome do novo posto</span><input name="stationNew" id="stationNew" maxlength="60"></label>
+  <label class="field"><span class="lab">Observação (opcional)</span><input name="note" maxlength="200" placeholder="Combustível aditivado, viagem, preço promocional…"></label>
+  <div class="field"><span class="lab">Nível do tanque depois de abastecer</span>
+    <svg id="gaugeF" class="dial" viewBox="0 0 160 220" role="img" aria-label="Mostrador do combustível"></svg>
     <input type="range" name="fuelLevel" id="lvRangeF" min="0" max="100" step="1" value="100" aria-label="Posição do ponteiro">
     <div class="lvtxt" id="lvTxtF" aria-live="polite"></div>
-    <small style="color:var(--ink-3);display:block;margin:2px 0 4px">Padrão: cheio (100%). Só o tanque cheio entra no cálculo do consumo; se parar abaixo disso, o abastecimento conta como parcial.</small>
+    <small class="hint">Padrão: cheio (100%). Só o tanque cheio entra no cálculo do consumo; se parar abaixo disso, o abastecimento conta como parcial.</small>
   </div>
   <div class="msg" id="fuelMsg" role="status"></div>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnFuelSave">Salvar</button></div>
@@ -162,44 +109,46 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <dialog id="dlgStatus"><form method="dialog" class="sheet" id="formStatus">
   <h3 id="stTitle">Leitura do odômetro</h3>
   <div class="two">
-    <label class="field"><span>Data</span><input name="date" type="date" required></label>
-    <label class="field"><span>Km do odômetro</span><input name="odometer" inputmode="decimal" required></label>
+    <label class="field"><span class="lab">Data</span><input name="date" type="date" required></label>
+    <label class="field"><span class="lab">Km do odômetro</span><input name="odometer" inputmode="decimal" required></label>
   </div>
   <label class="check"><input type="checkbox" id="lvOn"> Informar o nível do tanque</label>
   <div id="lvBox" hidden>
-    <svg id="gauge" class="gauge" viewBox="0 0 160 220" role="img" aria-label="Mostrador do combustível"></svg>
+    <svg id="gauge" class="dial" viewBox="0 0 160 220" role="img" aria-label="Mostrador do combustível"></svg>
     <input type="range" name="fuelLevel" id="lvRange" min="0" max="100" step="1" value="50" aria-label="Posição do ponteiro">
     <div class="lvtxt" id="lvTxt" aria-live="polite"></div>
-    <small style="color:var(--ink-3);display:block;margin:2px 0 12px">Arraste o ponteiro no desenho (ou use o controle) até ficar igual ao do painel do carro. O valor em litros é uma estimativa.</small>
+    <small class="hint">Arraste o ponteiro no desenho (ou use o controle) até ficar igual ao do painel do carro. O valor em litros é uma estimativa.</small>
   </div>
   <div class="two">
-    <label class="field"><span>Autonomia no painel (km)</span><input name="dashRange" inputmode="decimal"></label>
-    <label class="field"><span>Consumo do painel (l/100 km)</span><input name="dashAvg" inputmode="decimal"></label>
+    <label class="field"><span class="lab">Autonomia no painel (km)</span><input name="dashRange" inputmode="decimal"></label>
+    <label class="field"><span class="lab">Consumo do painel (l/100 km)</span><input name="dashAvg" inputmode="decimal"></label>
   </div>
-  <label class="field"><span>Observação (opcional)</span><input name="note" maxlength="200" placeholder="Antes da viagem, depois da revisão…"></label>
+  <label class="field"><span class="lab">Observação (opcional)</span><input name="note" maxlength="200" placeholder="Antes da viagem, depois da revisão…"></label>
   <div class="msg" id="stMsg" role="status"></div>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnStSave">Salvar</button></div>
 </form></dialog>
 
 <dialog id="dlgService"><form method="dialog" class="sheet" id="formService">
   <h3 id="svcTitle">Manutenção</h3>
-  <label class="field"><span>O que foi feito</span><input name="kind" placeholder="Troca de óleo, pneus, revisão, seguro…" maxlength="60" required></label>
+  <label class="field"><span class="lab">O que foi feito</span><input name="kind" placeholder="Troca de óleo, pneus, revisão, seguro…" maxlength="60" required></label>
   <div class="two">
-    <label class="field"><span>Data</span><input name="date" type="date" required></label>
-    <label class="field"><span>Km do odômetro</span><input name="odometer" inputmode="decimal"></label>
+    <label class="field"><span class="lab">Data</span><input name="date" type="date" required></label>
+    <label class="field"><span class="lab">Km do odômetro</span><input name="odometer" inputmode="decimal"></label>
   </div>
-  <label class="field"><span>Custo (€)</span><input name="cost" inputmode="decimal"></label>
+  <label class="field"><span class="lab">Custo (€)</span><input name="cost" inputmode="decimal"></label>
   <div class="two">
-    <label class="field"><span>Próxima aos (km)</span><input name="nextKm" inputmode="decimal"></label>
-    <label class="field"><span>…ou até a data</span><input name="nextDate" type="date"></label>
+    <label class="field"><span class="lab">Próxima aos (km)</span><input name="nextKm" inputmode="decimal"></label>
+    <label class="field"><span class="lab">…ou até a data</span><input name="nextDate" type="date"></label>
   </div>
-  <small style="color:var(--ink-3);display:block;margin:-6px 0 12px">Preencha um dos dois para receber um lembrete.</small>
+  <small class="hint">Preencha um dos dois para receber um lembrete.</small>
   <div class="msg" id="svcMsg" role="status"></div>
   <div class="actions"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn" type="button" id="btnSvcSave">Salvar</button></div>
 </form></dialog>
 
+
 <script type="module">
 import { initTheme } from "./lib/theme.js"; initTheme();
+import { initNav } from "./lib/nav.js"; initNav();
 import { createVault, newId } from './lib/vault.js';
 import { fuelRecord, serviceRecord, statusRecord, litersFromLevel, odoPoints, monthlyKm, kmPerDay, summary, consumption, monthlySpend, reminders, parseNum, byOdometer } from './lib/car-core.js';
 
@@ -245,6 +194,13 @@ async function load() {
 }
 
 // ---------- render ----------
+// Tanque: mostrador semicircular ciano (arco de 220 = 100%); litros estimados no centro.
+function tankHtml(st) {
+  const p = Math.max(0, Math.min(100, st.fuelLevel)), l = litersFromLevel(p), aria = 'Tanque em ' + Math.round(p) + '%, cerca de ' + l + ' litros';
+  return `<h2 class="lab">Tanque em ${esc(dateBR(st.date).slice(0, 5))}</h2>
+    <div class="gauge-box"><svg class="gauge cyan" viewBox="0 0 160 96" role="img" aria-label="${esc(aria)}"><path class="gauge-track" d="M10 84 A70 70 0 0 1 150 84"/><path class="gauge-fill" d="M10 84 A70 70 0 0 1 150 84" style="stroke-dasharray:${(p * 2.2).toFixed(1)} 220"/></svg><div class="gauge-value num">≈ ${esc(l)} l</div></div>
+    <div class="mu cap">${Math.round(p)}% do tanque${st.dashRange != null ? ' · autonomia ' + esc(kmFmt(st.dashRange)) + ' km' : ''}</div>`;
+}
 function tile(k, v, u = '') { return `<div class="tile"><div class="k">${esc(k)}</div><div><span class="v">${esc(v)}</span><span class="u">${esc(u)}</span></div></div>`; }
 
 function render() {
@@ -254,37 +210,41 @@ function render() {
     tile('Odômetro', kmFmt(s.lastOdo), 'km'), tile('Último consumo', dec(s.lastKmPerL), 'km/l'),
     tile('Média', dec(s.avgKmPerL), 'km/l'), tile('Custo por km', s.avgCostPerKm == null ? '–' : eur(s.avgCostPerKm).replace(/\s/g, ' '), ''),
     tile('Preço médio/l', s.avgPricePerL == null ? '–' : eur(s.avgPricePerL), ''), tile('Km por dia', perDay == null ? '–' : dec(perDay, 0), 'km'),
-    ...(lastSt && lastSt.fuelLevel != null ? [tile('Tanque em ' + dateBR(lastSt.date).slice(0, 5), '≈ ' + litersFromLevel(lastSt.fuelLevel), 'l' + (lastSt.dashRange != null ? ' · ' + kmFmt(lastSt.dashRange) + ' km' : ''))] : []), tile('Total gasto', eur(s.spent + services.reduce((a, x) => a + (x.cost || 0), 0)), ''),
-  ].join('') : '<div class="card empty" style="grid-column:1/-1">Registre o primeiro abastecimento para ver as estatísticas.</div>';
+    tile('Total gasto', eur(s.spent + services.reduce((a, x) => a + (x.cost || 0), 0)), ''),
+  ].join('') : '<div class="panel mu" style="grid-column:1/-1">Registre o primeiro abastecimento para ver as estatísticas.</div>';
+
+  const tankOk = fuels.length && lastSt && lastSt.fuelLevel != null;
+  $('#hero').dataset.tank = tankOk ? '1' : '0'; $('#tank').hidden = !tankOk;
+  if (tankOk) $('#tank').innerHTML = tankHtml(lastSt);
 
   const rem = reminders(services, s.lastOdo, today());
   const mk = monthlyKm(pts);
-  $('#chKm').innerHTML = mk.length ? bars(mk.map(m => ({ label: m.month.slice(5) + '/' + m.month.slice(2, 4), v: m.km, tip: `${m.month.split('-').reverse().join('/')}: ${kmFmt(m.km)} km` })).slice(-24), n => kmFmt(n)) : '<div class="empty">Precisa de duas leituras de odômetro em datas diferentes.</div>';
-  $('#remind').innerHTML = rem.length ? `<div class="card"><h2>Lembretes</h2><ul class="list">${rem.map(r => `<li><div class="main">${esc(r.kind)}<div class="sub">${[r.kmLeft != null ? (r.kmLeft >= 0 ? `faltam ${kmFmt(r.kmLeft)} km` : `passou ${kmFmt(-r.kmLeft)} km`) : '', r.daysLeft != null ? (r.daysLeft >= 0 ? `em ${r.daysLeft} dias` : `venceu há ${-r.daysLeft} dias`) : ''].filter(Boolean).join(' · ')}</div></div><span class="pill ${r.state}">${{ overdue: 'atrasado', soon: 'em breve', ok: 'ok' }[r.state]}</span></li>`).join('')}</ul></div>` : '';
+  $('#chKm').innerHTML = mk.length ? bars(mk.map(m => ({ label: m.month.slice(5) + '/' + m.month.slice(2, 4), v: m.km, tip: `${m.month.split('-').reverse().join('/')}: ${kmFmt(m.km)} km` })).slice(-24), n => kmFmt(n)) : '<div class="mu">Precisa de duas leituras de odômetro em datas diferentes.</div>';
+  $('#remind').innerHTML = rem.length ? `<div class="panel"><h2 class="lab">Lembretes</h2><ul class="list">${rem.map(r => `<li><div class="main">${esc(r.kind)}<div class="sub">${[r.kmLeft != null ? (r.kmLeft >= 0 ? `faltam ${kmFmt(r.kmLeft)} km` : `passou ${kmFmt(-r.kmLeft)} km`) : '', r.daysLeft != null ? (r.daysLeft >= 0 ? `em ${r.daysLeft} dias` : `venceu há ${-r.daysLeft} dias`) : ''].filter(Boolean).join(' · ')}</div></div><span class="pill ${r.state}">${{ overdue: 'atrasado', soon: 'em breve', ok: 'ok' }[r.state]}</span></li>`).join('')}</ul></div>` : '';
 
   const cons = consumption(fuels);
-  $('#chCons').innerHTML = cons.length ? bars(cons.map(c => ({ label: dateBR(c.date).slice(0, 5), v: c.kmPerL, tip: `${dateBR(c.date)}: ${dec(c.kmPerL, 2)} km/l (${dec(c.lPer100, 1)} l/100 km, ${kmFmt(c.km)} km)` })).slice(-24), n => dec(n, 0)) : '<div class="empty">Precisa de dois abastecimentos com tanque cheio.</div>';
+  $('#chCons').innerHTML = cons.length ? bars(cons.map(c => ({ label: dateBR(c.date).slice(0, 5), v: c.kmPerL, tip: `${dateBR(c.date)}: ${dec(c.kmPerL, 2)} km/l (${dec(c.lPer100, 1)} l/100 km, ${kmFmt(c.km)} km)` })).slice(-24), n => dec(n, 0)) : '<div class="mu">Precisa de dois abastecimentos com tanque cheio.</div>';
   const ms = monthlySpend(fuels, services);
-  $('#chSpend').innerHTML = ms.length ? bars(ms.map(m => ({ label: m.month.slice(5) + '/' + m.month.slice(2, 4), v: m.total, tip: `${m.month.split('-').reverse().join('/')}: ${eur(m.total)}` })).slice(-24), n => kmFmt(n)) : '<div class="empty">Sem gastos ainda.</div>';
+  $('#chSpend').innerHTML = ms.length ? bars(ms.map(m => ({ label: m.month.slice(5) + '/' + m.month.slice(2, 4), v: m.total, tip: `${m.month.split('-').reverse().join('/')}: ${eur(m.total)}` })).slice(-24), n => kmFmt(n)) : '<div class="mu">Sem gastos ainda.</div>';
 
   const fl = [...fuels].sort(byOdometer).reverse();
-  $('#fuelList').innerHTML = fl.length ? fl.map(f => `<li><div class="main"><span class="num">${kmFmt(f.odometer)} km</span> · ${dateBR(f.date)}<div class="sub">${dec(f.liters, 2)} l · ${eur(f.total)} · ${eur(f.liters ? f.total / f.liters : 0)}/l${f.full ? '' : ' · parcial'}${f.station ? ' · ' + esc(f.station) : ''}${f.note ? ' · ' + esc(f.note) : ''}</div></div><button data-edit-fuel="${esc(f.id)}" aria-label="Editar">Editar</button><button data-del-fuel="${esc(f.id)}" aria-label="Apagar">Apagar</button></li>`).join('') : '<li class="empty">Nenhum abastecimento.</li>';
+  $('#fuelList').innerHTML = fl.length ? fl.map(f => `<li><div class="main"><span class="num">${kmFmt(f.odometer)} km</span> · ${dateBR(f.date)}<div class="sub">${dec(f.liters, 2)} l · ${eur(f.total)} · ${eur(f.liters ? f.total / f.liters : 0)}/l${f.full ? '' : ' · parcial'}${f.station ? ' · ' + esc(f.station) : ''}${f.note ? ' · ' + esc(f.note) : ''}</div></div><button type="button" data-edit-fuel="${esc(f.id)}">Editar</button><button type="button" class="del" data-del-fuel="${esc(f.id)}">Apagar</button></li>`).join('') : '<li class="mu">Nenhum abastecimento.</li>';
     const stl = [...statuses].sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer);
-  $('#stList').innerHTML = stl.length ? stl.map(x => `<li><div class="main"><span class="num">${kmFmt(x.odometer)} km</span> · ${dateBR(x.date)}<div class="sub">${[x.fuelLevel != null ? 'tanque ≈ ' + litersFromLevel(x.fuelLevel) + ' l (' + Math.round(x.fuelLevel) + '%)' : '', x.dashRange != null ? 'autonomia ' + kmFmt(x.dashRange) + ' km' : '', x.dashAvg != null ? 'painel ' + dec(x.dashAvg, 1) + ' l/100 km' : '', x.note ? esc(x.note) : ''].filter(Boolean).join(' · ')}</div></div><button data-edit-st="${esc(x.id)}">Editar</button><button data-del-st="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma leitura. Use “+ Odômetro” para atualizar o km sem abastecer.</li>';
+  $('#stList').innerHTML = stl.length ? stl.map(x => `<li><div class="main"><span class="num">${kmFmt(x.odometer)} km</span> · ${dateBR(x.date)}<div class="sub">${[x.fuelLevel != null ? 'tanque ≈ ' + litersFromLevel(x.fuelLevel) + ' l (' + Math.round(x.fuelLevel) + '%)' : '', x.dashRange != null ? 'autonomia ' + kmFmt(x.dashRange) + ' km' : '', x.dashAvg != null ? 'painel ' + dec(x.dashAvg, 1) + ' l/100 km' : '', x.note ? esc(x.note) : ''].filter(Boolean).join(' · ')}</div></div><button type="button" data-edit-st="${esc(x.id)}">Editar</button><button type="button" class="del" data-del-st="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="mu">Nenhuma leitura. Use “+ Odômetro” para atualizar o km sem abastecer.</li>';
   const sl = [...services].sort((a, b) => b.date.localeCompare(a.date));
-  $('#svcList').innerHTML = sl.length ? sl.map(x => `<li><div class="main">${esc(x.kind)} · ${dateBR(x.date)}<div class="sub">${x.odometer ? kmFmt(x.odometer) + ' km · ' : ''}${eur(x.cost || 0)}${x.nextKm ? ' · próxima ' + kmFmt(x.nextKm) + ' km' : ''}${x.nextDate ? ' · até ' + dateBR(x.nextDate) : ''}</div></div><button data-edit-svc="${esc(x.id)}">Editar</button><button data-del-svc="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma manutenção.</li>';
+  $('#svcList').innerHTML = sl.length ? sl.map(x => `<li><div class="main">${esc(x.kind)} · ${dateBR(x.date)}<div class="sub">${x.odometer ? kmFmt(x.odometer) + ' km · ' : ''}${eur(x.cost || 0)}${x.nextKm ? ' · próxima ' + kmFmt(x.nextKm) + ' km' : ''}${x.nextDate ? ' · até ' + dateBR(x.nextDate) : ''}</div></div><button type="button" data-edit-svc="${esc(x.id)}">Editar</button><button type="button" class="del" data-del-svc="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="mu">Nenhuma manutenção.</li>';
 }
 
 // One series, one colour: no legend needed, the card title names it. Tooltip on hover/focus, values also in the lists below.
 function bars(data, axisFmt) {
-  const W = 520, H = 170, L = 34, B = 22, T = 8, max = Math.max(...data.map(d => d.v), 0.0001) * 1.1;
-  const bw = Math.min(28, (W - L) / data.length - 4), step = (W - L) / data.length;
+  const W = 320, H = 190, L = 44, R = 12, B = 28, T = 10, max = Math.max(...data.map(d => d.v), 0.0001) * 1.1;
+  const step = (W - L - R) / data.length, bw = Math.max(3, Math.min(24, step - 4)), every = Math.max(1, Math.ceil(48 / step));
   const y = v => T + (H - T - B) * (1 - v / max);
   const ticks = [0, .5, 1].map(f => max / 1.1 * f);
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de barras">
-    ${ticks.map(t => `<line class="grid" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${axisFmt(t)}</text>`).join('')}
-    ${data.map((d, i) => { const x = L + i * step + (step - bw) / 2, yy = y(d.v);
-      return `<path class="bar" tabindex="0" data-tip="${esc(d.tip)}" d="M${x},${H - B} V${yy + 4} Q${x},${yy} ${x + 4},${yy} H${x + bw - 4} Q${x + bw},${yy} ${x + bw},${yy + 4} V${H - B} Z"><title>${esc(d.tip)}</title></path>${data.length <= 12 || i % 2 === 0 ? `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${esc(d.label)}</text>` : ''}`; }).join('')}
+    ${ticks.map(t => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${axisFmt(t)}</text>`).join('')}
+    ${data.map((d, i) => { const x = L + i * step + (step - bw) / 2, yy = y(d.v), r = Math.min(3, bw / 2);
+      return `<path class="cbar" role="img" aria-label="${esc(d.tip)}" tabindex="0" data-tip="${esc(d.tip)}" d="M${x},${H - B} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${H - B} Z"><title>${esc(d.tip)}</title></path>${(data.length - 1 - i) % every === 0 ? `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(d.label)}</text>` : ''}`; }).join('')}
   </svg>`;
 }
 const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; document.body.append(tip);

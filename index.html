@@ -15,10 +15,6 @@
 <script>try { document.documentElement.dataset.theme = localStorage.getItem('argos.theme') || 'dark'; } catch (e) {}</script>
 <style>
 /* Específico da Início */
-.head { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
-.head h1 { font-family: var(--font-num); font-size: 28px; letter-spacing: .5px; text-transform: uppercase; }
-.head .when { margin-right: auto; }
-.stack { display: flex; flex-direction: column; gap: 16px; }
 .note { margin: 0; }
 .note.bad { color: var(--danger); }
 .g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -43,7 +39,6 @@
 .bl { font-size: 20px; font-weight: 600; }
 .chart-sum { margin-top: 8px; }
 .axis { display: flex; justify-content: space-between; margin-top: 2px; }
-.pill { display: inline-block; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--tab-active); }
 .review { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .mods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .mod { display: block; text-decoration: none; color: inherit; }
@@ -53,13 +48,8 @@ button.mod { width: 100%; text-align: left; border: 0; cursor: pointer; }
 .mod:hover { background: var(--tab-active); }
 .seclabel { margin: 8px 0 0; }
 .cofre { display: flex; flex-direction: column; gap: 12px; }
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field input { min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--track); }
-.field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.msg.bad { color: var(--danger); }
 .cofre .btn { align-self: flex-start; }
 .link-btn { align-self: flex-start; }
-[hidden] { display: none !important; }
 @media (max-width: 700px) {
   .head h1 { font-size: 26px; }
   .stack, .g3, .g2, .mods { gap: 12px; }
