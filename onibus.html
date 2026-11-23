@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ônibus</title>
 <meta name="description" content="Acompanhe uma linha de ônibus da STCP no Porto e veja o que está chegando à sua paragem.">
-<meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#101316">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -14,202 +13,144 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="lib/fonts/saira-600-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="lib/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="lib/argos.css">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('argos.theme') || 'dark'; } catch (e) {}</script>
 <style>
-:root{
-  --bg:#F3F1EA; --surface:#FBFAF6; --surface-2:#ECE9E0;
-  --ink:#15171A; --ink-2:#555A61; --ink-3:#8A8E95; --rule:#D9D5C9;
-  --danger:#A3261C; --danger-bg:#F6E3DF; --ok:#1F6B3A;
-  --accent:#F5D24C; --accent-ink:#15171A;
-  --display:"Archivo", "Arial Narrow", system-ui, sans-serif;
-  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --r:12px;
-  color-scheme: light;
+/* Específico dos Ônibus. Âmbar = o que acontece agora (minutos ao vivo, "Ao vivo", minha paragem); horário (UNIR/estimado) sai em tinta neutra com a pílula "Horário". */
+.tabs { display: flex; gap: 8px; overflow-x: auto; padding: 4px; margin: 0 -4px 16px; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; display: flex; align-items: center; gap: 8px; min-width: 44px; min-height: 44px; padding: 0 6px; border: 0; border-radius: 8px; background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--track); cursor: pointer; }
+.tab[aria-current=true] { background: var(--tab-active); box-shadow: inset 0 0 0 1.5px var(--amber-fill); }
+.tab.add { padding: 0 16px; color: var(--ink-2); }
+.tab .sw { display: grid; place-items: center; min-width: 36px; height: 32px; padding: 0 6px; border-radius: 6px; font-family: var(--font-num); font-size: 16px; font-weight: 600; }
+
+#main { display: flex; flex-direction: column; gap: 16px; }
+.line-head { display: flex; align-items: flex-start; gap: 16px; }
+.badge { flex: none; display: grid; place-items: center; min-width: 64px; height: 56px; padding: 0 12px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-family: var(--font-num); font-size: 32px; font-weight: 600; }
+.dir { flex: 1; min-width: 0; }
+.dir .lbl { color: var(--ink-2); font-weight: 600; }
+.dir .to { margin-top: 2px; font-size: 22px; font-weight: 600; line-height: 1.2; }
+.dir-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; }
+.chip svg { width: 18px; height: 18px; }
+.chip[disabled] { opacity: .5; cursor: not-allowed; }
+.tag { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--track); color: var(--ink-2); font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; vertical-align: 2px; }
+
+#main .panel { padding: 0; overflow: hidden; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 14px 16px; }
+.panel-head .k { flex-basis: 100%; color: var(--ink-2); font-weight: 600; }
+.panel-head .stopname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; font-weight: 600; }
+.panel-head .code { color: var(--ink-2); }
+.code { font-family: var(--font-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pill.late { background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--danger); }
+.pill.ok { background: transparent; color: var(--ok); box-shadow: inset 0 0 0 1.5px var(--ok); }
+.pill.live { background: transparent; color: var(--amber); box-shadow: inset 0 0 0 1.5px var(--amber); }
+.pill.live::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--amber-fill); }
+.pill.sched { background: transparent; color: var(--ink-2); box-shadow: inset 0 0 0 1.5px var(--track); }
+
+.bus { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px 16px; align-items: center; padding: 14px 16px; border-top: 1px solid var(--track); }
+.bus .min { font-family: var(--font-num); font-size: 36px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; color: var(--amber); }
+.bus .min small { margin-left: 2px; font-size: 16px; color: var(--ink-2); }
+.bus .min .at { font-size: 24px; }
+.bus .min small.day { display: block; margin: 4px 0 0; }
+.bus.muted .min { color: var(--ink-2); }
+.panel.sched .bus .min { color: var(--ink); }
+.panel.sched .bus.muted .min { color: var(--ink-2); }
+.bus .where { font-weight: 600; }
+.bus .sub { margin-top: 2px; color: var(--ink-2); }
+.bus .right { text-align: right; }
+.bus .right:empty { display: none; }
+.bus .clock { margin-top: 4px; font-family: var(--font-num); color: var(--ink-2); }
+.lnum { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); font-family: var(--font-num); font-weight: 600; }
+.empty { padding: 16px; color: var(--ink-2); }
+.status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 16px; border-top: 1px solid var(--track); background: var(--surface-2); color: var(--ink-2); }
+.status-row .upd { margin-right: auto; }
+.status-row .btn svg { width: 18px; height: 18px; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.err { margin: 12px 16px; padding: 12px 16px; border-radius: 8px; box-shadow: inset 0 0 0 1.5px var(--danger); }
+.err strong { display: block; margin-bottom: 4px; color: var(--danger); }
+.err .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.sec-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sec-title h2 { font-size: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.sec-title span { color: var(--ink-2); }
+.tl { position: relative; display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.tl::before { content: ""; position: absolute; left: 15px; top: 22px; bottom: 22px; width: 6px; border-radius: 3px; background: var(--accent); }
+.tl li { position: relative; display: grid; grid-template-columns: 36px 1fr auto; align-items: center; border-radius: 8px; }
+.tl .rail { position: relative; align-self: stretch; }
+.tl .dot { position: absolute; left: 10px; top: 50%; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%; background: var(--panel); border: 2.5px solid var(--ink); }
+.tl .stop-btn { all: unset; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 44px; padding: 8px 8px 8px 4px; cursor: pointer; }
+.tl .stop-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.tl .code { color: var(--ink-2); }
+.tl .eta { padding-right: 8px; font-family: var(--font-num); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); text-align: right; }
+.tl li.beyond .nm, .tl li.beyond .code { color: var(--ink-2); }
+.tl li.beyond .dot { border-color: var(--ink-2); }
+.tl li.mine { box-shadow: inset 0 0 0 2px var(--amber-fill); }
+.tl li.mine .dot { left: 7px; width: 22px; height: 22px; margin-top: -11px; background: var(--amber-fill); border-color: var(--ink); }
+.tl li.mine .nm { font-weight: 600; }
+.tl li.mine .eta { color: var(--amber); }
+.mine-tag { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: var(--btn-bg); color: var(--on-amber); font-size: 13px; font-weight: 600; letter-spacing: .06em; vertical-align: 2px; }
+.tl li.marker { padding: 0; }
+.vehicle { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px; margin-left: -26px; padding: 4px 12px 4px 8px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 600; white-space: nowrap; }
+.vehicle svg { width: 20px; height: 20px; }
+.vehicle.passed { background: var(--panel); color: var(--ink-2); box-shadow: inset 0 0 0 1.5px var(--track); }
+.marker .note { grid-column: 3; padding-left: 8px; color: var(--ink-2); }
+.set-row { grid-column: 2 / 4; padding: 0 4px 8px; }
+.legend { margin: 0; color: var(--ink-2); }
+.routes { list-style: none; margin: 0; padding: 0; color: var(--ink-2); }
+.routes li { padding: 4px 0; }
+.foot { margin-top: 24px; color: var(--ink-2); }
+
+@media (max-width: 560px) {
+  .bus { grid-template-columns: 72px 1fr; }
+  .bus .right { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; text-align: left; }
+  .bus .clock { margin-top: 0; }
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
-    --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
-    --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795;
-    color-scheme: dark;
-  }
+@media (min-width: 900px) {
+  #main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); grid-template-rows: auto auto auto 1fr; gap: 16px 32px; align-items: start; }
+  #main > .line-head { grid-column: 1; grid-row: 1; }
+  #main > .panel { grid-column: 1; grid-row: 2; }
+  #main > .legend { grid-column: 1; grid-row: 3; }
+  #main > .sec-title { grid-column: 2; grid-row: 1; align-self: end; }
+  #main > .tl, #main > .routes { grid-column: 2; grid-row: 2 / 5; }
 }
-:root[data-theme="dark"]{
-  --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
-  --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
-  --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795;
-  color-scheme: dark;
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink)}
-body{font-family:var(--display);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased;
-  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
-.wrap{max-width:560px;margin:0 auto;padding:0 16px 48px}
-.num,.code,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-svg{display:block}
 
-/* top bar */
-.top{display:flex;align-items:center;gap:8px;padding:14px 0 10px}
-.brand{font-weight:800;font-stretch:75%;font-size:20px;letter-spacing:.01em;margin-right:auto;text-transform:uppercase}
-.brand b{display:inline-block;width:10px;height:10px;background:var(--accent);border:1.5px solid var(--ink);border-radius:50%;margin-right:7px;vertical-align:1px}
-.icon-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);display:grid;place-items:center}
-.icon-btn:active{transform:scale(.97)}
-.icon-btn svg{width:20px;height:20px}
-
-.nav{display:flex;gap:3px;margin:0 0 14px;border-bottom:1px solid var(--ink-3)}
-.nav a{border:1px solid var(--rule);border-bottom:0;background:var(--surface-2);color:var(--ink-2);text-decoration:none;border-radius:10px 10px 0 0;padding:11px 8px 10px;font-size:14px;font-weight:600;flex:1 1 auto;text-align:center;white-space:nowrap;margin-bottom:-1px;-webkit-tap-highlight-color:transparent}
-.nav [aria-current="page"]{background:var(--bg);color:var(--ink);border-color:var(--ink-3);border-bottom:1px solid var(--bg);box-shadow:inset 0 3px 0 var(--accent);padding-bottom:11px;font-weight:700}
-
-/* line tabs */
-.tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{flex:none;display:flex;align-items:center;gap:8px;height:36px;padding:0 5px;border-radius:9px;border:1px solid var(--rule);background:var(--surface);font-weight:600}
-.tab .sw{min-width:30px;height:24px;padding:0 5px;border-radius:5px;display:grid;place-items:center;font-family:var(--mono);font-size:13px;font-weight:600}
-.tab[aria-current="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.tab.add{padding:0 12px;color:var(--ink-2);font-weight:500}
-
-/* line header */
-.line-head{display:flex;align-items:flex-start;gap:14px;padding:6px 0 14px}
-.badge{flex:none;min-width:64px;height:56px;padding:0 10px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;font-stretch:80%;font-size:30px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.dir{flex:1;min-width:0}
-.dir .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
-.dir .to{font-size:22px;font-weight:700;font-stretch:85%;line-height:1.15;margin-top:2px}
-.dir-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.chip-btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--rule);background:var(--surface);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
-.chip-btn svg{width:16px;height:16px}
-.chip-btn[disabled]{opacity:.45;cursor:not-allowed}
-.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid var(--rule);color:var(--ink-2);vertical-align:2px}
-
-/* my stop panel */
-.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
-.panel-head{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;padding:12px 16px 10px;border-bottom:1px solid var(--rule)}
-.panel-head .k{flex-basis:100%;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
-.panel-head .stopname{flex:1;font-weight:700;font-size:18px;margin-right:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bus{display:grid;grid-template-columns:72px 1fr auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--rule)}
-.bus:first-of-type{border-top:0}
-.bus .min{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:34px;line-height:1;letter-spacing:-.03em}
-.bus .min small{font-size:13px;font-weight:500;letter-spacing:0;margin-left:2px;color:var(--ink-2)}
-.bus .where{font-size:15px;font-weight:600;line-height:1.25}
-.bus .sub{font-size:13px;color:var(--ink-2);margin-top:2px}
-.bus .right{text-align:right}
-.bus .clock{font-family:var(--mono);font-size:13px;color:var(--ink-2);margin-top:4px}
-.bus.muted .min{color:var(--ink-3)}
-.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--rule);white-space:nowrap;font-variant-numeric:tabular-nums}
-.pill.late{border-color:var(--danger);color:var(--danger)}
-.pill.ok{border-color:var(--ok);color:var(--ok)}
-.empty{padding:16px;color:var(--ink-2);font-size:15px}
-.status-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--rule);background:var(--surface-2);font-size:13px;color:var(--ink-2)}
-.status-row .upd{margin-right:auto}
-.status-row button{border:0;background:none;padding:4px 0;font-weight:700;color:var(--ink);display:inline-flex;gap:6px;align-items:center}
-.status-row button svg{width:15px;height:15px}
-.spin{animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.err{margin:12px 16px;padding:12px 14px;border-radius:10px;background:var(--danger-bg);border:1px solid var(--danger);font-size:14px}
-.err strong{display:block;color:var(--danger);margin-bottom:2px}
-.err .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-
-/* timeline */
-.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 8px}
-.sec-title h2{margin:0;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
-.sec-title span{font-size:13px;color:var(--ink-3)}
-.tl{list-style:none;margin:0;padding:0;position:relative}
-.tl li{position:relative;display:grid;grid-template-columns:36px 1fr auto;align-items:center;min-height:46px}
-.tl .rail{align-self:stretch;position:relative}
-.tl .rail::before{content:"";position:absolute;left:15px;top:0;bottom:0;width:6px;background:var(--accent)}
-.tl li:first-child .rail::before{top:50%}
-.tl li.last .rail::before{bottom:50%}
-.tl .dot{position:absolute;left:10px;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:var(--surface);border:2.5px solid var(--ink)}
-.tl .stop-btn{all:unset;cursor:pointer;display:block;padding:9px 8px 9px 4px;min-width:0}
-.tl .stop-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
-.tl .nm{font-size:15px;font-weight:500;line-height:1.25}
-.tl .code{font-size:12px;color:var(--ink-3)}
-.tl .eta{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;color:var(--ink-2);padding-right:4px;text-align:right}
-.tl li.beyond .nm,.tl li.beyond .code{color:var(--ink-3)}
-.tl li.beyond .dot{border-color:var(--ink-3)}
-.tl li.mine{background:var(--surface);border-radius:10px;box-shadow:inset 0 0 0 2px var(--ink)}
-.tl li.mine .dot{width:22px;height:22px;margin-top:-11px;left:7px;background:var(--ink);border-color:var(--ink);box-shadow:0 0 0 3px var(--accent)}
-.tl li.mine .nm{font-weight:800}
-.tl li.mine .eta{color:var(--ink);font-weight:600}
-.mine-tag{display:inline-block;margin-left:6px;font-family:var(--display);font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--bg);background:var(--ink);padding:1px 5px;border-radius:4px;vertical-align:2px}
-.tl li.marker{min-height:0;padding:3px 0}
-.tl li.marker .rail::before{top:0;bottom:0}
-.vehicle{display:inline-flex;align-items:center;gap:8px;margin-left:-26px;position:relative;z-index:1;background:var(--accent);color:var(--accent-ink);border:2px solid var(--ink);border-radius:9px;padding:4px 10px 4px 7px;font-weight:700;font-size:13px;white-space:nowrap}
-.vehicle svg{width:18px;height:18px}
-.vehicle .num{font-weight:600}
-.vehicle.passed{background:var(--surface);color:var(--ink-2);border-color:var(--ink-3)}
-.marker .note{font-size:12px;color:var(--ink-2);padding-left:8px;grid-column:3}
-.set-row{grid-column:2 / 4;padding:0 4px 10px}
-.legend{font-size:12px;color:var(--ink-3);margin-top:10px}
-.lnum{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:600;padding:0 6px;border-radius:5px;background:var(--accent);color:var(--accent-ink);vertical-align:1px}
-.bus .min .at{font-size:22px}
-.bus .min small.day{display:block;margin:4px 0 0;font-size:12px}
-.routes{list-style:none;margin:0;padding:0;font-size:14px;color:var(--ink-2)}
-.routes li{padding:4px 0}
-
-.foot{margin-top:28px;font-size:12px;color:var(--ink-3);line-height:1.5}
-.foot a{color:inherit}
-
-/* sheets */
-dialog{border:0;padding:0;background:var(--surface);color:var(--ink);width:min(560px,100vw);max-width:100vw;max-height:88vh;border-radius:16px 16px 0 0;margin:auto auto 0;box-shadow:0 -8px 40px rgba(0,0,0,.25)}
-@media (min-width:600px){dialog{border-radius:16px;margin:auto}}
-dialog::backdrop{background:rgba(10,10,12,.45)}
-.sheet{padding:18px 16px 22px;overflow:auto;max-height:88vh}
-.sheet h3{margin:0 0 4px;font-size:20px;font-weight:800;font-stretch:85%}
-.sheet p.hint{margin:0 0 14px;color:var(--ink-2);font-size:14px}
-.field{display:block;margin:12px 0}
-.field > span{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
-.field small{display:block;color:var(--ink-3);font-size:12px;margin-top:4px}
-input[type=text],input[type=url],select,textarea{width:100%;border:1px solid var(--rule);background:var(--bg);border-radius:9px;padding:10px 12px;font-size:16px}
-textarea{font-family:var(--mono);font-size:14px;min-height:150px;resize:vertical}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-offset:0}
-.seg{display:flex;border:1px solid var(--rule);border-radius:9px;overflow:hidden}
-.seg button{flex:1;border:0;background:var(--bg);padding:9px 6px;font-weight:600;font-size:14px}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.row{display:flex;gap:10px}
-.row > *{flex:1}
-.btn{height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);font-weight:700}
-.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
-.btn.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
-.btn[disabled]{opacity:.5}
-.actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
-.actions .btn{flex:1}
-.preview{max-height:200px;overflow:auto;border:1px solid var(--rule);border-radius:9px;margin-top:8px;font-size:13px}
-.preview div{display:flex;gap:10px;padding:5px 10px;border-top:1px solid var(--rule)}
-.preview div:first-child{border-top:0}
-.preview .code{width:64px;flex:none;color:var(--ink)}
-.msg{font-size:14px;margin-top:10px;color:var(--ink-2)}
-.msg.bad{color:var(--danger)}
-.msg.good{color:var(--ok)}
-hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
-.foot summary,.legend summary{cursor:pointer;font-weight:600}
+/* diálogos */
+.sheet .actions { flex-wrap: wrap; }
+.sheet .actions .btn { flex: 1 1 auto; }
+.pane { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.row > * { flex: 1 1 auto; }
+.preview { max-height: 200px; overflow: auto; border-radius: 8px; box-shadow: inset 0 0 0 1.5px var(--track); }
+.preview div { display: flex; gap: 12px; padding: 6px 12px; border-top: 1px solid var(--track); }
+.preview div:first-child { border-top: 0; }
+.preview .code { flex: none; width: 64px; }
+hr.sep { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--track); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div class="brand"><b aria-hidden="true"></b>Ônibus</div>
-    <button class="icon-btn" id="btnTheme" data-theme-btn type="button"></button>
-    <button class="icon-btn" id="btnSettings" aria-label="Configurações" title="Configurações">
+<nav class="nav" data-nav aria-label="Principal"></nav>
+<main class="wrap">
+  <div class="head"><h1>Ônibus</h1><span class="when"></span>
+    <button class="theme-btn" id="btnTheme" data-theme-btn type="button"></button>
+    <button class="icon-btn" id="btnSettings" type="button" aria-label="Configurações" title="Configurações">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
     </button>
-  </header>
-  <nav class="nav" aria-label="Seções"><a href="index.html">Início</a><a href="onibus.html" aria-current="page">Ônibus</a><a href="carro.html">Carro</a><a href="gastos.html">Gastos</a><a href="saude.html">Saúde</a></nav>
+  </div>
 
   <nav class="tabs" id="tabs" aria-label="Suas linhas"></nav>
 
-  <main id="main"></main>
+  <div id="main"></div>
 
-  <footer class="foot"><details><summary>Sobre os dados</summary>
+  <footer class="foot"><details class="more"><summary>Sobre os dados</summary>
     Dados não oficiais do site da STCP, para uso pessoal. Uma requisição por paragem a cada atualização, a cada 30&nbsp;s ou mais devagar, em pausa enquanto a página está oculta.
     As posições são deduzidas das estimativas de chegada; a STCP não publica GPS aqui.
   </details></footer>
-</div>
+</main>
 
 <!-- Add line -->
 <dialog id="dlgAdd"><form method="dialog" class="sheet" id="formAdd">
@@ -219,21 +160,21 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
     <button type="button" data-mode="api" aria-pressed="true">Da STCP</button>
     <button type="button" data-mode="paste" aria-pressed="false">Colar paragens</button>
   </div>
-  <label class="field"><span>Número da linha</span><input type="text" name="short" placeholder="502" autocomplete="off" autocapitalize="characters" required></label>
-  <div data-pane="api">
-    <label class="field"><span>Um código de paragem desta linha</span><input type="text" name="probe" placeholder="BCM1" autocomplete="off" autocapitalize="characters">
-      <small>Usado para descobrir o route_id interno da linha via /api/stops/CODE/routes.</small></label>
-    <label class="field"><span>…ou o route_id interno, se souber</span><input type="text" name="rid" placeholder="opcional" autocomplete="off">
-      <small>Em stcp.pt/pt/linhas, abra a linha e, nas ferramentas de desenvolvedor do navegador, procure a requisição a /api/route/<b>ID</b>/stops.</small></label>
+  <label class="field"><span class="lab">Número da linha</span><input type="text" name="short" placeholder="502" autocomplete="off" autocapitalize="characters" required></label>
+  <div class="pane" data-pane="api">
+    <label class="field"><span class="lab">Um código de paragem desta linha</span><input type="text" name="probe" placeholder="BCM1" autocomplete="off" autocapitalize="characters">
+      <span class="hint">Usado para descobrir o route_id interno da linha via /api/stops/CODE/routes.</span></label>
+    <label class="field"><span class="lab">…ou o route_id interno, se souber</span><input type="text" name="rid" placeholder="opcional" autocomplete="off">
+      <span class="hint">Em stcp.pt/pt/linhas, abra a linha e, nas ferramentas de desenvolvedor do navegador, procure a requisição a /api/route/<b>ID</b>/stops.</span></label>
   </div>
-  <div data-pane="paste" hidden>
-    <label class="field"><span>Nome do sentido</span><input type="text" name="dirname" placeholder="Matosinhos (Mercado)" autocomplete="off"></label>
-    <label class="field"><span>Paragens em ordem, uma por linha</span>
-      <textarea name="list" placeholder="BLRB2 Bolhão&#10;BLFZ1 Bolhão (Firmeza)&#10;JN3 Jornal de Notícias"></textarea>
-      <small>"CÓDIGO Nome", "Nome CÓDIGO", "Nome (CÓDIGO)" ou uma lista separada por vírgulas funcionam.</small></label>
+  <div class="pane" data-pane="paste" hidden>
+    <label class="field"><span class="lab">Nome do sentido</span><input type="text" name="dirname" placeholder="Matosinhos (Mercado)" autocomplete="off"></label>
+    <label class="field"><span class="lab">Paragens em ordem, uma por linha</span>
+      <textarea name="list" rows="6" placeholder="BLRB2 Bolhão&#10;BLFZ1 Bolhão (Firmeza)&#10;JN3 Jornal de Notícias"></textarea>
+      <span class="hint">"CÓDIGO Nome", "Nome CÓDIGO", "Nome (CÓDIGO)" ou uma lista separada por vírgulas funcionam.</span></label>
     <div class="preview" id="pastePreview" hidden></div>
   </div>
-  <label class="field"><span>Cor da linha</span><input type="text" name="color" placeholder="#F5D24C (preenchida pela STCP quando disponível)" autocomplete="off"></label>
+  <label class="field"><span class="lab">Cor da linha</span><input type="text" name="color" placeholder="#F5D24C (preenchida pela STCP quando disponível)" autocomplete="off"></label>
   <div class="msg" id="addMsg" role="status"></div>
   <div class="actions">
     <button class="btn ghost" value="cancel" formnovalidate>Cancelar</button>
@@ -245,8 +186,8 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
 <dialog id="dlgLine"><form method="dialog" class="sheet" id="formLine">
   <h3 id="lineTitle">Linha</h3>
   <p class="hint" id="lineHint"></p>
-  <label class="field"><span>Cor da linha</span><input type="text" name="color" autocomplete="off"></label>
-  <label class="field"><span>Código de paragem para buscar o percurso (para atualizar pela STCP)</span><input type="text" name="probe" autocomplete="off" autocapitalize="characters"></label>
+  <label class="field"><span class="lab">Cor da linha</span><input type="text" name="color" autocomplete="off"></label>
+  <label class="field"><span class="lab">Código de paragem para buscar o percurso (para atualizar pela STCP)</span><input type="text" name="probe" autocomplete="off" autocapitalize="characters"></label>
   <div class="msg" id="lineMsg" role="status"></div>
   <div class="actions">
     <button class="btn ghost" type="button" id="btnLineRefresh">Carregar os dois sentidos da STCP</button>
@@ -260,22 +201,22 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
 <!-- Settings -->
 <dialog id="dlgSettings"><form method="dialog" class="sheet" id="formSettings">
   <h3>Configurações</h3>
-  <label class="field"><span>Ônibus a acompanhar na minha paragem</span>
-    <div class="seg" role="group" data-name="count"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button></div></label>
-  <label class="field"><span>Atualizar a cada</span>
-    <div class="seg" role="group" data-name="interval"><button type="button" data-v="30">30 s</button><button type="button" data-v="45">45 s</button><button type="button" data-v="60">60 s</button><button type="button" data-v="120">2 min</button></div></label>
-  <label class="field"><span>Olhar para trás no máximo</span>
-    <div class="seg" role="group" data-name="maxBack"><button type="button" data-v="8">8 paragens</button><button type="button" data-v="15">15</button><button type="button" data-v="30">30</button></div>
-    <small>Quantas paragens antes da sua o app pode consultar para situar um ônibus. Menos paragens, menos requisições.</small></label>
-  <label class="field"><span>Não iniciado se a próxima paragem estiver a mais de</span>
-    <div class="seg" role="group" data-name="ghost"><button type="button" data-v="5">5 min</button><button type="button" data-v="10">10 min</button><button type="button" data-v="15">15 min</button></div>
-    <small>Um ônibus cuja próxima paragem esteja mais longe que isso aparece como "Ainda não iniciou". Diminua se ônibus parados aparecem a caminho; aumente se ônibus reais aparecem como não iniciados.</small></label>
-  <label class="field"><span>Tema</span>
-    <div class="seg" role="group" data-name="theme"><button type="button" data-v="auto">Sistema</button><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div></label>
+  <div class="field"><span class="lab">Ônibus a acompanhar na minha paragem</span>
+    <div class="seg" role="group" aria-label="Ônibus a acompanhar" data-name="count"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button></div></div>
+  <div class="field"><span class="lab">Atualizar a cada</span>
+    <div class="seg" role="group" aria-label="Intervalo de atualização" data-name="interval"><button type="button" data-v="30">30 s</button><button type="button" data-v="45">45 s</button><button type="button" data-v="60">60 s</button><button type="button" data-v="120">2 min</button></div></div>
+  <div class="field"><span class="lab">Olhar para trás no máximo</span>
+    <div class="seg" role="group" aria-label="Olhar para trás" data-name="maxBack"><button type="button" data-v="8">8 paragens</button><button type="button" data-v="15">15</button><button type="button" data-v="30">30</button></div>
+    <span class="hint">Quantas paragens antes da sua o app pode consultar para situar um ônibus. Menos paragens, menos requisições.</span></div>
+  <div class="field"><span class="lab">Não iniciado se a próxima paragem estiver a mais de</span>
+    <div class="seg" role="group" aria-label="Limite de não iniciado" data-name="ghost"><button type="button" data-v="5">5 min</button><button type="button" data-v="10">10 min</button><button type="button" data-v="15">15 min</button></div>
+    <span class="hint">Um ônibus cuja próxima paragem esteja mais longe que isso aparece como "Ainda não iniciou". Diminua se ônibus parados aparecem a caminho; aumente se ônibus reais aparecem como não iniciados.</span></div>
+  <div class="field"><span class="lab">Tema</span>
+    <div class="seg" role="group" aria-label="Tema" data-name="theme"><button type="button" data-v="auto">Sistema</button><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div></div>
   <hr class="sep">
-  <label class="field"><span>Endereço da API</span>
+  <label class="field"><span class="lab">Endereço da API</span>
     <input type="url" name="proxy" placeholder="Automático (stcp.pt ou o /api deste site)" autocomplete="off">
-    <small>Deixe vazio para tentar o stcp.pt direto. Se o navegador bloquear, cole aqui o seu proxy, p. ex. https://argos-proxy.voce.workers.dev</small></label>
+    <span class="hint">Deixe vazio para tentar o stcp.pt direto. Se o navegador bloquear, cole aqui o seu proxy, p. ex. https://argos-proxy.voce.workers.dev</span></label>
   <div class="row"><button class="btn ghost" type="button" id="btnTest">Testar conexão</button></div>
   <div class="msg" id="testMsg" role="status"></div>
   <hr class="sep">
@@ -287,7 +228,7 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
     <button class="btn ghost" type="button" id="btnVaultSave">Salvar configuração no cofre</button>
     <button class="btn ghost" type="button" id="btnVaultLoad">Carregar configuração do cofre</button>
   </div>
-  <small style="color:var(--ink-3)">O cofre privado guarda suas linhas e trajetos fora desta página pública. Conecte-o uma vez em Carro → Cofre.</small>
+  <span class="hint">O cofre privado guarda suas linhas e trajetos fora desta página pública. Conecte-o uma vez em Carro → Cofre.</span>
   <div class="msg" id="ioMsg" role="status"></div>
   <div class="actions">
     <button class="btn danger" type="button" id="btnReset">Apagar tudo</button>
@@ -299,6 +240,7 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
 <script type="module">
 import Core from './lib/bus-core.js';
 import { initTheme, setTheme, getTheme, applyTheme } from './lib/theme.js';
+import { initNav } from './lib/nav.js'; initNav();
 import { UNIR, PAGES_PROXY, ymd, createUnir } from './lib/bus-net.js';
 (() => {
 'use strict';
@@ -566,7 +508,7 @@ function errorBox(e) {
   };
   const [t, m] = kinds[e.kind] || ['Algo deu errado', e.message];
   return `<div class="err" role="alert"><strong>${esc(t)}</strong>${esc(m)}
-    <div class="acts"><button class="chip-btn" data-act="retry">Tentar de novo</button>${e.kind === 'blocked' || e.kind === 'http' ? '<button class="chip-btn" data-act="settings">Configurações da API</button>' : ''}</div></div>`;
+    <div class="acts"><button class="chip" data-act="retry">Tentar de novo</button>${e.kind === 'blocked' || e.kind === 'http' ? '<button class="chip" data-act="settings">Configurações da API</button>' : ''}</div></div>`;
 }
 
 function render() {
@@ -584,7 +526,7 @@ function render() {
   if (mi < 0) {
     panel = `<div class="panel"><div class="empty">Toque numa paragem abaixo e escolha <b>Definir como minha paragem</b>. O app passa a acompanhar ${state.settings.count === 1 ? 'o próximo ônibus' : 'os próximos ' + state.settings.count + ' ônibus'} que chegam a ela.</div></div>`;
   } else {
-    const head = `<div class="panel-head"><span class="k">Minha paragem</span><span class="stopname">${esc(stops[mi].name)}</span><span class="code">${esc(stops[mi].code)}</span></div>`;
+    const head = `<div class="panel-head"><span class="k">Minha paragem</span><span class="stopname">${esc(stops[mi].name)}</span><span class="code">${esc(stops[mi].code)}</span><span class="pill live">Ao vivo</span></div>`;
     let body = '';
     if (live.err) body = errorBox(live.err);
     if (live.buses) {
@@ -604,12 +546,12 @@ function render() {
           <div><div class="where">Already passed</div><div class="sub">${p.nextMinutes > 0 ? `reaches ${esc(p.nextName)} in ${p.nextMinutes} min` : `at ${esc(p.nextName)} now`}${p.headsign ? ` · to ${esc(p.headsign)}` : ''}</div></div>
           <div class="right">${delayPill(p)}</div>
         </div>`;
-      if (live.partial) body += `<div class="empty" style="font-size:13px">Não foi possível verificar ${esc(stops[live.partial.idx].name)}; as posições antes dela são incertas.</div>`;
+      if (live.partial) body += `<div class="empty">Não foi possível verificar ${esc(stops[live.partial.idx].name)}; as posições antes dela são incertas.</div>`;
     } else if (!live.err) body += `<div class="empty">Carregando chegadas…</div>`;
     const ds = live.meta?.data_source && !/real/i.test(live.meta.data_source) ? ` · ${esc(live.meta.data_source)}` : '';
     panel = `<section class="panel" aria-live="polite">${head}${body}
       <div class="status-row"><span class="upd" id="upd" title="${live.requests ? live.requests + ' requisições na última atualização' : ''}${ds}"></span>
-      <button data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Atualizar</span></button></div></section>`;
+      <button class="btn ghost" data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Atualizar</span></button></div></section>`;
   }
 
   // timeline
@@ -642,8 +584,8 @@ function render() {
         <div class="lbl">Sentido ${l.example ? '<span class="tag">Dados de exemplo</span>' : ''}</div>
         <div class="to">${esc(d.name)}</div>
         <div class="dir-actions">
-          <button class="chip-btn" id="btnSwap" ${twoDirs ? '' : 'disabled'} title="${twoDirs ? 'Mudar para ' + esc(other) : 'Só um sentido carregado'}">${ICONS.swap}${twoDirs ? 'Para ' + esc(other) : 'Um sentido'}</button>
-          <button class="chip-btn" id="btnLine">${ICONS.dots}Linha</button>
+          <button class="chip" id="btnSwap" ${twoDirs ? '' : 'disabled'} title="${twoDirs ? 'Mudar para ' + esc(other) : 'Só um sentido carregado'}">${ICONS.swap}${twoDirs ? 'Para ' + esc(other) : 'Um sentido'}</button>
+          <button class="chip" id="btnLine">${ICONS.dots}Linha</button>
         </div>
       </div>
     </section>
@@ -691,17 +633,17 @@ function renderUnir(l) {
       <div class="dir">
         <div class="lbl">UNIR <span class="tag">Horário</span></div>
         <div class="to">${esc(l.name)}</div>
-        <div class="dir-actions"><button class="chip-btn" id="btnUnirRemove">Remover</button></div>
+        <div class="dir-actions"><button class="chip" id="btnUnirRemove">Remover</button></div>
       </div>
     </section>
-    <section class="panel" aria-live="polite">
-      <div class="panel-head"><span class="k">Próximos ônibus</span><span class="stopname">${l.target ? `O horário de ${esc(l.arrive)} inclui a caminhada` : 'Chegada à paragem'}</span></div>
+    <section class="panel sched" aria-live="polite">
+      <div class="panel-head"><span class="k">Próximos ônibus</span><span class="stopname">${l.target ? `O horário de ${esc(l.arrive)} inclui a caminhada` : 'Chegada à paragem'}</span><span class="pill sched">Horário</span></div>
       ${body}
-      <div class="status-row"><span class="upd" id="upd"></span><button data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
+      <div class="status-row"><span class="upd" id="upd"></span><button class="btn ghost" data-act="retry" id="btnRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
     </section>
     <div class="sec-title"><h2>Percursos</h2></div>
     <ul class="routes">${routes}</ul>
-    <details class="legend"><summary>Sobre estes horários</summary>Horários previstos de paragens.amp.pt; a UNIR não publica posições nem atrasos em tempo real. ≈ = chegada estimada pela viagem no sentido contrário (a última paragem não lista chegadas). Caminhadas: distância em linha reta + 30% a 80 m/min.</details>`;
+    <details class="legend more"><summary>Sobre estes horários</summary>Horários previstos de paragens.amp.pt; a UNIR não publica posições nem atrasos em tempo real. ≈ = chegada estimada pela viagem no sentido contrário (a última paragem não lista chegadas). Caminhadas: distância em linha reta + 30% a 80 m/min.</details>`;
   $('#main').querySelectorAll('[data-act="retry"]').forEach(b => b.onclick = () => refresh());
   $('#main').querySelectorAll('[data-act="settings"]').forEach(b => b.onclick = openSettings);
   $('#btnUnirRemove').onclick = () => {
@@ -721,7 +663,7 @@ function toggleSetRow(li) {
   const isMine = d.stops[i].id === d.myStop;
   const row = document.createElement('div');
   row.className = 'set-row';
-  row.innerHTML = isMine ? `<button class="chip-btn">Limpar minha paragem</button>` : `<button class="chip-btn">Definir como minha paragem</button>`;
+  row.innerHTML = isMine ? `<button class="chip">Limpar minha paragem</button>` : `<button class="chip">Definir como minha paragem</button>`;
   row.firstElementChild.onclick = () => { d.myStop = isMine ? null : d.stops[i].id; save(); live = { busy: false }; render(); refresh(); };
   li.appendChild(row);
   li.querySelector('.stop-btn').setAttribute('aria-expanded', 'true');
