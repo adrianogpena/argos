@@ -231,6 +231,28 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); }
 .chart .grid { stroke: var(--track); stroke-width: 1; }
 .tip { position: fixed; z-index: 90; pointer-events: none; padding: 6px 10px; border-radius: 6px; background: var(--ink); color: var(--bg); font-size: 16px; white-space: nowrap; }
 
+/* ---------- compartilhados de Gastos/Cartão ----------
+   .up/.down = pior/melhor (vermelho/verde); .fc-r = linha rótulo + valor; .hero = painel de destaque com .k/.v/.s (borda âmbar no topo);
+   details.more > summary = recolher; .chart-scroll = rolagem horizontal só dentro do gráfico;
+   .chart .st / .mb = barra focável (g tabindex=0 role=img|button) com <rect class="hit"> do tamanho do slot; .leg = legenda com <i> colorido. */
+.up { color: var(--danger); } .down { color: var(--ok); }
+.fc-r { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.fc-r > span:first-child { color: var(--ink-2); }
+.fc-r .num { white-space: nowrap; }
+.hero { box-shadow: inset 0 3px 0 var(--amber-fill), var(--panel-shadow); }
+.hero .k { color: var(--ink-2); font-weight: 600; }
+.hero .v { font-family: var(--font-num); font-size: 36px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.hero .s, .tile .s { color: var(--ink-2); }
+details.more > summary { display: flex; gap: 8px; align-items: center; min-height: 44px; list-style: none; font-weight: 600; cursor: pointer; }
+details.more > summary::before { content: "\25B8"; color: var(--ink-2); }
+details.more[open] > summary::before { content: "\25BE"; }
+.chart-scroll { overflow-x: auto; }
+.chart .hit { fill: transparent; }
+.chart .mb:focus-visible, .chart .st:focus-visible { outline: none; }
+.chart .mb:focus-visible .hit, .chart .st:focus-visible .hit { stroke: var(--focus); stroke-width: 2; }
+.leg { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0 0; color: var(--ink-2); }
+.leg i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
 /* ---------- movimento ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
