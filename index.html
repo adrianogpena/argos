@@ -5,180 +5,173 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Argos</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#101316">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="lib/fonts/saira-600-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="lib/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="lib/argos.css">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('argos.theme') || 'dark'; } catch (e) {}</script>
 <style>
-:root{
-  --bg:#F3F1EA; --surface:#FBFAF6; --surface-2:#ECE9E0;
-  --ink:#15171A; --ink-2:#555A61; --ink-3:#8A8E95; --rule:#D9D5C9;
-  --danger:#A3261C; --danger-bg:#F6E3DF; --ok:#1F6B3A; --warn:#8A5A00; --warn-bg:#F7ECCB;
-  --accent:#F5D24C; --accent-ink:#15171A; --series:#2F6FB3;
-  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-  --r:12px; color-scheme:light;
+/* Específico da Início */
+.head { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
+.head h1 { font-family: var(--font-num); font-size: 28px; letter-spacing: .5px; text-transform: uppercase; }
+.head .when { margin-right: auto; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.note { margin: 0; }
+.note.bad { color: var(--danger); }
+.g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.g3[data-n="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+.g2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
+.g2[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+.gp { text-align: center; }
+.gp .lab, .gp .sub { text-align: left; }
+.gp .gauge-box { margin-top: 8px; }
+.gp .gauge-value { font-size: 36px; }
+.gp .cap { margin-top: 8px; }
+.big { font-size: 44px; line-height: 1.05; margin: 8px 0 2px; }
+.big small { font-size: 20px; }
+.row2 { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.blist, .rlist { list-style: none; margin: 0; padding: 0; }
+.blist li, .rlist li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--track); }
+.blist li:first-child, .rlist li:first-child { border-top: 0; padding-top: 4px; }
+.blist .main, .rlist .main { min-width: 0; }
+.bn { font-size: 64px; line-height: .9; text-align: right; white-space: nowrap; }
+.bn small { font-size: 24px; }
+.bl { font-size: 20px; font-weight: 600; }
+.chart-sum { margin-top: 8px; }
+.axis { display: flex; justify-content: space-between; margin-top: 2px; }
+.pill { display: inline-block; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--tab-active); }
+.review { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.mod { display: block; text-decoration: none; color: inherit; }
+.mod h2 { font-size: 18px; margin: 0 0 4px; }
+.mod p { margin: 0; }
+button.mod { width: 100%; text-align: left; border: 0; cursor: pointer; }
+.mod:hover { background: var(--tab-active); }
+.seclabel { margin: 8px 0 0; }
+.cofre { display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field input { min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--track); }
+.field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.msg.bad { color: var(--danger); }
+.cofre .btn { align-self: flex-start; }
+.link-btn { align-self: flex-start; }
+[hidden] { display: none !important; }
+@media (max-width: 700px) {
+  .head h1 { font-size: 26px; }
+  .stack, .g3, .g2, .mods { gap: 12px; }
+  .g3, .g3[data-n="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 > .panel:nth-child(odd):last-child { grid-column: 1 / -1; }
+  .g3[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+  .g2, .mods { grid-template-columns: minmax(0, 1fr); }
+  .gp { padding: 14px 10px; }
+  .gp .lab, .gp .sub { padding-left: 6px; }
+  .gp .gauge-value { font-size: 28px; }
+  .bn { font-size: 52px; }
+  .bl { font-size: 18px; }
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
-    --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
-    --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795; --warn:#E8C26A; --warn-bg:#2E2610; --series:#6FA8E0;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-    --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
-  --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
-  --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795; --warn:#E8C26A; --warn-bg:#2E2610; --series:#6FA8E0;
-  color-scheme:dark;
-}
-.theme-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);display:grid;place-items:center;padding:0}
-.theme-btn svg{width:20px;height:20px}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink)}
-body{font-family:var(--display);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
-.wrap{max-width:560px;margin:0 auto;padding:0 16px 48px}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.top{display:flex;align-items:center;gap:8px;padding:14px 0 10px}
-.brand{font-weight:800;font-stretch:75%;font-size:20px;text-transform:uppercase;margin-right:auto}
-.brand b{display:inline-block;width:10px;height:10px;background:var(--accent);border:1.5px solid var(--ink);border-radius:50%;margin-right:7px}
-.nav{display:flex;gap:3px;margin:0 0 14px;border-bottom:1px solid var(--ink-3)}
-.nav a{border:1px solid var(--rule);border-bottom:0;background:var(--surface-2);color:var(--ink-2);text-decoration:none;border-radius:10px 10px 0 0;padding:11px 8px 10px;font-size:14px;font-weight:600;flex:1 1 auto;text-align:center;white-space:nowrap;margin-bottom:-1px;-webkit-tap-highlight-color:transparent}
-.nav [aria-current="page"]{background:var(--bg);color:var(--ink);border-color:var(--ink-3);border-bottom:1px solid var(--bg);box-shadow:inset 0 3px 0 var(--accent);padding-bottom:11px;font-weight:700}
-.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 16px;font-weight:700}
-.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
-.btn.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
-.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin:0 0 12px}
-.card h2{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
-.tile{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px}
-.tile .k{font-size:12px;color:var(--ink-2)}
-.tile .v{font-family:var(--mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
-.tile .u{font-size:12px;color:var(--ink-3);margin-left:3px}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
-.msg{font-size:14px;min-height:1.2em;color:var(--ink-2)} .msg.bad{color:var(--danger)} .msg.good{color:var(--ok)}
-.field{display:block;margin:0 0 12px} .field>span{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--rule);background:var(--bg);border-radius:10px;padding:10px 12px}
-.field small{display:block;color:var(--ink-3);font-size:12px;margin-top:4px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.check{display:flex;gap:8px;align-items:center;margin:0 0 12px}
-dialog{border:1px solid var(--rule);border-radius:16px;background:var(--surface);color:var(--ink);padding:0;width:min(520px,calc(100vw - 24px))}
-dialog::backdrop{background:rgba(0,0,0,.45)}
-.sheet{padding:18px}
-.sheet h3{margin:0 0 12px}
-.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
-.list{list-style:none;margin:0;padding:0}
-.list li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--rule)}
-.list li:first-child{border-top:0}
-.list .main{flex:1;min-width:0} .list .sub{font-size:13px;color:var(--ink-2)}
-.list button{border:0;background:none;color:var(--ink-3);padding:6px;border-radius:8px}
-.pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--ink-2)}
-.pill.overdue{background:var(--danger-bg);color:var(--danger)} .pill.soon{background:var(--warn-bg);color:var(--warn)}
-.chart{width:100%;height:auto;display:block}
-.chart text{font-family:var(--mono);font-size:10px;fill:var(--ink-3)}
-.chart .grid{stroke:var(--rule);stroke-width:1}
-.chart .bar{fill:var(--series)} .chart .bar:hover,.chart .bar:focus{opacity:.75;outline:none}
-.chart .line{fill:none;stroke:var(--series);stroke-width:2}
-.chart .dot{fill:var(--series);stroke:var(--surface);stroke-width:2}
-.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:4px 8px;border-radius:6px;z-index:9;white-space:nowrap}
-.empty{color:var(--ink-3);font-size:14px;padding:4px 0}
-.priv{font-size:12px;color:var(--ink-3);margin-top:18px}
-[hidden]{display:none!important}
-.month{display:flex;align-items:center;gap:8px;margin:0 0 12px}
-.month .label{flex:1;text-align:center;font-weight:700}
-.hbar{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;margin:0 0 8px;font-size:14px}
-.hbar .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
-.hbar .track{height:14px;border-radius:0 4px 4px 0;background:transparent}
-.hbar .fill{height:14px;border-radius:0 4px 4px 0;background:var(--series);min-width:2px}
-.hbar .val{font-family:var(--mono);font-size:13px;white-space:nowrap}
-.chart .bar.sel{fill:var(--ink)}
-.chart .bar{cursor:pointer}
-.up{color:var(--danger)} .down{color:var(--ok)}
-.tag{font-size:12px;color:var(--ink-3)}
-.nb{font-family:var(--mono);font-weight:700;font-size:20px;min-width:64px;text-align:right}
-.nb small{font-size:12px;font-weight:400;color:var(--ink-3)}
-</style>
-<style>
-.mod{display:block;text-decoration:none;color:inherit}
-.mod h2{margin:0 0 4px;font-size:16px}
-.mod p{margin:0;color:var(--ink-2);font-size:13px;line-height:1.3}
-.mods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
-.mods .mod{margin:0;padding:12px 14px} .mods .mod h2{text-transform:none;letter-spacing:0;color:var(--ink)}
-.seclabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 6px}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top"><div class="brand"><b></b>Argos</div><button class="theme-btn" data-theme-btn type="button"></button></div>
-  <nav class="nav" aria-label="Seções"><a href="index.html" aria-current="page">Início</a><a href="onibus.html">Ônibus</a><a href="carro.html">Carro</a><a href="gastos.html">Gastos</a><a href="saude.html">Saúde</a></nav>
+<nav class="nav" data-nav aria-label="Principal"></nav>
+<main class="wrap">
+  <div class="head"><h1>Início</h1><span class="mu when" id="when"></span><button class="theme-btn" data-theme-btn type="button"></button></div>
+  <div class="stack">
+    <p id="note" class="mu note" role="status"></p>
+    <div id="bus"></div>
+    <div id="summary" class="stack" hidden></div>
 
-  <div id="bus"></div>
-  <div id="summary" hidden>
-    <div class="tiles" id="tiles"></div>
-    <div id="remind"></div>
+    <h2 class="lab seclabel">Módulos</h2>
+    <div class="mods">
+      <a class="panel mod" href="onibus.html"><h2>Ônibus</h2><p class="mu">Chegadas STCP e horários UNIR</p></a>
+      <a class="panel mod" href="carro.html"><h2>Carro</h2><p class="mu">Km, abastecimento, consumo e revisões</p></a>
+      <a class="panel mod" href="gastos.html"><h2>Gastos</h2><p class="mu">Resumo mensal, por categoria e faturas</p></a>
+      <a class="panel mod" href="cartao.html"><h2>Cartão</h2><p class="mu">Parcelas futuras e prazo para quitar</p></a>
+      <a class="panel mod" href="saude.html"><h2>Saúde</h2><p class="mu">Peso e altura de pessoas e bichos</p></a>
+      <button class="panel mod" id="btnCofre" type="button" aria-expanded="false" aria-controls="cofre"><h2>Cofre</h2><p class="mu">Endereço e token deste aparelho</p></button>
+    </div>
+    <section id="cofre" class="panel cofre" hidden aria-label="Cofre">
+      <label class="field"><span class="lab">Endereço do cofre</span><input id="cfgUrl" type="url" placeholder="https://vault.seunome.workers.dev" autocomplete="off"></label>
+      <label class="field"><span class="lab">Token</span><input id="cfgToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="deixe vazio para manter o atual"></label>
+      <div class="msg mu" id="cfgMsg" role="status"></div>
+      <button class="btn" id="btnConnect" type="button">Conectar</button>
+    </section>
   </div>
-  <p id="note" class="priv" style="margin:0 0 12px"></p>
-
-  <div class="seclabel">Módulos</div>
-  <div class="mods">
-    <a class="card mod" href="onibus.html"><h2>Ônibus</h2><p>Chegadas STCP e horários UNIR</p></a>
-    <a class="card mod" href="carro.html"><h2>Carro</h2><p>Km, abastecimento, consumo e revisões</p></a>
-    <a class="card mod" href="gastos.html"><h2>Gastos</h2><p>Resumo mensal, por categoria e faturas</p></a>
-    <a class="card mod" href="cartao.html"><h2>Cartão</h2><p>Parcelas futuras e prazo para quitar</p></a>
-    <a class="card mod" href="saude.html"><h2>Saúde</h2><p>Peso e altura de pessoas e bichos</p></a>
-    <button class="card mod" id="btnCofre" type="button" style="width:100%;text-align:left" aria-expanded="false" aria-controls="cofre"><h2>Cofre</h2><p>Endereço e token deste aparelho</p></button>
-  </div>
-  <section id="cofre" class="card" hidden>
-    <label class="field"><span>Endereço do cofre</span><input id="cfgUrl" type="url" placeholder="https://vault.seunome.workers.dev" autocomplete="off"></label>
-    <label class="field"><span>Token</span><input id="cfgToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="deixe vazio para manter o atual"></label>
-    <div class="msg" id="cfgMsg" role="status"></div>
-    <button class="btn" id="btnConnect" type="button">Conectar</button>
-  </section>
-</div>
+</main>
 <script type="module">
 import { initTheme } from "./lib/theme.js"; initTheme();
+import { initNav } from "./lib/nav.js"; initNav();
 import { createVault } from './lib/vault.js';
 import { homeSummary } from './lib/home-core.js';
+import { summary as carSummary } from './lib/car-core.js';
+import { gaugeDash, daysShown, dailyTotals, chartPoints, lastTank, pendingReview } from './lib/home-view.js';
+import { monthTotal } from './lib/expenses-core.js';
 import { nextBuses } from './lib/home-bus.js';
 import { createUnir, fetchJSON, stcpBase } from './lib/bus-net.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const eur = n => (n ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'EUR' });
+const eur0 = n => (n ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const km = n => Math.round(n).toLocaleString('pt-BR');
+const dec1 = n => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const vault = createVault();
+$('#when').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+
+const gauge = (frac, label, value, cyan) =>
+  `<div class="gauge-box"><svg class="gauge${cyan ? ' cyan' : ''}" viewBox="0 0 160 96" role="img" aria-label="${esc(label)}"><path class="gauge-track" d="M10 84 A70 70 0 0 1 150 84"/><path class="gauge-fill" d="M10 84 A70 70 0 0 1 150 84" style="stroke-dasharray:${gaugeDash(frac)}"/></svg><div class="gauge-value ins" aria-hidden="true">${esc(value)}</div></div>`;
+
+function fail(msg) { const n = $('#note'); n.className = 'note bad'; n.textContent = msg; }
 
 async function main() {
-  if (!vault.configured()) { $('#note').innerHTML = 'Para ver o resumo, conecte o cofre no final desta página (Cofre).'; return; }
+  if (!vault.configured()) { $('#note').innerHTML = 'Para ver o resumo, conecte o cofre em <b>Cofre</b>, no final desta página.'; return; }
   try {
     const [e, f, s, st] = await Promise.all([vault.list('expenses'), vault.list('car-fuel'), vault.list('car-service'), vault.list('car-status')]);
     const t = today(), data = { expenses: e.items, fuels: f.items, services: s.items, statuses: st.items }, r = homeSummary(data, t);
     // Mês corrente sem extrato mostraria € 0,00: usa o último mês com extrato (banco ou cartão).
     const dm = e.items.reduce((m, x) => (x.source === 'bank' || x.source === 'card') && x.date.slice(0, 7) > m ? x.date.slice(0, 7) : m, '');
-    if (dm && r.total === 0 && dm < t.slice(0, 7)) { const q = homeSummary(data, dm + '-15'); r.month = q.month; r.total = q.total; r.delta = q.delta; }
-    const d = r.delta;
-    $('#tiles').innerHTML =
-      `<div class="tile"><div class="k">Gasto em ${MONTHS[+r.month.slice(5) - 1]}</div><div><span class="v">${eur(r.total)}</span></div></div>` +
-      `<div class="tile"><div class="k">Contra o mês anterior</div><div><span class="v">${d == null ? '–' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d * 100)) + '%'}</span></div></div>`;
-    $('#remind').innerHTML = r.reminders.length ? `<div class="card"><h2>Lembretes do carro</h2><ul class="list">${r.reminders.map(x =>
-      `<li><div class="main">${esc(x.kind)}<div class="sub">${[x.kmLeft != null ? (x.kmLeft >= 0 ? `faltam ${km(x.kmLeft)} km` : `passou ${km(-x.kmLeft)} km`) : '', x.daysLeft != null ? (x.daysLeft >= 0 ? `em ${x.daysLeft} dias` : `há ${-x.daysLeft} dias`) : ''].filter(Boolean).join(' · ')}</div></div></li>`).join('')}</ul></div>` : '';
+    let ref = t;
+    if (dm && r.total === 0 && dm < t.slice(0, 7)) { const q = homeSummary(data, dm + '-15'); r.month = q.month; r.total = q.total; r.delta = q.delta; ref = dm + '-15'; }
+    const d = r.delta, mname = MONTHS[+r.month.slice(5) - 1];
+    // mês anterior = referência do mostrador
+    const [yy, mm] = r.month.split('-').map(Number), pd = new Date(yy, mm - 2, 1), prev = pd.getFullYear() + '-' + String(pd.getMonth() + 1).padStart(2, '0');
+    const prevTotal = monthTotal(e.items, prev), frac = prevTotal ? r.total / prevTotal : 0;
+    const gLabel = prevTotal ? `${Math.round(frac * 100)}% do gasto do mês anterior` : 'sem mês anterior para comparar';
+    const deltaTxt = d == null ? 'sem mês anterior para comparar' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d * 100)) + '% contra o mês anterior';
+    const panels = [];
+    panels.push(`<div class="panel gp"><h2 class="lab sub">Gasto em ${esc(mname)}</h2>${gauge(frac, gLabel, eur0(r.total))}<div class="mu cap">${prevTotal ? `de ${esc(eur0(prevTotal))} no mês anterior` : 'sem mês anterior'}</div><div class="mu">${esc(deltaTxt)}</div></div>`);
+    const tank = lastTank(f.items, st.items);
+    if (tank) panels.push(`<div class="panel gp"><h2 class="lab sub">Tanque</h2>${gauge(tank.level / 100, `Tanque ${Math.round(tank.level)}%`, Math.round(tank.level) + '%', true)}<div class="mu cap">${esc(km(tank.liters))} L${tank.range != null ? ` · autonomia ${esc(km(tank.range))} km` : ''}</div></div>`);
+    const cs = carSummary(f.items, s.items, st.items);
+    if (cs.lastOdo > 0) panels.push(`<div class="panel"><h2 class="lab">Carro</h2><div class="ins big">${esc(km(cs.lastOdo))}<small> km</small></div><div class="mu">${cs.avgLPer100 != null ? `Consumo médio ${esc(dec1(cs.avgLPer100))} L/100 km` : 'Consumo ainda sem abastecimentos completos'}</div></div>`);
+    let html = `<div class="g3" data-n="${panels.length}">${panels.join('')}</div>`;
+
+    const days = daysShown(r.month, ref), vals = dailyTotals(e.items, r.month, days), c = chartPoints(vals);
+    const sumDays = vals.reduce((a, b) => a + b, 0);
+    const chart = c.max > 0
+      ? `<svg class="linechart" viewBox="0 0 400 100" role="img" aria-label="${esc(`Gasto por dia em ${mname}: média ${eur0(sumDays / days)} por dia, maior dia ${c.maxDay} com ${eur0(c.max)}`)}"><line class="lc-grid" x1="0" y1="${c.base}" x2="400" y2="${c.base}"/><polygon class="lc-area" points="${c.area}"/><polyline class="lc-line" points="${c.line}"/><circle class="lc-dot" cx="${c.last[0]}" cy="${c.last[1]}" r="4"/></svg><div class="mu axis"><span>dia 1</span><span>dia ${days}</span></div><div class="mu chart-sum">Média ${esc(eur0(sumDays / days))} por dia · maior dia ${c.maxDay} (${esc(eur0(c.max))})</div>`
+      : '<div class="mu">Sem gastos neste mês.</div>';
+    const side = [];
+    const pend = pendingReview(e.items);
+    if (pend) side.push(`<div class="panel review"><span><span class="am ins">${pend}</span> ${pend === 1 ? 'gasto para revisar' : 'gastos para revisar'}</span><a class="btn" href="gastos.html">Revisar</a></div>`);
+    if (r.reminders.length) side.push(`<div class="panel"><h2 class="lab"><span class="am" aria-hidden="true">●</span> Lembretes do carro</h2><ul class="rlist">${r.reminders.map(x =>
+      `<li><div class="main">${esc(x.kind)}<div class="mu">${[x.kmLeft != null ? (x.kmLeft >= 0 ? `faltam ${km(x.kmLeft)} km` : `passou ${km(-x.kmLeft)} km`) : '', x.daysLeft != null ? (x.daysLeft >= 0 ? `em ${x.daysLeft} dias` : `há ${-x.daysLeft} dias`) : ''].filter(Boolean).join(' · ')}</div></div><span class="pill ${x.state === 'overdue' ? 'am' : 'mu'}">${x.state === 'overdue' ? 'vencido' : 'em breve'}</span></li>`).join('')}</ul></div>`);
+    html += `<div class="g2" data-n="${side.length ? 2 : 1}"><div class="panel"><div class="row2"><h2 class="lab">Gastos por dia</h2><span class="mu">${esc(mname)}</span></div>${chart}</div>${side.length ? `<div class="stack">${side.join('')}</div>` : ''}</div>`;
+    $('#summary').innerHTML = html;
     $('#summary').hidden = false;
     $('#note').textContent = e.stale ? 'Offline: dados salvos neste aparelho.' : '';
   } catch (err) {
-    $('#note').textContent = err.kind === 'auth' ? 'Token recusado pelo cofre. Reconecte em Início → Cofre.' : 'Não foi possível carregar o resumo.';
+    fail(err.kind === 'auth' ? 'Token recusado pelo cofre. Reconecte em Início → Cofre.' : 'Não foi possível carregar o resumo.');
   }
 }
 const hm = ms => new Date(ms).toTimeString().slice(0, 5);
 const mins = m => m < 60 ? `${m}<small> min</small>` : `${Math.floor(m / 60)}<small> h</small> ${m % 60}`;
+const minsText = m => m < 60 ? `${m}` : `${Math.floor(m / 60)} h ${m % 60}`;
 async function busMain() {
   if (!vault.configured()) return;
   const box = $('#bus');
@@ -189,12 +182,12 @@ async function busMain() {
     const unir = createUnir({ getJSON: fetchJSON, storage: localStorage }), base = stcpBase(location.hostname);
     const rows = await nextBuses(setup, { fetchStcp: id => fetchJSON(base, `/api/stops/${encodeURIComponent(id)}/realtime`), unirUpcoming: l => unir.unirUpcoming(l, 3) });
     if (!rows.length) return;
-    box.innerHTML = `<div class="card"><h2>Próximo ônibus</h2><ul class="list">${rows.map(r => {
-      if (r.err) return `<li><div class="main">${esc(r.label)}<div class="sub">Sem resposta agora.</div></div></li>`;
-      if (r.empty) return `<li><div class="main">${esc(r.label)}<div class="sub">${r.kind === 'unir' ? 'Nenhum horário nos próximos 7 dias.' : 'Sem previsão agora.'}</div></div></li>`;
-      if (r.kind === 'stcp') return `<li><div class="main">${esc(r.label)}<div class="sub">${esc(r.stop)} · ao vivo</div></div><div class="nb">${r.minutesList.map(m => mins(m)).join(' · ')}</div></li>`;
-      return `<li><div class="main">${esc(r.label)}<div class="sub">linha ${esc(r.line)} às ${hm(r.depAt)} para ${esc(r.to)} · chega ${r.est ? '≈' : ''}${hm(r.doneAt)} · horário</div></div><div class="nb">${mins(r.minutes)}</div></li>`;
-    }).join('')}</ul><p class="tag" style="margin:8px 0 0">Detalhes em <a href="onibus.html">Ônibus</a>.</p></div>`;
+    box.innerHTML = `<div class="panel"><h2 class="lab"><span class="am" aria-hidden="true">●</span> Próximo ônibus</h2><ul class="blist">${rows.map(r => {
+      if (r.err) return `<li><div class="main"><div class="bl">${esc(r.label)}</div><div class="mu">Sem resposta agora.</div></div></li>`;
+      if (r.empty) return `<li><div class="main"><div class="bl">${esc(r.label)}</div><div class="mu">${r.kind === 'unir' ? 'Nenhum horário nos próximos 7 dias.' : 'Sem previsão agora.'}</div></div></li>`;
+      if (r.kind === 'stcp') { const [a, ...rest] = r.minutesList; return `<li><div class="main"><div class="bl">${esc(r.label)}</div><div class="mu">${esc(r.stop)} · ao vivo${rest.length ? ` · depois ${rest.map(minsText).join(' · ')} min` : ''}</div></div><div class="bn ins am">${mins(a)}</div></li>`; }
+      return `<li><div class="main"><div class="bl">${esc(r.label)}</div><div class="mu">linha ${esc(r.line)} às ${hm(r.depAt)} para ${esc(r.to)} · chega ${r.est ? '≈' : ''}${hm(r.doneAt)} · horário</div></div><div class="bn ins am">${mins(r.minutes)}</div></li>`;
+    }).join('')}</ul><a class="btn ghost link-btn" href="onibus.html">Detalhes em Ônibus</a></div>`;
   } catch (err) { /* a home continua sem o card de ônibus */ }
 }
 $("#btnCofre").onclick = () => {
@@ -205,7 +198,7 @@ $("#btnCofre").onclick = () => {
 $("#btnConnect").onclick = async () => {
   const url = $("#cfgUrl").value.trim(), tok = $("#cfgToken").value.trim() || vault.config().token, msg = $("#cfgMsg");
   if (!/^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:\/])/.test(url) || !tok) { msg.className = "msg bad"; msg.textContent = "Informe o endereço (https://…) e o token."; return; }
-  vault.configure(url, tok); msg.className = "msg"; msg.textContent = "Testando…";
+  vault.configure(url, tok); msg.className = "msg mu"; msg.textContent = "Testando…";
   try { await vault.ping(); location.reload(); }
   catch (e) { msg.className = "msg bad"; msg.textContent = e.kind === "auth" ? "Token incorreto." : e.kind === "network" ? "Não consegui falar com o cofre. Confira o endereço e a internet." : e.message; }
 };
