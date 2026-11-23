@@ -92,6 +92,19 @@ button{cursor:pointer}
 .fc-r.big{border-top:1px solid var(--rule);margin-top:4px;padding-top:8px;font-weight:700} .fc-r.big span:first-child{color:var(--ink)}
 .warn{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:8px;padding:6px 10px;margin:0 0 10px}
 .chart .line2{fill:none;stroke:var(--series-2);stroke-width:2;stroke-dasharray:5 4}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface-2);border:1px solid var(--rule);border-radius:12px;padding:4px;margin:0 0 14px}
+.seg button{border:0;background:transparent;color:var(--ink-2);border-radius:9px;padding:9px 6px;font-size:14px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.hero{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:16px;margin:0 0 8px;box-shadow:inset 0 3px 0 var(--accent)}
+.hero .k{font-size:13px;color:var(--ink-2)} .hero .v{font-family:var(--mono);font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2;margin:2px 0}
+.hero .s{font-size:13px;color:var(--ink-3)}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.vs .tile.main{border-color:var(--ink-3);box-shadow:inset 0 3px 0 var(--series)} .vs .tile.alt{box-shadow:inset 0 3px 0 var(--series-2)}
+.seclabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+details.more summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2);padding:6px 0;list-style:none} details.more summary::before{content:"\25B8  "} details.more[open] summary::before{content:"\25BE  "}
+.list details summary{cursor:pointer;list-style:none;padding:0} .list details summary::-webkit-details-marker{display:none}
+.list .h .t{display:flex;flex-direction:column;gap:1px} .list .h .t small{font-weight:400;font-size:13px;color:var(--ink-2)}
+.list .det{margin-top:6px;font-size:13px;color:var(--ink-2)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -109,21 +122,34 @@ button{cursor:pointer}
 
   <main id="app" hidden>
     <div class="msg" id="sync" role="status"></div>
-    <div class="chips" id="modes" role="group" aria-label="Quanto pagar por mês"></div>
-    <div class="tiles" id="tiles"></div>
-    <div class="card"><h2>Meu plano: 3% automático + pagamento manual</h2>
-      <p class="lead">O débito automático fica no mínimo (3% do saldo) e você complementa à mão quando puder.</p>
-      <div class="two"><label class="field"><span>Extra por mês (€)</span><input id="pExtra" inputmode="decimal" autocomplete="off"></label>
-        <label class="field"><span>Extra em junho e novembro (€)</span><input id="pSpecial" inputmode="decimal" autocomplete="off"><small>13º e 14º salário</small></label></div>
-      <label class="field"><span>Compras novas no cartão por mês (€)</span><input id="pBuy" inputmode="decimal" autocomplete="off"><small id="pBuyHint"></small></label>
-      <div id="planOut"></div></div>
-    <div class="card"><h2>Parcelas até quitar (€)</h2><div id="chPay"></div>
-      <div class="leg"><span><i style="background:var(--series)"></i>Capital</span><span><i style="background:var(--series-2)"></i>Juros e selo</span></div><div class="note" id="payNote"></div></div>
-    <div class="card"><h2>Dívida restante (€)</h2><div id="chDebt"></div></div>
-    <div class="card"><h2>Acréscimo x baixa em cada extrato (€)</h2><div class="lead" id="cmpLead"></div><div id="chCmp"></div>
-      <div class="leg"><span><i style="background:var(--series-2)"></i>Acréscimo (compras, juros, selo, taxas)</span><span><i style="background:var(--series)"></i>Baixa (pagamentos)</span></div>
-      <ul class="list" id="cmpList"></ul></div>
-    <div class="card"><h2>Como a previsão é feita</h2><div class="note" id="how" style="margin:0"></div></div>
+    <div class="seg" id="views" role="group" aria-label="Seção do cartão"><button type="button" data-view="resumo">Situação</button><button type="button" data-view="plano">Meu plano</button><button type="button" data-view="hist">Histórico</button></div>
+
+    <div data-v="resumo">
+      <div id="hero"></div>
+      <div class="vs" id="tiles"></div>
+      <div class="seclabel">Cenário da previsão</div>
+      <div class="chips" id="modes" role="group" aria-label="Quanto pagar por mês"></div>
+      <div class="card"><h2>Parcelas até quitar (€)</h2><div id="chPay"></div>
+        <div class="leg"><span><i style="background:var(--series)"></i>Capital</span><span><i style="background:var(--series-2)"></i>Juros e selo</span></div><div class="note" id="payNote"></div></div>
+      <div class="card"><h2>Dívida restante (€)</h2><div id="chDebt"></div></div>
+      <div class="card"><details class="more" style="margin:0"><summary>Como a previsão é feita</summary><div class="note" id="how" style="margin:0"></div></details></div>
+    </div>
+
+    <div data-v="plano" hidden>
+      <div id="planOut"></div>
+      <div class="card"><h2>Ajustar o plano</h2>
+        <p class="lead">Débito automático no mínimo (3% do saldo) e o que você complementa à mão.</p>
+        <div class="two"><label class="field"><span>Extra por mês (€)</span><input id="pExtra" inputmode="decimal" autocomplete="off"></label>
+          <label class="field"><span>Extra em jun. e nov. (€)</span><input id="pSpecial" inputmode="decimal" autocomplete="off"><small>13º e 14º salário</small></label></div>
+        <label class="field" style="margin:0"><span>Compras novas no cartão por mês (€)</span><input id="pBuy" inputmode="decimal" autocomplete="off"><small id="pBuyHint"></small></label></div>
+      <div id="planDetail"></div>
+    </div>
+
+    <div data-v="hist" hidden>
+      <div class="card"><h2>Acréscimo x baixa por extrato (€)</h2><div class="lead" id="cmpLead"></div><div id="chCmp"></div>
+        <div class="leg"><span><i style="background:var(--series-2)"></i>Acréscimo</span><span><i style="background:var(--series)"></i>Baixa (pagamentos)</span></div></div>
+      <div class="card"><h2>Extratos</h2><ul class="list" id="cmpList"></ul></div>
+    </div>
   </main>
   <p class="priv">Os dados ficam no seu cofre (Cloudflare) e uma cópia fica neste aparelho para funcionar sem internet.</p>
 </div>
@@ -144,6 +170,12 @@ const monthName = k => MONTHS[+k.slice(5) - 1] + ' de ' + k.slice(0, 4);
 const mmyy = k => k.slice(5) + '/' + k.slice(2, 4), mmyyyy = k => k.slice(5) + '/' + k.slice(0, 4);
 const span = n => n >= 12 ? `${Math.floor(n / 12)} ano${n >= 24 ? 's' : ''}${n % 12 ? ` e ${n % 12} m` : ''}` : `${n} m`;
 
+let view = 'resumo'; try { view = localStorage.getItem('cartao.view') || 'resumo'; } catch (e) {}
+function showView() {
+  if (!['resumo', 'plano', 'hist'].includes(view)) view = 'resumo';
+  for (const el of document.querySelectorAll('[data-v]')) el.hidden = el.dataset.v !== view;
+  for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
+}
 let stmts = [], detail = {}, stamp, mode = 'percent', last = null, linesErr = '';
 const PLAN_KEY = 'cartao.plan', plan = { extra: 100, special: 1000, buy: 0 };
 try { Object.assign(plan, JSON.parse(localStorage.getItem(PLAN_KEY)) || {}); } catch (e) {}
@@ -160,6 +192,7 @@ async function load() {
   last = stmts[stmts.length - 1];
   mode = paidMode(stmts) || 'percent';
   stamp = stampRatio([]);
+  showView();
   render();
   await loadDetail();
 }
@@ -186,13 +219,13 @@ function render() {
   if (!last) { $('#tiles').innerHTML = '<div class="empty">Nenhum extrato do cartão no cofre.</div>'; return; }
   const pct = last.optionPct || 15, sim = simulate(last, { mode, stamp }), mined = paidMode(stmts);
   $('#modes').innerHTML = [['percent', `Parcela do banco (${pct}%)`], ['min', `Só o mínimo (${(pct * 0.2).toFixed(0)}%)`]].map(([k, l]) =>
-    `<button type="button" data-mode="${k}" aria-pressed="${mode === k}">${l}${mined === k ? ' · o que você pagou' : ''}</button>`).join('');
-  const t = (k, v, s) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+    `<button type="button" data-mode="${k}" aria-pressed="${mode === k}">${l}</button>`).join('') + (mined ? `<div class="note" style="width:100%;margin:2px 0 0">Nos extratos você vem pagando: ${mined === 'min' ? 'só o mínimo' : 'a parcela do banco'}.</div>` : '');
+  const t = (k, v, s, c) => `<div class="tile ${c || ''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+  $('#hero').innerHTML = `<div class="hero"><div class="k">Dívida no extrato de ${monthName(last.stmt)}</div><div class="v">${eur(last.balance)}</div><div class="s">TAN ${String(last.tan).replace('.', ',')}% · limite ${eur0(last.limit)} €</div></div>`;
   $('#tiles').innerHTML = sim
-    ? t('Dívida no extrato de ' + monthName(last.stmt), eur(last.balance), `TAN ${String(last.tan).replace('.', ',')}% · limite ${eur0(last.limit)} €`) +
-      t('Parcela de ' + mmyyyy(sim.rows[0].month), eur(sim.rows[0].payment), `${eur(sim.rows[0].capital)} de capital`) +
-      (sim.end ? t('Quitação prevista', mmyyyy(sim.end), `em ${sim.months} meses (${span(sim.months)}) sem compras novas`) : t('Quitação prevista', 'mais de 40 anos', 'a parcela mal cobre os juros')) +
-      t('Juros e selo ainda a pagar', eur(sim.futureCharges), `total a pagar ${eur(sim.totalPaid)}`)
+    ? t('Próxima parcela · ' + mmyyyy(sim.rows[0].month), eur(sim.rows[0].payment), `${eur(sim.rows[0].capital)} de capital`) +
+      (sim.end ? t('Quitação prevista', mmyyyy(sim.end), `${span(sim.months)}, sem compras novas`) : t('Quitação prevista', '+40 anos', 'a parcela mal cobre os juros')) +
+      `<div class="tile" style="grid-column:1/-1"><div class="k">Juros e selo ainda a pagar</div><div class="v">${eur(sim.futureCharges)}</div><div class="s">total a pagar ${eur(sim.totalPaid)}</div></div>`
     : t('Dívida', eur(0), 'O último extrato não tem saldo devedor.');
   $('#chPay').innerHTML = sim ? payChart(sim) : '<div class="empty">Sem dívida.</div>';
   $('#payNote').textContent = sim && sim.rows.length > 36 ? `Mostrando as primeiras 36 parcelas de ${sim.rows.length}; a parcela cai devagar porque é uma porcentagem do saldo.` : '';
@@ -202,10 +235,10 @@ function render() {
   $('#cmpLead').innerHTML = rows.length ? `Nos últimos ${rows.length} extratos a dívida <b>cresceu em ${grew}</b> e caiu em ${rows.length - grew}. Quando o acréscimo passa da baixa, a próxima parcela sobe e a data de quitação se afasta.${linesErr ? ' ' + esc(linesErr) : ''}` : '';
   $('#chCmp').innerHTML = rows.length ? cmpChart(rows) : '<div class="empty">Sem extratos.</div>';
   $('#cmpList').innerHTML = rows.slice().reverse().map(r => {
-    const split = r.purchases != null ? ` (compras ${eur(r.purchases)} + juros, selo e taxas ${eur(r.charges)})` : '';
-    const eff = r.parcela == null ? '' : `<div class="sub">Parcela prevista ${eur(r.parcela)}${r.parcelaDelta == null ? '' : ` (<span class="${r.parcelaDelta > 0 ? 'up' : 'down'}">${sgn(r.parcelaDelta)}</span>)`} · quitação ${r.end ? mmyyyy(r.end) : 'sem fim'}${r.endDelta ? ` (<span class="${r.endDelta > 0 ? 'up' : 'down'}">${r.endDelta > 0 ? '+' : '−'}${Math.abs(r.endDelta)} ${Math.abs(r.endDelta) === 1 ? 'mês' : 'meses'}</span>)` : ''}</div>`;
-    return `<li><div class="h"><span>Extrato de ${monthName(r.stmt)}</span><span class="pill ${r.grew ? 'up' : 'down'}">${r.grew ? '▲' : '▼'} dívida ${sgn(r.net)}</span></div>` +
-      `<div class="sub">Acréscimo <b class="num">${eur(r.debits)}</b>${split} · baixa <b class="num">${eur(r.credits)}</b> · saldo ${eur(r.balance)}</div>${eff}</li>`;
+    const split = r.purchases != null ? `<div>Compras ${eur(r.purchases)} · juros, selo e taxas ${eur(r.charges)}</div>` : '';
+    const eff = r.parcela == null ? '' : `<div>Parcela prevista ${eur(r.parcela)}${r.parcelaDelta == null ? '' : ` (<span class="${r.parcelaDelta > 0 ? 'up' : 'down'}">${sgn(r.parcelaDelta)}</span>)`} · quitação ${r.end ? mmyyyy(r.end) : 'sem fim'}${r.endDelta ? ` (<span class="${r.endDelta > 0 ? 'up' : 'down'}">${r.endDelta > 0 ? '+' : '−'}${Math.abs(r.endDelta)} ${Math.abs(r.endDelta) === 1 ? 'mês' : 'meses'}</span>)` : ''}</div>`;
+    return `<li><details><summary><div class="h"><span class="t">${esc(monthName(r.stmt))}<small>acréscimo <span class="num">${eur(r.debits)}</span> · baixa <span class="num">${eur(r.credits)}</span></small></span><span class="pill ${r.grew ? 'up' : 'down'}">${r.grew ? '▲' : '▼'} ${sgn(r.net)}</span></div></summary>` +
+      `<div class="det">${split}<div>Saldo ${eur(r.balance)}</div>${eff}</div></details></li>`;
   }).join('');
   const m = MODES[mode];
   $('#how').innerHTML = `Previsão "${esc(m)}" sem nenhuma compra nova a partir do extrato de ${monthName(last.stmt)}. A 1ª parcela é a que o próprio extrato informa; as seguintes seguem a regra do banco (${mode === 'min' ? 'mínimo = 20% da parcela, nunca menos de 10 €' : `${last.optionPct || 15}% do saldo, nunca menos de 10 €`}). ` +
@@ -223,16 +256,17 @@ function renderPlan() {
   const endTxt = s => s.end ? mmyyyy(s.end) : 'não quita', moTxt = s => s.end ? `${s.months} meses (${span(s.months)})` : 'a dívida só cresce';
   const first = mine.rows[0], saved = base.end && mine.end ? base.futureCharges - mine.futureCharges : null;
   const warn = plan.buy > 0 && mine.capped ? '<div class="warn">As compras novas passam do que você paga: a dívida cresce todo mês e nunca quita.</div>' : '';
-  $('#planOut').innerHTML = warn + '<div class="tiles">' +
-    t('Quitação no plano', endTxt(mine), moTxt(mine)) + t('Só o mínimo', endTxt(base), moTxt(base)) +
-    t('Juros e selo no plano', eur(mine.futureCharges), saved != null ? `economiza ${eur(saved)} contra só o mínimo` : 'mais que o mínimo sozinho') +
-    t('Sai da sua conta por mês', eur(first.auto + plan.extra), `${eur(first.auto)} automático + ${eur(plan.extra)} manual`) + '</div>' +
-    planChart(mine, base, last) +
-    '<div class="leg"><span><i style="background:var(--series)"></i>Plano</span><span><i style="background:var(--series-2)"></i>Só o mínimo</span></div>' +
-    '<div class="fc-r" style="margin-top:10px"><b>Próximos pagamentos</b></div>' +
-    mine.rows.slice(0, 12).map(r => `<div class="fc-r"><span>${monthName(r.month)} · ${eur(r.auto)} automático${r.extra ? ` + <b>${eur(r.extra)}</b> manual` : ''}</span><span class="num">${eur(r.payment)}</span></div>`).join('') +
+  $('#planOut').innerHTML = warn + '<div class="vs">' +
+    t('Quitação no plano', endTxt(mine), moTxt(mine), 'main') + t('Só o mínimo', endTxt(base), moTxt(base), 'alt') +
+    t('Juros e selo no plano', eur(mine.futureCharges), saved != null ? `economiza ${eur(saved)}` : 'mais que o mínimo sozinho') +
+    t('Sai da conta por mês', eur(first.auto + plan.extra), `${eur(first.auto)} auto + ${eur(plan.extra)} manual`) + '</div>';
+  const pays = mine.rows.slice(0, 12), rowH = r => `<div class="fc-r"><span>${monthName(r.month)}<br><small style="color:var(--ink-3)">${eur(r.auto)} auto${r.extra ? ` + ${eur(r.extra)} manual` : ''}</small></span><span class="num">${eur(r.payment)}</span></div>`;
+  $('#planDetail').innerHTML = '<div class="card"><h2>Dívida: plano x só o mínimo (€)</h2>' + planChart(mine, base, last) +
+    '<div class="leg"><span><i style="background:var(--series)"></i>Plano</span><span><i style="background:var(--series-2)"></i>Só o mínimo</span></div></div>' +
+    '<div class="card"><h2>Próximos pagamentos</h2>' + pays.slice(0, 4).map(rowH).join('') +
+    (pays.length > 4 ? `<details class="more"><summary>Mais ${pays.length - 4} meses</summary>${pays.slice(4).map(rowH).join('')}</details>` : '') +
     `<div class="fc-r big"><span>Total pago até quitar</span><span class="num">${eur(mine.totalPaid)}</span></div>` +
-    '<div class="note">O pagamento manual vale para o mês em que você o fizer. O extrato de novembro ainda não foi importado, então a 1ª linha parte do saldo de outubro.</div>';
+    '<div class="note">O pagamento manual vale para o mês em que você o fizer. O extrato de novembro ainda não foi importado, então a 1ª linha parte do saldo de outubro.</div></div>';
 }
 
 function planChart(mine, base, st) {
@@ -285,7 +319,7 @@ const showTip = (t, x, y) => { tip.textContent = t; tip.hidden = false; tip.styl
 document.addEventListener('pointermove', e => { const b = e.target.closest?.('[data-tip]'); if (b) showTip(b.dataset.tip, e.clientX, e.clientY); else tip.hidden = true; });
 document.addEventListener('focusin', e => { const b = e.target.closest?.('[data-tip]'); if (b) { const r = b.getBoundingClientRect(); showTip(b.dataset.tip, r.left, r.top - 40); } });
 document.addEventListener('focusout', () => { tip.hidden = true; });
-document.addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) { mode = b.dataset.mode; render(); } });
+document.addEventListener('click', e => { const v = e.target.closest('[data-view]'); if (v) { view = v.dataset.view; try { localStorage.setItem('cartao.view', view); } catch (x) {} showView(); scrollTo(0, 0); } const b = e.target.closest('[data-mode]'); if (b) { mode = b.dataset.mode; render(); } });
 
 (async () => {
   if (!vault.configured()) { $('#setup').hidden = false; return; }

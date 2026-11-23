@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Gastos</title>
+<title>Saúde</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
@@ -194,7 +194,7 @@ function render() {
   $('#tiles').innerHTML =
     `<div class="tile"><div class="k">Peso atual</div><div><span class="v">${w ? fmt(w.value, 'weight') : '–'}</span>${w ? '<span class="u">kg</span>' : ''}</div>${chg}</div>` +
     `<div class="tile"><div class="k">Altura atual</div><div><span class="v">${h ? fmt(h.value, 'height') : '–'}</span>${h ? '<span class="u">cm</span>' : ''}</div>${h ? `<div class="tag">em ${dateBR(h.date)}</div>` : ''}</div>` +
-    `<div class="tile"><div class="k">${m.kind === 'pet' ? 'Bicho' + (m.species ? ' · ' + esc(m.species) : '') : 'Pessoa'}</div><div><span class="v" style="font-size:17px">${age || '–'}</span></div>${m.birth ? `<div class="tag">nasc. ${dateBR(m.birth)}</div>` : ''}</div>`;
+    `<div class="tile" style="grid-column:1/-1"><div class="k">${m.kind === 'pet' ? 'Bicho' + (m.species ? ' · ' + esc(m.species) : '') : 'Pessoa'}</div><div><span class="v" style="font-size:17px">${age || '–'}</span></div>${m.birth ? `<div class="tag">nasc. ${dateBR(m.birth)}</div>` : ''}</div>`;
   $('#seg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === metric));
   const s = series(measures, sel, metric);
   $('#chTitle').textContent = `${METRICS[metric].label} (${METRICS[metric].unit})`;

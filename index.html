@@ -108,7 +108,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <style>
 .mod{display:block;text-decoration:none;color:inherit}
 .mod h2{margin:0 0 4px;font-size:16px}
-.mod p{margin:0;color:var(--ink-2);font-size:14px}
+.mod p{margin:0;color:var(--ink-2);font-size:13px;line-height:1.3}
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.mods .mod{margin:0;padding:12px 14px} .mods .mod h2{text-transform:none;letter-spacing:0;color:var(--ink)}
+.seclabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 6px}
 </style>
 </head>
 <body>
@@ -123,12 +126,15 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   </div>
   <p id="note" class="priv" style="margin:0 0 12px"></p>
 
-  <a class="card mod" href="onibus.html"><h2>Ônibus</h2><p>Próximas chegadas STCP e horários UNIR.</p></a>
-  <a class="card mod" href="carro.html"><h2>Carro</h2><p>Quilometragem, abastecimento, consumo e revisões.</p></a>
-  <a class="card mod" href="gastos.html"><h2>Gastos</h2><p>Gráfico mensal e por categoria.</p></a>
-  <a class="card mod" href="cartao.html"><h2>Cartão</h2><p>Parcelas futuras do cartão de crédito e prazo para quitar.</p></a>
-  <a class="card mod" href="saude.html"><h2>Saúde</h2><p>Peso e altura de cada pessoa e bicho.</p></a>
-  <button class="card mod" id="btnCofre" type="button" style="width:100%;text-align:left" aria-expanded="false" aria-controls="cofre"><h2>Cofre</h2><p>Endereço e token do cofre privado deste aparelho.</p></button>
+  <div class="seclabel">Módulos</div>
+  <div class="mods">
+    <a class="card mod" href="onibus.html"><h2>Ônibus</h2><p>Chegadas STCP e horários UNIR</p></a>
+    <a class="card mod" href="carro.html"><h2>Carro</h2><p>Km, abastecimento, consumo e revisões</p></a>
+    <a class="card mod" href="gastos.html"><h2>Gastos</h2><p>Resumo mensal, por categoria e faturas</p></a>
+    <a class="card mod" href="cartao.html"><h2>Cartão</h2><p>Parcelas futuras e prazo para quitar</p></a>
+    <a class="card mod" href="saude.html"><h2>Saúde</h2><p>Peso e altura de pessoas e bichos</p></a>
+    <button class="card mod" id="btnCofre" type="button" style="width:100%;text-align:left" aria-expanded="false" aria-controls="cofre"><h2>Cofre</h2><p>Endereço e token deste aparelho</p></button>
+  </div>
   <section id="cofre" class="card" hidden>
     <label class="field"><span>Endereço do cofre</span><input id="cfgUrl" type="url" placeholder="https://vault.seunome.workers.dev" autocomplete="off"></label>
     <label class="field"><span>Token</span><input id="cfgToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="deixe vazio para manter o atual"></label>
@@ -155,11 +161,14 @@ async function main() {
   if (!vault.configured()) { $('#note').innerHTML = 'Para ver o resumo, conecte o cofre no final desta página (Cofre).'; return; }
   try {
     const [e, f, s, st] = await Promise.all([vault.list('expenses'), vault.list('car-fuel'), vault.list('car-service'), vault.list('car-status')]);
-    const t = today(), r = homeSummary({ expenses: e.items, fuels: f.items, services: s.items, statuses: st.items }, t);
+    const t = today(), data = { expenses: e.items, fuels: f.items, services: s.items, statuses: st.items }, r = homeSummary(data, t);
+    // Mês corrente sem extrato mostraria € 0,00: usa o último mês com extrato (banco ou cartão).
+    const dm = e.items.reduce((m, x) => (x.source === 'bank' || x.source === 'card') && x.date.slice(0, 7) > m ? x.date.slice(0, 7) : m, '');
+    if (dm && r.total === 0 && dm < t.slice(0, 7)) { const q = homeSummary(data, dm + '-15'); r.month = q.month; r.total = q.total; r.delta = q.delta; }
     const d = r.delta;
     $('#tiles').innerHTML =
       `<div class="tile"><div class="k">Gasto em ${MONTHS[+r.month.slice(5) - 1]}</div><div><span class="v">${eur(r.total)}</span></div></div>` +
-      `<div class="tile"><div class="k">Contra o mês anterior</div><div><span class="v">${d == null ? '–' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d)) + '%'}</span></div></div>`;
+      `<div class="tile"><div class="k">Contra o mês anterior</div><div><span class="v">${d == null ? '–' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d * 100)) + '%'}</span></div></div>`;
     $('#remind').innerHTML = r.reminders.length ? `<div class="card"><h2>Lembretes do carro</h2><ul class="list">${r.reminders.map(x =>
       `<li><div class="main">${esc(x.kind)}<div class="sub">${[x.kmLeft != null ? (x.kmLeft >= 0 ? `faltam ${km(x.kmLeft)} km` : `passou ${km(-x.kmLeft)} km`) : '', x.daysLeft != null ? (x.daysLeft >= 0 ? `em ${x.daysLeft} dias` : `há ${-x.daysLeft} dias`) : ''].filter(Boolean).join(' · ')}</div></div></li>`).join('')}</ul></div>` : '';
     $('#summary').hidden = false;

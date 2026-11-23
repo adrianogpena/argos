@@ -93,6 +93,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .gauge .nd{stroke:#f2c230;stroke-width:6}
 #lvRange{width:100%;margin:6px 0}.lvtxt{text-align:center;font-weight:700}
 .priv{font-size:12px;color:var(--ink-3);margin-top:18px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface-2);border:1px solid var(--rule);border-radius:12px;padding:4px;margin:0 0 14px}
+.seg button{border:0;background:transparent;color:var(--ink-2);border-radius:9px;padding:9px 6px;font-size:14px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.acts3{flex-wrap:nowrap;gap:6px} .acts3 .btn{padding-left:10px;padding-right:10px;font-size:14px;white-space:nowrap;flex:1 1 auto}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -111,15 +115,22 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   </section>
 
   <main id="app" hidden>
-    <div class="row"><button class="btn" id="btnFuel">+ Abastecimento</button><button class="btn ghost" id="btnStatus">+ Odômetro</button><button class="btn ghost" id="btnService">+ Manutenção</button><span class="msg" id="sync" role="status"></span></div>
-    <div id="remind"></div>
-    <div class="tiles" id="tiles"></div>
-    <div class="card"><h2>Consumo por abastecimento (km/l)</h2><div id="chCons"></div></div>
-    <div class="card"><h2>Gasto por mês (€)</h2><div id="chSpend"></div></div>
-    <div class="card"><h2>Km rodados por mês</h2><div id="chKm"></div></div>
-    <div class="card"><h2>Abastecimentos</h2><ul class="list" id="fuelList"></ul></div>
-    <div class="card"><h2>Leituras do odômetro</h2><ul class="list" id="stList"></ul></div>
-    <div class="card"><h2>Manutenções</h2><ul class="list" id="svcList"></ul></div>
+    <div class="row acts3"><button class="btn" id="btnFuel">+ Abastecer</button><button class="btn ghost" id="btnStatus">+ Odômetro</button><button class="btn ghost" id="btnService">+ Manutenção</button><span class="msg" id="sync" role="status"></span></div>
+    <div class="seg" role="group" aria-label="Seção do carro"><button type="button" data-view="resumo">Resumo</button><button type="button" data-view="fuel">Abastecimentos</button><button type="button" data-view="reg">Registros</button></div>
+    <div data-v="resumo">
+      <div id="remind"></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="card"><h2>Consumo por abastecimento (km/l)</h2><div id="chCons"></div></div>
+      <div class="card"><h2>Gasto por mês (€)</h2><div id="chSpend"></div></div>
+      <div class="card"><h2>Km rodados por mês</h2><div id="chKm"></div></div>
+    </div>
+    <div data-v="fuel" hidden>
+      <div class="card"><h2>Abastecimentos</h2><ul class="list" id="fuelList"></ul></div>
+    </div>
+    <div data-v="reg" hidden>
+      <div class="card"><h2>Manutenções</h2><ul class="list" id="svcList"></ul></div>
+      <div class="card"><h2>Leituras do odômetro</h2><ul class="list" id="stList"></ul></div>
+    </div>
     <div class="row"><button class="btn ghost" id="btnExport">Baixar backup (JSON)</button></div>
   </main>
   <p class="priv">Os dados ficam no seu cofre (Cloudflare) e uma cópia fica neste aparelho para funcionar sem internet.</p>
@@ -201,6 +212,14 @@ const kmFmt = n => Math.round(n).toLocaleString('pt-BR');
 const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const dateBR = s => s.split('-').reverse().join('/');
 
+let view = 'resumo'; try { view = localStorage.getItem('carro.view') || 'resumo'; } catch (e) {}
+function showView() {
+  if (!['resumo', 'fuel', 'reg'].includes(view)) view = 'resumo';
+  for (const el of document.querySelectorAll('[data-v]')) el.hidden = el.dataset.v !== view;
+  for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) { view = b.dataset.view; try { localStorage.setItem('carro.view', view); } catch (x) {} showView(); scrollTo(0, 0); } });
+showView();
 let fuels = [], services = [], statuses = [];
 
 // ---------- vault connection ----------

@@ -187,6 +187,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-off
 .msg.bad{color:var(--danger)}
 .msg.good{color:var(--ok)}
 hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
+.foot summary,.legend summary{cursor:pointer;font-weight:600}
 </style>
 </head>
 <body>
@@ -204,10 +205,10 @@ hr.sep{border:0;border-top:1px solid var(--rule);margin:18px 0}
 
   <main id="main"></main>
 
-  <footer class="foot">
+  <footer class="foot"><details><summary>Sobre os dados</summary>
     Dados não oficiais do site da STCP, para uso pessoal. Uma requisição por paragem a cada atualização, a cada 30&nbsp;s ou mais devagar, em pausa enquanto a página está oculta.
     As posições são deduzidas das estimativas de chegada; a STCP não publica GPS aqui.
-  </footer>
+  </details></footer>
 </div>
 
 <!-- Add line -->
@@ -700,7 +701,7 @@ function renderUnir(l) {
     </section>
     <div class="sec-title"><h2>Percursos</h2></div>
     <ul class="routes">${routes}</ul>
-    <p class="legend">Horários previstos de paragens.amp.pt; a UNIR não publica posições nem atrasos em tempo real. ≈ = chegada estimada pela viagem no sentido contrário (a última paragem não lista chegadas). Caminhadas: distância em linha reta + 30% a 80 m/min.</p>`;
+    <details class="legend"><summary>Sobre estes horários</summary>Horários previstos de paragens.amp.pt; a UNIR não publica posições nem atrasos em tempo real. ≈ = chegada estimada pela viagem no sentido contrário (a última paragem não lista chegadas). Caminhadas: distância em linha reta + 30% a 80 m/min.</details>`;
   $('#main').querySelectorAll('[data-act="retry"]').forEach(b => b.onclick = () => refresh());
   $('#main').querySelectorAll('[data-act="settings"]').forEach(b => b.onclick = openSettings);
   $('#btnUnirRemove').onclick = () => {

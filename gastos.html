@@ -123,6 +123,14 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
 .cmp{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-size:14px;align-items:baseline} .cmp .h{font-size:12px;color:var(--ink-3)} .cmp .num{text-align:right}
 .chart .s1{fill:var(--series)} .chart .s2{fill:var(--warn)} .chart .s3{fill:var(--ink-3)}
 .leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:6px 0 0} .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface-2);border:1px solid var(--rule);border-radius:12px;padding:4px;margin:0 0 14px}
+.seg button{border:0;background:transparent;color:var(--ink-2);border-radius:9px;padding:9px 6px;font-size:14px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.hero{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:16px;margin:0 0 8px;box-shadow:inset 0 3px 0 var(--accent)}
+.hero .k{font-size:13px;color:var(--ink-2)} .hero .v{font-family:var(--mono);font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2;margin:2px 0} .hero .s{font-size:13px;color:var(--ink-3)}
+.tile .s{font-size:12px;color:var(--ink-3);margin-top:2px}
+details.more{margin:0} details.more>summary{list-style:none;font-weight:600} details.more>summary::before{content:"\25B8  "} details.more[open]>summary::before{content:"\25BE  "} details.more[open]>summary{margin-bottom:8px}
+details.more>summary.fixsum{display:flex;gap:6px;align-items:baseline} .fixsum>span:first-of-type{flex:1}
 
 </style>
 </head>
@@ -143,20 +151,27 @@ details{margin:0 0 12px} summary{cursor:pointer;font-size:14px;color:var(--ink-2
       <span class="msg" id="sync" role="status"></span></div>
     <div class="month"><button class="btn ghost" id="prev" aria-label="Mês anterior">‹</button><div class="label" id="monthLabel"></div><button class="btn ghost" id="next" aria-label="Próximo mês">›</button></div>
     <div id="forecast" hidden>
-      <div class="card"><h2>Previsão: quanto fica livre</h2><div id="fc"></div></div>
-      <div class="card"><h2>Gastos fixos esperados (média dos últimos meses)</h2><div id="fixed"></div></div>
+      <div id="fc"></div>
+      <div class="card"><details class="more"><summary class="fixsum"><span>Gastos fixos esperados</span><span class="num" id="fixedTotal"></span></summary><div id="fixed"></div></details></div>
       <div class="tag" style="margin:0 0 12px">Este mês ainda não tem extrato, então só há previsão. Os gastos reais aparecem aqui depois que o extrato for importado.</div>
     </div>
     <div id="actual">
-    <div class="tiles" id="tiles"></div><div class="tag" id="needNote" style="margin:-6px 0 12px"></div>
-    <div class="card" id="cardPace" hidden><h2>Ritmo do mês atual</h2><div id="pace"></div></div>
-    <div class="card"><h2>Contra a sua média</h2><div id="cmp"></div></div>
-    <div class="card"><h2>Maiores comerciantes</h2><div class="chips" id="mchips"></div><div id="merch"></div></div>
-    <div class="card"><h2>Essencial x flexível, mês a mês (€)</h2><div id="chNeed"></div><div class="leg"><span><i style="background:var(--series)"></i>Essencial</span><span><i style="background:var(--warn)"></i>Flexível</span><span><i style="background:var(--ink-3)"></i>Sem tipo</span></div></div>
-    <div class="card"><h2>Últimos 12 meses (€)</h2><div id="chMonths"></div><div class="tag">Toque numa barra para escolher o mês.</div></div>
-    <div class="card"><h2>Por categoria no mês</h2><div id="chCats"></div></div>
-    <div class="card"><h2>Detalhe por rótulo no mês</h2><div id="chLabels"></div></div>
-    <div class="card"><h2>Lançamentos do mês</h2><div class="chips" id="chips"></div><ul class="list" id="list"></ul></div>
+      <div class="seg" id="views" role="group" aria-label="Seção do mês"><button type="button" data-view="geral">Visão geral</button><button type="button" data-view="det">Detalhes</button><button type="button" data-view="lanc">Lançamentos</button></div>
+      <div data-v="geral">
+        <div class="tiles" id="tiles"></div><div class="tag" id="needNote" style="margin:-6px 0 12px"></div>
+        <div class="card" id="cardPace" hidden><h2>Ritmo do mês atual</h2><div id="pace"></div></div>
+        <div class="card"><h2>Últimos 12 meses (€)</h2><div id="chMonths"></div><div class="tag">Toque numa barra para escolher o mês.</div></div>
+        <div class="card"><h2>Por categoria no mês</h2><div id="chCats"></div></div>
+        <div class="card"><h2>Contra a sua média</h2><div id="cmp"></div></div>
+      </div>
+      <div data-v="det" hidden>
+        <div class="card"><h2>Maiores comerciantes</h2><div class="chips" id="mchips"></div><div id="merch"></div></div>
+        <div class="card"><h2>Essencial x flexível, mês a mês (€)</h2><div id="chNeed"></div><div class="leg"><span><i style="background:var(--series)"></i>Essencial</span><span><i style="background:var(--warn)"></i>Flexível</span><span><i style="background:var(--ink-3)"></i>Sem tipo</span></div></div>
+        <div class="card"><h2>Detalhe por rótulo no mês</h2><div id="chLabels"></div></div>
+      </div>
+      <div data-v="lanc" hidden>
+        <div class="card"><h2>Lançamentos do mês</h2><div class="chips" id="chips"></div><ul class="list" id="list"></ul></div>
+      </div>
     </div>
     <div class="row"><button class="btn ghost" id="btnExport">Baixar backup (JSON)</button></div>
   </main>
@@ -197,6 +212,12 @@ const dateBR = s => s.split('-').reverse().join('/');
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const monthName = k => { const n = MONTHS[+k.slice(5) - 1]; return n[0].toUpperCase() + n.slice(1) + ' de ' + k.slice(0, 4); };
 
+let view = 'geral'; try { view = localStorage.getItem('gastos.view') || 'geral'; } catch (e) {}
+function showView() {
+  if (!['geral', 'det', 'lanc'].includes(view)) view = 'geral';
+  for (const el of document.querySelectorAll('[data-v]')) el.hidden = el.dataset.v !== view;
+  for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
+}
 let expenses = [], rules = new Map(), month = today().slice(0, 7), started = false, editing = null, filter = 'all', plan = null, planErr = '', mrange = 'month';
 
 async function load() {
@@ -231,15 +252,15 @@ function render() {
   const isFc = month >= F;
   $('#monthLabel').textContent = monthName(month) + (isFc ? ' · previsão' : '');
   $('#next').disabled = month >= F;
-  $('#actual').hidden = isFc; $('#forecast').hidden = !isFc;
+  $('#actual').hidden = isFc; $('#forecast').hidden = !isFc; showView();
   if (isFc) { forecastView(items, F); return; }
   const total = monthTotal(items, month), d = delta(items, month), ns = needSplit(items, month);
   const inMonth = items.filter(x => x.date.startsWith(month));
   $('#tiles').innerHTML =
     `<div class="tile"><div class="k">Total do mês</div><div><span class="v">${eur(total)}</span></div></div>` +
     `<div class="tile"><div class="k">Contra o mês anterior</div><div><span class="v ${d == null ? '' : d > 0 ? 'up' : 'down'}">${d == null ? '–' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + Math.abs(Math.round(d * 100)) + '%'}</span></div></div>` +
-    `<div class="tile"><div class="k">Essenciais</div><div><span class="v">${eur(ns.essential)}</span></div></div>` +
-    `<div class="tile"><div class="k">Flexíveis</div><div><span class="v">${eur(ns.flexible)}</span></div></div>`;
+    `<div class="tile"><div class="k">Essenciais</div><div><span class="v">${eur(ns.essential)}</span></div><div class="s">${total > 0 ? Math.round(ns.essential / total * 100) + '% do mês' : ''}</div></div>` +
+    `<div class="tile"><div class="k">Flexíveis</div><div><span class="v">${eur(ns.flexible)}</span></div><div class="s">${total > 0 ? Math.round(ns.flexible / total * 100) + '% do mês' : ''}</div></div>`;
   $('#needNote').textContent = ns.none > 0.005 ? `Sem tipo definido: ${eur(ns.none)}. Edite os lançamentos para classificar.` : '';
 
   reports(items);
@@ -269,21 +290,24 @@ const sgn = n => (n < 0 ? '−' : '+') + eur(Math.abs(n));
 function forecastView(items, F) {
   const anchor = new Date(+F.slice(0, 4), +F.slice(5) - 1, 15);
   const block = f => {
-    const title = `<div class="fc-h"><span>${monthName(f.month)}</span><small>previsão</small></div>`;
-    const inc = f.income ? `<div class="fc-r"><span>Salário previsto ~${dayBR(f.income.date)}${f.income.double ? ' <b>(com 13º/14º)</b>' : ''}</span><span class="num down">${f.isCurrent && !f.incomePending ? 'já recebido' : sgn(f.incomePending)}</span></div>` : '';
+    const tile = (k, v, sub, cls) => `<div class="tile"><div class="k">${k}</div><div><span class="v ${cls || ''}">${v}</span></div><div class="s">${sub || ''}</div></div>`;
+    const inc = f.income ? tile('Salário previsto', f.isCurrent && !f.incomePending ? 'já recebido' : sgn(f.incomePending), `~${dayBR(f.income.date)}${f.income.double ? ' · com 13º/14º' : ''}`, 'down') : '';
     const rows = f.rows.map(r => `<div class="fc-r${r.done ? ' done' : ''}"><span>${dayBR(r.date)} · ${esc(r.name)}</span><span class="num">${eur(r.amount)}</span></div>`).join('');
-    return title + inc + `<details><summary>Fixos${f.isCurrent ? ' que faltam' : ''}: <b class="num">−${eur(f.fixedTotal)}</b> (${f.rows.filter(r => !r.done).length})</summary>${rows || '<div class="empty">Nenhum fixo detectado.</div>'}</details>` +
-      `<div class="fc-r big"><span>Livre para outros gastos</span><span class="num ${f.free < 0 ? 'up' : 'down'}">${eur(f.free)}</span></div>` +
-      `<div class="fc-r"><span>Gasto variável típico (média de 3 meses)</span><span class="num">−${eur(f.variable)}</span></div>` +
-      `<div class="fc-r"><span>Se gastar o típico, sobra</span><span class="num ${f.afterVariable < 0 ? 'up' : 'down'}">${eur(f.afterVariable)}</span></div>`;
+    return `<div class="hero"><div class="k">Livre para outros gastos em ${monthName(f.month)}</div><div class="v ${f.free < 0 ? 'up' : 'down'}">${eur(f.free)}</div><div class="s">receita menos fixos, antes de mercado, restaurantes e demais variáveis</div></div>` +
+      '<div class="tiles">' + inc +
+      tile('Fixos' + (f.isCurrent ? ' que faltam' : ''), '−' + eur(f.fixedTotal), `${f.rows.filter(r => !r.done).length} lançamentos`) +
+      tile('Variável típico', '−' + eur(f.variable), 'média de 3 meses') +
+      tile('Se gastar o típico, sobra', eur(f.afterVariable), '', f.afterVariable < 0 ? 'up' : 'down') + '</div>' +
+      `<div class="card"><details class="more"><summary>Calendário dos fixos do mês</summary>${rows || '<div class="empty">Nenhum fixo detectado.</div>'}</details></div>`;
   };
   $('#fc').innerHTML = plan ? block(forecast(items, plan, F, anchor, { future: true })) +
-    `<div class="fc-note">Salário e 13º/14º (junho e novembro) pelo histórico do extrato; fixos = comerciantes de valor estável em 4 dos últimos 6 meses. "Livre" = receita - fixos, antes de mercado, restaurantes e demais variáveis.</div>`
-    : `<div class="empty">${esc(planErr || 'Carregando…')}</div>`;
+    `<div class="fc-note" style="margin:0 0 12px">Salário e 13º/14º (junho e novembro) pelo histórico do extrato; fixos = comerciantes de valor estável em 4 dos últimos 6 meses.</div>`
+    : `<div class="card"><div class="empty">${esc(planErr || 'Carregando…')}</div></div>`;
 
   const fx = recurring(items, anchor), fxTotal = fx.reduce((s, x) => s + x.amount, 0);
   $('#fixed').innerHTML = fx.length ? fx.map(x => `<div class="fc-r"><span>${esc(x.name)} <span class="tag">· ${esc(x.category)} · dia ${x.day} · ${x.months}/6 meses</span></span><span class="num">${eur(x.amount)}</span></div>`).join('') +
-    `<div class="fc-r big"><span>Total fixo por mês</span><span class="num">${eur(fxTotal)}</span></div>` : '<div class="empty">Ainda não há meses suficientes.</div>';
+    '' : '<div class="empty">Ainda não há meses suficientes.</div>';
+  $('#fixedTotal').textContent = fx.length ? eur(fxTotal) + ' /mês' : '';
 }
 
 /** Relatórios de um mês com extrato: só o que aconteceu nele (e a comparação com a média dos meses anteriores). */
@@ -393,7 +417,8 @@ $('#btnSave').onclick = async () => {
 document.addEventListener('click', async e => {
   const m = e.target.closest('[data-month]'); if (m) { month = m.dataset.month; render(); return; }
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.filter) { filter = b.dataset.filter; render(); }
+  if (b.dataset.view) { view = b.dataset.view; try { localStorage.setItem('gastos.view', view); } catch (x) {} showView(); scrollTo(0, 0); }
+  else if (b.dataset.filter) { filter = b.dataset.filter; render(); }
   else if (b.dataset.mrange) { mrange = b.dataset.mrange; render(); }
   else if (b.dataset.ok) {
     const x = expenses.find(y => y.id === b.dataset.ok); if (!x) return;

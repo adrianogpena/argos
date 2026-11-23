@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Gastos</title>
+<title>Faturas</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
@@ -81,6 +81,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .list .main{flex:1 1 100%;min-width:0} .list .sub{font-size:13px;color:var(--ink-2);overflow-wrap:anywhere}
 .list button{border:0;background:none;color:var(--ink-3);padding:6px 10px 6px 0;border-radius:8px}
 .list button:last-child{margin-left:auto;padding-right:0}
+.fh{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:16px} .fh .num{font-weight:600;white-space:nowrap}
+.fl{margin-top:2px}
 .pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--ink-2)}
 .pill.overdue{background:var(--danger-bg);color:var(--danger)} .pill.soon{background:var(--warn-bg);color:var(--warn)}
 .chart{width:100%;height:auto;display:block}
@@ -200,9 +202,11 @@ async function load() {
 
 function line(x) {
   const who = nameOf(x.nif), mer = merchantOf(merchants, x.nif);
-  return `<div class="num">${eur(x.total)}</div><div class="sub"><b>${esc(who || 'NIF ' + x.nif)}</b>${who ? ' · NIF ' + esc(x.nif) : ''} · ${dateBR(x.date)} · ${esc(x.type || '')} ${esc(x.number)}` +
-    `<br>Comprador: ${esc(buyerText(x))}<br>${gasto(links.get(x.id))}${mer?.category && !links.get(x.id) ? ' · palpite: ' + esc(mer.category) : ''}` +
-    (x.check === 'diff' ? '<br><span class="pill overdue">valores do QR não fecham</span>' : '') + '</div>';
+  return `<div class="fh"><b>${esc(who || 'NIF ' + x.nif)}</b><span class="num">${eur(x.total)}</span></div>` +
+    `<div class="sub">${dateBR(x.date)}${who ? ' · NIF ' + esc(x.nif) : ''} · ${esc(x.type || '')} ${esc(x.number)}</div>` +
+    `<div class="sub">Comprador: ${esc(buyerText(x))}</div>` +
+    `<div class="sub fl">${gasto(links.get(x.id))}${mer?.category && !links.get(x.id) ? ` <span class="pill">palpite: ${esc(mer.category)}</span>` : ''}` +
+    (x.check === 'diff' ? ' <span class="pill overdue">valores do QR não fecham</span>' : '') + '</div>';
 }
 
 function render() {
