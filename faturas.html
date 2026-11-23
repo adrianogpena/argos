@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gastos</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F3F1EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1012" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F1EA; --surface:#FBFAF6; --surface-2:#ECE9E0;
+  --ink:#15171A; --ink-2:#555A61; --ink-3:#8A8E95; --rule:#D9D5C9;
+  --danger:#A3261C; --danger-bg:#F6E3DF; --ok:#1F6B3A; --warn:#8A5A00; --warn-bg:#F7ECCB;
+  --accent:#F5D24C; --accent-ink:#15171A; --series:#2F6FB3;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --r:12px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
+    --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
+    --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795; --warn:#E8C26A; --warn-bg:#2E2610; --series:#6FA8E0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+    --bg:#0F1012; --surface:#17191C; --surface-2:#1F2226;
+  --ink:#ECEAE3; --ink-2:#A7AAAF; --ink-3:#6C7076; --rule:#2B2E33;
+  --danger:#F08A7E; --danger-bg:#2E1815; --ok:#7BC795; --warn:#E8C26A; --warn-bg:#2E2610; --series:#6FA8E0;
+  color-scheme:dark;
+}
+.theme-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);display:grid;place-items:center;padding:0}
+.theme-btn svg{width:20px;height:20px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--display);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 48px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.top{display:flex;align-items:center;gap:8px;padding:14px 0 10px}
+.brand{font-weight:800;font-stretch:75%;font-size:20px;text-transform:uppercase;margin-right:auto}
+.brand b{display:inline-block;width:10px;height:10px;background:var(--accent);border:1.5px solid var(--ink);border-radius:50%;margin-right:7px}
+.nav{display:flex;gap:6px;margin:0 0 14px}
+.nav a,.nav button{border:1px solid var(--rule);background:var(--surface);color:var(--ink);text-decoration:none;border-radius:999px;padding:7px 14px;font-size:14px;font-weight:600}
+.nav [aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 16px;font-weight:700}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin:0 0 12px}
+.card h2{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.tile{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px}
+.tile .k{font-size:12px;color:var(--ink-2)}
+.tile .v{font-family:var(--mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.tile .u{font-size:12px;color:var(--ink-3);margin-left:3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+.msg{font-size:14px;min-height:1.2em;color:var(--ink-2)} .msg.bad{color:var(--danger)} .msg.good{color:var(--ok)}
+.field{display:block;margin:0 0 12px} .field>span{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--rule);background:var(--bg);border-radius:10px;padding:10px 12px}
+.field small{display:block;color:var(--ink-3);font-size:12px;margin-top:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;gap:8px;align-items:center;margin:0 0 12px}
+dialog{border:1px solid var(--rule);border-radius:16px;background:var(--surface);color:var(--ink);padding:0;width:min(520px,calc(100vw - 24px))}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.sheet{padding:18px}
+.sheet h3{margin:0 0 12px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--rule)}
+.list li:first-child{border-top:0}
+.list .main{flex:1;min-width:0} .list .sub{font-size:13px;color:var(--ink-2)}
+.list button{border:0;background:none;color:var(--ink-3);padding:6px;border-radius:8px}
+.pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--ink-2)}
+.pill.overdue{background:var(--danger-bg);color:var(--danger)} .pill.soon{background:var(--warn-bg);color:var(--warn)}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:var(--mono);font-size:10px;fill:var(--ink-3)}
+.chart .grid{stroke:var(--rule);stroke-width:1}
+.chart .bar{fill:var(--series)} .chart .bar:hover,.chart .bar:focus{opacity:.75;outline:none}
+.chart .line{fill:none;stroke:var(--series);stroke-width:2}
+.chart .dot{fill:var(--series);stroke:var(--surface);stroke-width:2}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:4px 8px;border-radius:6px;z-index:9;white-space:nowrap}
+.empty{color:var(--ink-3);font-size:14px;padding:4px 0}
+.priv{font-size:12px;color:var(--ink-3);margin-top:18px}
+[hidden]{display:none!important}
+.hbar{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;margin:0 0 8px;font-size:14px}
+.hbar .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+.hbar .track{height:14px;border-radius:0 4px 4px 0;background:transparent}
+.hbar .fill{height:14px;border-radius:0 4px 4px 0;background:var(--series);min-width:2px}
+.hbar .val{font-family:var(--mono);font-size:13px;white-space:nowrap}
+.chart .bar.sel{fill:var(--ink)}
+.chart .bar{cursor:pointer}
+.up{color:var(--danger)} .down{color:var(--ok)}
+.tag{font-size:12px;color:var(--ink-3)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.chip{border:1px solid var(--rule);background:var(--surface);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:flex;gap:6px;margin:0 0 10px}
+.seg button{border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--surface-2);border-color:var(--ink-3)}
+.chart .dot{cursor:pointer} .chart .dot:hover,.chart .dot:focus{r:6;outline:none}
+.chart .lbl{fill:var(--ink);font-weight:600}
+video{width:100%;max-height:60vh;border-radius:10px;background:#000;display:block}
+.scan{margin:0 0 12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="brand"><b></b>Faturas</div><button class="theme-btn" data-theme-btn type="button"></button></div>
+  <nav class="nav" aria-label="Seções"><a href="index.html">Início</a><a href="onibus.html">Ônibus</a><a href="carro.html">Carro</a><a href="gastos.html">Gastos</a><a href="cartao.html">Cartão</a><a href="saude.html">Saúde</a><a href="faturas.html" aria-current="page">Faturas</a></nav>
+
+  <section id="setup" class="card" hidden>
+    <h2>Cofre privado não conectado</h2>
+    <p style="margin:0 0 12px;color:var(--ink-2);font-size:14px">Conecte o cofre uma vez em <a href="carro.html">Carro → Cofre</a>.</p>
+    <div class="msg bad" id="setupMsg" role="status"></div>
+  </section>
+
+  <main id="app" hidden>
+    <div class="card">
+      <h2>Ler QR da fatura</h2>
+      <div class="scan" id="scan" hidden><video id="video" playsinline muted></video></div>
+      <div class="row"><button class="btn" id="btnCam">Abrir câmera</button><button class="btn ghost" id="btnStop" hidden>Parar</button><label class="btn ghost" for="file" style="cursor:pointer">Enviar foto</label><input id="file" type="file" accept="image/*" capture="environment" hidden></div>
+      <div class="msg" id="msg" role="status"></div>
+    </div>
+    <div class="card" id="found" hidden>
+      <h2>Fatura lida</h2>
+      <div id="foundBody"></div>
+      <div class="actions"><button class="btn ghost" id="btnDiscard">Descartar</button><button class="btn" id="btnSave">Salvar</button></div>
+    </div>
+    <div class="card"><h2>Salvas</h2><div class="tiles" id="tiles"></div><ul class="list" id="list"></ul></div>
+  </main>
+  <p class="priv">Só os campos do QR são guardados (sem imagem), no seu cofre. O QR não traz os itens da compra.</p>
+</div>
+
+<script type="module">
+import { initTheme } from "./lib/theme.js"; initTheme();
+import { createVault } from './lib/vault.js';
+import { parseQr, linkQr } from './lib/qr-invoice.js';
+import { displayName } from './lib/classify.js';
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const vault = createVault();
+const eur = v => v == null ? '–' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'EUR' });
+const dateBR = s => s.split('-').reverse().join('/');
+const say = (t, cls = '') => { const m = $('#msg'); m.className = 'msg ' + cls; m.textContent = t; };
+
+let saved = [], expenses = [], links = new Map(), taken = [], pending = null, stream = null, timer = null, detector = null;
+
+async function load() {
+  const [r, e, rc] = await Promise.all([vault.list('receipt-qr'), vault.list('expenses'), vault.list('receipts')]);
+  saved = r.items.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  expenses = e.items; taken = rc.items.map(x => x.expenseId).filter(Boolean);
+  links = linkQr(saved, expenses, taken);
+  for (const q of saved) { const x = links.get(q.id); if (x && q.expenseId !== x.id) { q.expenseId = x.id; try { await vault.put('receipt-qr', q); } catch (err) {} } }
+  $('#setup').hidden = true; $('#app').hidden = false; render();
+}
+
+const gasto = x => x ? `${esc(x.category)}${x.label ? ' › ' + esc(x.label) : ''}${x.auto ? ' (a confirmar)' : ''} · ${esc(displayName(x.note))}` : 'sem lançamento em Gastos';
+
+function render() {
+  const mon = new Date().toISOString().slice(0, 7), m = saved.filter(x => x.date.startsWith(mon));
+  $('#tiles').innerHTML = `<div class="tile"><div class="k">Faturas</div><div class="v">${saved.length}</div></div><div class="tile"><div class="k">Neste mês</div><div class="v">${eur(m.reduce((s, x) => s + x.total, 0))}</div></div>`;
+  $('#list').innerHTML = saved.length ? saved.map(x => `<li><div class="main"><span class="num">${eur(x.total)}</span><div class="sub">${dateBR(x.date)} · NIF ${esc(x.nif)} · ${esc(x.type || '')} ${esc(x.number)}<br>${gasto(links.get(x.id))}</div></div><button data-del="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="empty">Nenhuma fatura salva.</li>';
+}
+
+function show(rec) {
+  pending = rec;
+  const dup = saved.some(x => x.id === rec.id);
+  const lk = linkQr([rec], expenses, [...taken, ...saved.map(x => x.expenseId).filter(Boolean)]).get(rec.id);
+  if (lk) rec.expenseId = lk.id; else delete rec.expenseId;
+  $('#foundBody').innerHTML = `<div class="tiles"><div class="tile"><div class="k">Total</div><div class="v">${eur(rec.total)}</div></div><div class="tile"><div class="k">IVA</div><div class="v">${eur(rec.totalVat)}</div></div></div>` +
+    `<div class="sub">${dateBR(rec.date)} · NIF ${esc(rec.nif)} · ${esc(rec.type || '')} ${esc(rec.number)}<br>ATCUD ${esc(rec.atcud)}<br>${gasto(lk)}</div>` +
+    (dup ? '<p class="msg bad">Esta fatura já está salva.</p>' : '');
+  $('#btnSave').disabled = dup; $('#found').hidden = false;
+}
+
+function onText(text) {
+  try { const rec = parseQr(text); stopCam(); say(''); show(rec); }
+  catch (e) { say(e.message, 'bad'); }
+}
+
+function makeDetector() {
+  if (!detector && 'BarcodeDetector' in window) { try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) {} }
+}
+
+async function decode(src, w, h) {
+  if (detector) { const r = await detector.detect(src); return r.length ? r[0].rawValue : null; }
+  if (!window.jsQR) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'lib/jsqr.js'; s.onload = ok; s.onerror = () => no(new Error('Não foi possível carregar o leitor de QR')); document.head.append(s); });
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(src, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h), r = window.jsQR(d.data, w, h);
+  return r ? r.data : null;
+}
+
+async function startCam() {
+  try {
+    makeDetector();
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const v = $('#video'); v.srcObject = stream; await v.play();
+    $('#scan').hidden = false; $('#btnCam').hidden = true; $('#btnStop').hidden = false; say('Aponte para o QR da fatura.');
+    let busy = false;
+    timer = setInterval(async () => {
+      if (busy || !v.videoWidth) return; busy = true;
+      try { const t = await decode(v, v.videoWidth, v.videoHeight); if (t) onText(t); } catch (e) {}
+      busy = false;
+    }, 400);
+  } catch (e) { say(e.name === 'NotAllowedError' ? 'Permissão da câmera negada.' : 'Câmera indisponível: use "Enviar foto".', 'bad'); }
+}
+function stopCam() {
+  clearInterval(timer); timer = null;
+  stream?.getTracks().forEach(t => t.stop()); stream = null;
+  $('#scan').hidden = true; $('#btnCam').hidden = false; $('#btnStop').hidden = true;
+}
+$('#btnCam').onclick = startCam;
+$('#btnStop').onclick = () => { stopCam(); say(''); };
+
+$('#file').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  say('Lendo a foto…');
+  try {
+    makeDetector();
+    const bmp = await createImageBitmap(f), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const t = await decode(bmp, Math.round(bmp.width * k), Math.round(bmp.height * k));
+    if (t) onText(t); else say('Nenhum QR encontrado na foto. Tente de mais perto, com boa luz.', 'bad');
+  } catch (err) { say(err.message || 'Não consegui ler a foto.', 'bad'); }
+};
+
+$('#btnDiscard').onclick = () => { pending = null; $('#found').hidden = true; };
+$('#btnSave').onclick = async () => {
+  if (!pending) return;
+  try { await vault.put('receipt-qr', pending); pending = null; $('#found').hidden = true; say('Fatura salva.', 'good'); await load(); }
+  catch (e) { say(e.kind === 'auth' ? 'Token recusado. Reconecte o cofre.' : e.message, 'bad'); }
+};
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button[data-del]'); if (!b || !confirm('Apagar esta fatura?')) return;
+  try { await vault.del('receipt-qr', b.dataset.del); await load(); } catch (err) { say(err.message, 'bad'); }
+});
+
+(async () => {
+  if (!vault.configured()) { $('#setup').hidden = false; return; }
+  try { await load(); } catch (e) { $('#setup').hidden = false; $('#setupMsg').textContent = e.kind === 'auth' ? 'Token incorreto. Reconecte em Carro → Cofre.' : e.message; }
+})();
+</script>
+</body>
+</html>

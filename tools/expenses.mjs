@@ -56,16 +56,17 @@ if (cmd === 'rules') {
   const month = isMonth(file) ? file : '', fl = isMonth(file) ? flags : [file, ...flags].filter(Boolean);
   const opt = n => (fl.find(f => f.startsWith('--' + n + '=')) || '').slice(n.length + 3);
   const e = await call('GET', '/v1/c/expenses');
+  const nifOf = new Map((await call('GET', '/v1/c/receipt-qr')).items.filter(q => q.expenseId).map(q => [q.expenseId, q.nif]));   // NIF do emitente (QR da fatura) por lançamento
   let g = pendingGroups(e.items, { merge: true, month });
   const mo = opt('motivo'); if (mo) g = g.filter(x => x.motivo === canonMotivo(mo)); if (fl.includes('--sem-motivo')) g = g.filter(x => !x.motivo);
   const nAuto = e.items.filter(x => x.auto && (!month || x.date.startsWith(month))).length;
-  const rows = g.map(x => { const nm = displayName(x.example), person = x.motivo === 'pessoa' || x.keys.some(k => GENERIC_KEYS.has(k));
-    return { ...x, nm, url: person ? '' : searchUrl(nm), ramo: person ? null : inferBranch(x.example, x.keys[0]), hint: recurrenceHint(x), interm: x.keys.some(isIntermediary) }; });
+  const rows = g.map(x => { const nifs = [...new Set(e.items.filter(y => y.auto && x.keys.includes(y.key || descKey(y.note))).map(y => nifOf.get(y.id)).filter(Boolean))], nm = displayName(x.example), person = x.motivo === 'pessoa' || x.keys.some(k => GENERIC_KEYS.has(k));
+    return { ...x, nifs, nm, url: person ? '' : searchUrl(nm), ramo: person ? null : inferBranch(x.example, x.keys[0]), hint: recurrenceHint(x), interm: x.keys.some(isIntermediary) }; });
   console.log(`# pendentes${month ? ' de ' + month : ''}: ${nAuto} lançamentos em ${rows.length} comerciantes, maiores primeiro. Grupo = chaves unificadas (use o id do grupo no confirm).`);
   console.log('# id do grupo (chaves) | qtd | total € | média € | de → a | categoria atual | tipo | rótulo | motivo | sinais | exemplo');
   for (const x of rows) {
     console.log([x.key + (x.keys.length > 1 ? ' (' + x.keys.join(',') + ')' : ''), x.n, x.total.toFixed(2), x.avg.toFixed(2), x.from + '→' + x.to, x.category + (x.mixed ? '*' : ''), x.need || '-', x.label || '-', x.motivo || '-',
-      [x.interm && 'intermediário', x.ramo && 'ramo-no-texto:' + x.ramo.label, x.hint].filter(Boolean).join(';') || '-', x.example].join(' | '));
+      [x.nifs.length && 'nif:' + x.nifs.join('/'), x.interm && 'intermediário', x.ramo && 'ramo-no-texto:' + x.ramo.label, x.hint].filter(Boolean).join(';') || '-', x.example].join(' | '));
     if (fl.includes('--links') && x.url) console.log('    ' + x.url);
   }
   const sug = opt('sugerir');
