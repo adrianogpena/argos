@@ -1,6 +1,6 @@
 // Argos service worker: keeps the app shell available offline.
 // Live arrivals (/api/...) are never cached and never intercepted.
-const CACHE = 'argos-v7';
+const CACHE = 'argos-v8';
 const SHELL = ['./', './index.html', './onibus.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './carro.html', './gastos.html', './saude.html', './faturas.html', './lib/qr-invoice.js', './lib/receipt.js', './cartao.html', './lib/card-forecast.js', './lib/expenses-report.js', './lib/health-core.js', './lib/expenses-core.js', './lib/classify.js', './lib/vault.js', './lib/car-core.js', './lib/home-core.js', './lib/home-bus.js', './lib/bus-core.js', './lib/bus-net.js'];
 
 self.addEventListener('install', e => {
@@ -20,6 +20,10 @@ self.addEventListener('fetch', e => {
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html'))));
+    return;
+  }
+  if (/\.(js|html)$/.test(url.pathname) && url.origin === location.origin) {   // código: rede primeiro, para as correções chegarem
+    e.respondWith(fetch(e.request).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); } return r; }).catch(() => caches.match(e.request)));
     return;
   }
   e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(r => {
