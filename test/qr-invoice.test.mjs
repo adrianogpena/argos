@@ -3,6 +3,7 @@ import { parseQr, QrError } from '../lib/qr-invoice.js';
 
 const normal = 'A:500000000*B:123456789*C:PT*D:FT*E:N*F:20260115*G:FT 2026A/123*H:ABCD1234-123*I1:PT*I2:0.00*I7:10.00*I8:2.30*N:2.30*O:12.30*Q:AbCd*R:1234';
 const multi = 'A:500000000*B:123456789*C:PT*D:FS*E:N*F:20261231*G:FS 1/9*H:XYZ-9*I1:PT*I2:5.00*I3:10.00*I4:0.60*I5:20.00*I6:1.20*I7:30.00*I8:6.90*N:8.70*O:73.70*Q:Zz9x*R:99';
+const nBases = 'A:500000000*B:999999990*C:PT*D:FT*E:N*F:20261121*G:FT R1/9*H:ZZ-9*I1:PT*I5:43.81*I6:5.69*I7:8.94*I8:2.06*N:52.75*O:60.50*Q:abcd*R:1';
 const consumer = 'A:500000000*B:999999990*C:PT*D:FR*E:N*F:20260301*G:FR 1/2*H:0-2*N:0*O:5.50*Q:abcd*R:1';
 
 let rec = parseQr(normal);
@@ -11,6 +12,9 @@ assert.equal(rec.raw, normal);
 
 rec = parseQr(multi);
 assert.equal(rec.total, 73.7); assert.equal(rec.totalVat, 8.7); assert.equal(rec.totalNet, 65); assert.equal(rec.date, '2026-12-31');
+
+rec = parseQr(nBases);
+assert.equal(rec.totalVat, 7.75); assert.equal(rec.totalNet, 52.75); assert.equal(rec.total, 60.5);
 
 rec = parseQr(consumer);
 assert.equal(rec.total, 5.5); assert.equal(rec.totalNet, 5.5); assert.equal(rec.type, 'FR');
