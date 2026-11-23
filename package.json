@@ -1,0 +1,15 @@
+{
+  "name": "argos",
+  "private": true,
+  "scripts": {
+    "phone": "node tools/phone.mjs",
+    "phone:home": "node tools/phone.mjs index.html",
+    "phone:gastos": "node tools/phone.mjs gastos.html",
+    "phone:cartao": "node tools/phone.mjs cartao.html",
+    "phone:carro": "node tools/phone.mjs carro.html",
+    "phone:faturas": "node tools/phone.mjs faturas.html",
+    "phone:saude": "node tools/phone.mjs saude.html",
+    "phone:onibus": "node tools/phone.mjs onibus.html",
+    "phone:landscape": "node tools/phone.mjs --landscape"
+  }
+}
