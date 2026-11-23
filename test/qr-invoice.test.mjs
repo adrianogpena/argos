@@ -7,7 +7,7 @@ const nBases = 'A:500000000*B:999999990*C:PT*D:FT*E:N*F:20261121*G:FT R1/9*H:ZZ-
 const consumer = 'A:500000000*B:999999990*C:PT*D:FR*E:N*F:20260301*G:FR 1/2*H:0-2*N:0*O:5.50*Q:abcd*R:1';
 
 let rec = parseQr(normal);
-assert.deepEqual({ ...rec, raw: undefined }, { id: '500000000-ABCD1234-123', nif: '500000000', date: '2026-01-15', type: 'FT', number: 'FT 2026A/123', atcud: 'ABCD1234-123', totalNet: 10, totalVat: 2.3, total: 12.3, raw: undefined });
+assert.deepEqual({ ...rec, raw: undefined }, { id: '500000000-ABCD1234-123', nif: '500000000', date: '2026-01-15', type: 'FT', number: 'FT 2026A/123', atcud: 'ABCD1234-123', totalNet: 10, totalVat: 2.3, total: 12.3, check: 'ok', raw: undefined });
 assert.equal(rec.raw, normal);
 
 rec = parseQr(multi);
@@ -44,3 +44,19 @@ assert.equal(m.get('a').id, 'e1'); assert.equal(m.get('b').id, 'e3');
 m = linkQr([q('a', '2026-01-10', 12.3)], [ex('e1', '2026-01-10', 12.3)], ['e1']);
 assert.equal(m.size, 0);
 console.log('linkQr: ok');
+
+const { findReceipt, merchantOf, merchantRecord } = await import('../lib/qr-invoice.js');
+assert.equal(parseQr(nBases).check, 'ok');
+assert.equal(parseQr(nBases.replace('I8:2.06', 'I8:9.06')).check, 'diff');
+assert.equal(parseQr('A:500000000*F:20260115*G:X 1*H:Z-1*O:3.00').check, null);
+rec = parseQr(nBases.replace('D:FT', 'D:NC'));
+assert.equal(rec.total, -60.5); assert.equal(rec.totalVat, -7.75); assert.equal(rec.totalNet, -52.75);
+assert.equal(parseQr(nBases.replace('D:FT', 'D:NC').replace('O:60.50', 'O:-60.50')).total, -60.5);
+assert.equal(linkQr([parseQr(nBases.replace('D:FT', 'D:NC'))], [ex('e1', '2026-11-21', 60.5)]).size, 0);
+assert.equal(findReceipt(parseQr(nBases), [{ id: 'r', date: '2026-11-21', paid: 60.5 }]).id, 'r');
+assert.equal(findReceipt(parseQr(nBases), [{ id: 'r', date: '2026-11-20', paid: 60.5 }]), null);
+assert.equal(findReceipt(parseQr(nBases.replace('D:FT', 'D:NC')), [{ id: 'r', date: '2026-11-21', paid: 60.5 }]), null);
+assert.equal(merchantOf([{ id: '500000000', name: 'X' }], '500000000').name, 'X'); assert.equal(merchantOf([], '1'), null);
+assert.equal(merchantRecord({ nif: '500000000', name: '  Loja   Exemplo ', category: 'Mercado' }).rec.name, 'Loja Exemplo');
+assert.equal(merchantRecord({ nif: '5', name: 'x' }).error, 'nif'); assert.equal(merchantRecord({ nif: '500000000', name: ' ' }).error, 'name');
+console.log('extras: ok');

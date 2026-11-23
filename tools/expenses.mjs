@@ -56,7 +56,8 @@ if (cmd === 'rules') {
   const month = isMonth(file) ? file : '', fl = isMonth(file) ? flags : [file, ...flags].filter(Boolean);
   const opt = n => (fl.find(f => f.startsWith('--' + n + '=')) || '').slice(n.length + 3);
   const e = await call('GET', '/v1/c/expenses');
-  const nifOf = new Map((await call('GET', '/v1/c/receipt-qr')).items.filter(q => q.expenseId).map(q => [q.expenseId, q.nif]));   // NIF do emitente (QR da fatura) por lançamento
+  const mer = new Map((await call('GET', '/v1/c/qr-merchants')).items.map(m => [m.id, m.name + (m.category ? ', ' + m.category : '')]));
+  const nifOf = new Map((await call('GET', '/v1/c/receipt-qr')).items.filter(q => q.expenseId).map(q => [q.expenseId, q.nif + (mer.has(q.nif) ? '(' + mer.get(q.nif) + ')' : '')]));   // NIF do emitente (QR da fatura) por lançamento
   let g = pendingGroups(e.items, { merge: true, month });
   const mo = opt('motivo'); if (mo) g = g.filter(x => x.motivo === canonMotivo(mo)); if (fl.includes('--sem-motivo')) g = g.filter(x => !x.motivo);
   const nAuto = e.items.filter(x => x.auto && (!month || x.date.startsWith(month))).length;
