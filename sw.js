@@ -1,6 +1,6 @@
 // Argos service worker: keeps the app shell available offline.
 // Live arrivals (/api/...) are never cached and never intercepted.
-const CACHE = 'argos-v10';
+const CACHE = 'argos-v11';
 const SHELL = ['./', './index.html', './onibus.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './carro.html', './gastos.html', './saude.html', './faturas.html', './lib/qr-invoice.js', './lib/receipt.js', './cartao.html', './lib/card-forecast.js', './lib/expenses-report.js', './lib/health-core.js', './lib/expenses-core.js', './lib/classify.js', './lib/vault.js', './lib/car-core.js', './lib/home-core.js', './lib/home-bus.js', './lib/home-view.js', './lib/bus-core.js', './lib/bus-net.js', './lib/argos.css', './lib/nav.js', './lib/theme.js', './lib/fonts/hanken-latin.woff2', './lib/fonts/hanken-latin-ext.woff2', './lib/fonts/saira-600-latin.woff2', './lib/fonts/saira-600-latin-ext.woff2'];
 
 self.addEventListener('install', e => {

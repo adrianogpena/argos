@@ -196,7 +196,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); }
 
 /* ---------- abas internas (segmentado) ----------
    <div class="seg" role="group"><button type="button" aria-pressed="true">Resumo</button>…</div> (colunas = número de botões, até 4) */
-.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--panel); box-shadow: inset 0 0 0 1.5px var(--track); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 4px; border-radius: 12px; background: var(--panel); box-shadow: inset 0 0 0 1.5px var(--track); }
 .seg button { min-height: 44px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 14px; font-weight: 600; cursor: pointer; }
 .seg button:hover { color: var(--ink); }
 .seg button[aria-pressed=true] { background: var(--tab-active); color: var(--ink); }
