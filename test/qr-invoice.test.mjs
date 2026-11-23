@@ -7,7 +7,7 @@ const nBases = 'A:500000000*B:999999990*C:PT*D:FT*E:N*F:20261121*G:FT R1/9*H:ZZ-
 const consumer = 'A:500000000*B:999999990*C:PT*D:FR*E:N*F:20260301*G:FR 1/2*H:0-2*N:0*O:5.50*Q:abcd*R:1';
 
 let rec = parseQr(normal);
-assert.deepEqual({ ...rec, raw: undefined }, { id: '500000000-ABCD1234-123', nif: '500000000', date: '2026-01-15', type: 'FT', number: 'FT 2026A/123', atcud: 'ABCD1234-123', totalNet: 10, totalVat: 2.3, total: 12.3, check: 'ok', raw: undefined });
+assert.deepEqual({ ...rec, raw: undefined }, { id: '500000000-ABCD1234-123', nif: '500000000', date: '2026-01-15', type: 'FT', number: 'FT 2026A/123', atcud: 'ABCD1234-123', totalNet: 10, totalVat: 2.3, total: 12.3, check: 'ok', buyer: '123456789', raw: undefined });
 assert.equal(rec.raw, normal);
 
 rec = parseQr(multi);
@@ -60,3 +60,10 @@ assert.equal(merchantOf([{ id: '500000000', name: 'X' }], '500000000').name, 'X'
 assert.equal(merchantRecord({ nif: '500000000', name: '  Loja   Exemplo ', category: 'Mercado' }).rec.name, 'Loja Exemplo');
 assert.equal(merchantRecord({ nif: '5', name: 'x' }).error, 'nif'); assert.equal(merchantRecord({ nif: '500000000', name: ' ' }).error, 'name');
 console.log('extras: ok');
+
+const { personOf } = await import('../lib/qr-invoice.js');
+assert.equal(parseQr(nBases).buyer, null);
+assert.equal(parseQr(nBases.replace('B:999999990', 'B:123456789')).buyer, '123456789');
+assert.equal(parseQr('A:500000000*F:20260115*G:X 1*H:Z-1*O:3.00').buyer, null);
+assert.equal(personOf([{ id: '123456789', name: 'P' }], '123456789').name, 'P'); assert.equal(personOf([], '1'), null);
+console.log('buyer: ok');
