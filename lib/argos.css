@@ -161,7 +161,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ---------- botão de tema (lib/theme.js preenche o ícone); .icon-btn = o mesmo botão quadrado de 44px para outros ícones (ex.: configurações) ---------- */
-.theme-btn, .icon-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: var(--panel); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--track); cursor: pointer; }
+.theme-btn, .icon-btn { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: var(--panel); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--track); cursor: pointer; }
 .theme-btn:hover, .icon-btn:hover { background: var(--tab-active); }
 .theme-btn svg, .icon-btn svg { width: 22px; height: 22px; }
 
