@@ -82,6 +82,7 @@ Os emails de fatura do Pingo Doce (`facturaelectronica@pingodoce.pt`) e do Inter
 ## Ideias futuras (não decididas)
 
 - Gastos: orçamento por categoria com alerta; gastos recorrentes (aluguel, assinaturas).
+- Gastos em dinheiro (decidido em 2026-11-23: **não fazer agora**, o dono usa pouco dinheiro vivo). Hoje o levantamento (ATM) entra inteiro como `Outros › Levantamento`, flexível. Plano se um dia valer a pena ("carteira"): o saque continua sendo o gasto (o total do mês nunca muda, sem contagem dupla) e ganha um saldo "não detalhado"; cada despesa em dinheiro, ou QR de fatura pago em dinheiro, **reparte** esse saldo (ex.: saque de 100 = 50 Luz + 50 Lazer; o resto fica em "Levantamento"). Dados: coleção nova `cash-allocations` (saque, categoria, tipo, rótulo, valor, `qrId` opcional), sem mudar o Worker nem os lançamentos existentes; tela pequena que mostra o saldo de cada saque e deixa detalhar. O QR não traz forma de pagamento: fatura em `receipt-qr` sem lançamento do banco ligado (`linkQr` sem `expenseId`) é candidata a dinheiro e entra como sugestão. Antes de implementar, medir quanto os levantamentos pesam nos gastos (se forem poucos %, não compensa).
 - Carro: custo total por km incluindo manutenção; lembrete de seguro, IPVA/imposto e inspeção periódica.
 - Outros módulos: saúde (peso, consultas, medicação), contas a vencer, treinos. Cada um é uma coleção nova no cofre e uma página nova, sem mudar o Worker.
 - Criptografia no navegador para módulos sensíveis.
