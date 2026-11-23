@@ -1,0 +1,165 @@
+/* Argos: design "Cockpit refinado". CSS compartilhado por todas as páginas.
+   Escuro por padrão; [data-theme=light] = claro; [data-theme=auto] = segue o sistema.
+   Âmbar = o que acontece agora (ônibus, gasto do mês, revisão, alertas, ação primária).
+   Ciano = dados de fundo (séries de gráfico, tanque, barras). */
+
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(fonts/hanken-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(fonts/hanken-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Saira Semi Condensed'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url(fonts/saira-600-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Saira Semi Condensed'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url(fonts/saira-600-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+/* ---------- tokens ---------- */
+:root {
+  color-scheme: dark;
+  --bg: #101316;
+  --panel: #171B1F;
+  --track: #2A3036;          /* trilhos e linhas */
+  --ink: #ECE9E2;
+  --ink-2: #A3A9B0;          /* texto secundário: o mais fraco permitido */
+  --amber: #FFB020;          /* cor de texto/linha */
+  --amber-fill: #FFB020;     /* cor de fundo/arco */
+  --cyan: #4FD1C5;
+  --cyan-fill: #4FD1C5;
+  --btn-bg: #FFB020;         /* fundo do botão primário (igual nos dois temas) */
+  --on-amber: #101316;       /* texto sobre o botão primário */
+  --tab-active: #252B31;
+  --shine: #ffffff0d;
+  --danger: #FF7A70;
+  --ok: #5BD68A;
+  --focus: #ECE9E2;
+  --r: 12px;
+  --font-ui: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-num: 'Saira Semi Condensed', 'Arial Narrow', sans-serif;
+  --nav-h: 64px;
+  --panel-shadow: inset 0 1px 0 var(--shine);
+  /* aliases para páginas ainda não migradas */
+  --surface: var(--panel);
+  --surface-2: #1D2227;
+  --ink-3: var(--ink-2);
+  --rule: var(--track);
+  --warn: var(--amber);
+  --accent: var(--amber);
+  --series: var(--cyan);
+}
+/* No claro, --amber/--cyan são cores de texto (escuras o bastante); os *-fill continuam vivos para fundos e arcos. */
+:root[data-theme=light] {
+  color-scheme: light;
+  --bg: #F4F2EC; --panel: #FFFFFF; --track: #D9D5CB; --ink: #1A1D20; --ink-2: #4B525A;
+  --amber: #8A5200; --amber-fill: #B86E00; --cyan: #0B766F; --cyan-fill: #0E8F86;
+  --on-amber: #101316; --tab-active: #E7E3D8; --shine: #ffffff00; --panel-shadow: 0 1px 2px #1a1d2014;
+  --danger: #B3261E; --ok: #1B7A43; --focus: #1A1D20; --surface-2: #EFEBE1;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme=auto] {
+    color-scheme: light;
+    --bg: #F4F2EC; --panel: #FFFFFF; --track: #D9D5CB; --ink: #1A1D20; --ink-2: #4B525A;
+    --amber: #8A5200; --amber-fill: #B86E00; --cyan: #0B766F; --cyan-fill: #0E8F86;
+    --on-amber: #101316; --tab-active: #E7E3D8; --shine: #ffffff00; --panel-shadow: 0 1px 2px #1a1d2014;
+    --danger: #B3261E; --ok: #1B7A43; --focus: #1A1D20; --surface-2: #EFEBE1;
+  }
+}
+
+/* ---------- reset e tipografia ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font-ui); overflow-x: hidden; }
+h1, h2, h3 { margin: 0; font-weight: 600; line-height: 1.2; }
+img, svg { max-width: 100%; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.ins, .num { font-family: var(--font-num); font-weight: 600; font-variant-numeric: tabular-nums; }
+.brand { font-family: var(--font-num); font-weight: 600; font-size: 28px; letter-spacing: .5px; text-transform: uppercase; }
+.lab { font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.mu { color: var(--ink-2); }
+.am { color: var(--amber); }
+.cy { color: var(--cyan); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 22px 30px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- painel (.card = compatibilidade) ---------- */
+.panel, .card { background: var(--panel); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--panel-shadow); }
+
+/* ---------- botões ---------- */
+.btn, button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; min-width: 44px; padding: 10px 16px;
+  border: 0; border-radius: 8px; background: var(--btn-bg); color: var(--on-amber); font-size: 16px; font-weight: 600; text-decoration: none; cursor: pointer;
+  transition: transform .12s, opacity .12s; }
+.btn:hover { opacity: .92; }
+.btn:active { transform: translateY(1px); }
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--track); }
+.btn.ghost:hover { background: var(--tab-active); opacity: 1; }
+.btn.danger { background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--danger); }
+.btn[disabled], .btn[aria-disabled=true] { opacity: .5; cursor: not-allowed; }
+
+/* ---------- mostrador semicircular ----------
+   Markup (arco de raio 70, comprimento 220, traço 12; stroke-dasharray = fração x 220, ex. 88% -> "193.6 220"):
+   <div class="gauge-box">
+     <svg class="gauge" viewBox="0 0 160 96" role="img" aria-label="88% do previsto">
+       <path class="gauge-track" d="M10 84 A70 70 0 0 1 150 84"/>
+       <path class="gauge-fill" d="M10 84 A70 70 0 0 1 150 84" style="stroke-dasharray:193.6 220"/>
+     </svg>
+     <div class="gauge-value ins">€ 1.842</div>
+   </div>
+   <div class="mu">de € 2.100 previstos</div>
+   Cor: âmbar por padrão; adicione .cyan em .gauge para ciano. */
+.gauge-box { position: relative; width: 100%; max-width: 220px; margin: 0 auto; }
+.gauge { display: block; width: 100%; height: auto; }
+.gauge-track, .gauge-fill { fill: none; stroke-width: 12; stroke-linecap: round; }
+.gauge-track { stroke: var(--track); }
+.gauge-fill { stroke: var(--amber-fill); }
+.gauge.cyan .gauge-fill { stroke: var(--cyan-fill); }
+.gauge-value { position: absolute; left: 0; right: 0; bottom: 6%; text-align: center; font-size: 36px; line-height: 1; }
+
+/* ---------- barra horizontal ----------
+   <div class="bar" role="img" aria-label="62%"><i style="width:62%"></i></div>   (.bar.amber = âmbar) */
+.bar { height: 8px; background: var(--track); border-radius: 4px; position: relative; overflow: hidden; }
+.bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--cyan-fill); }
+.bar.amber > i { background: var(--amber-fill); }
+
+/* ---------- gráfico de linha ----------
+   <svg class="linechart" viewBox="0 0 400 100" role="img" aria-label="...">
+     <line class="lc-grid" x1="0" y1="78" x2="400" y2="78"/>
+     <polygon class="lc-area" points="..."/>  <polyline class="lc-line" points="..."/>
+     <circle class="lc-dot" cx cy r="4"/>  <text class="lc-label" x y>nov 1</text>
+   </svg>  (.lc-hit = alvo invisível, seguido de .lc-dot, para dica ao focar/passar o mouse) */
+.linechart { display: block; width: 100%; height: auto; overflow: visible; }
+.lc-line { fill: none; stroke: var(--cyan-fill); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.lc-area { fill: var(--cyan-fill); opacity: .14; stroke: none; }
+.lc-grid { stroke: var(--track); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.lc-label { fill: var(--ink-2); font: 400 13px var(--font-ui); }
+.lc-dot { fill: var(--cyan-fill); stroke: var(--panel); stroke-width: 2; }
+.lc-hit { fill: transparent; }
+
+/* ---------- menu ----------
+   <nav class="nav" data-nav aria-label="Principal"></nav> (initNav() em lib/nav.js preenche).
+   Desktop: abas no topo (altura reservada, sem salto). Celular (<=700px): barra fixa embaixo. */
+.nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; padding: 14px 30px; max-width: 1100px; margin: 0 auto; }
+.nav-brand { font-family: var(--font-num); font-weight: 600; font-size: 28px; letter-spacing: .5px; text-transform: uppercase; text-decoration: none; }
+.nav-links { display: flex; gap: 4px; }
+.nav-links a { display: inline-flex; align-items: center; min-height: 44px; padding: 9px 16px; border-radius: 8px; font-size: 16px; font-weight: 600; color: var(--ink-2); text-decoration: none; }
+.nav-links a:hover { color: var(--ink); }
+.nav-links a[aria-current=page] { background: var(--tab-active); color: var(--ink); }
+@media (max-width: 700px) {
+  body { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+  .wrap { padding: 14px 16px; }
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; min-height: 0; max-width: none; margin: 0; padding: 0 0 env(safe-area-inset-bottom);
+    background: var(--panel); border-top: 1px solid var(--track); }
+  .nav-brand { display: none; }
+  .nav-links { width: 100%; gap: 0; }
+  .nav-links a { flex: 1 1 0; min-width: 0; justify-content: center; min-height: var(--nav-h); padding: 0 2px; border-radius: 0; font-size: 14px;
+    border-top: 3px solid transparent; margin-top: -1px; }
+  .nav-links a[aria-current=page] { background: transparent; color: var(--amber); border-top-color: var(--amber-fill); }
+}
+
+/* ---------- movimento ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
