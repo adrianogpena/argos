@@ -12,12 +12,13 @@ t('salaryPlan: base ignores doubled payments and other credits; day is the media
   assert.equal(p.base, 1000); assert.equal(p.day, 29);
   assert.equal(salaryPlan([{ date: '2026-01-01', desc: 'TRF', amount: 5 }]), null);
 });
-t('expectedIncome doubles in June and November, caps the day at month end', () => {
+t('expectedIncome: the salary that pays a month is the previous month one, doubled when paid in June/November, day capped at month end', () => {
   const p = salaryPlan(LINES);
-  assert.deepEqual(expectedIncome(p, '2026-11'), { date: '2026-11-29', amount: 2000, double: true });
-  assert.equal(expectedIncome(p, '2026-12').amount, 1000);
-  assert.equal(expectedIncome(p, '2027-06').double, true);
-  assert.equal(expectedIncome({ ...p, day: 31 }, '2027-02').date, '2027-02-28');
+  assert.deepEqual(expectedIncome(p, '2026-12'), { date: '2026-11-29', amount: 2000, double: true });
+  assert.deepEqual(expectedIncome(p, '2026-11'), { date: '2026-10-29', amount: 1000, double: false });
+  assert.equal(expectedIncome(p, '2027-07').double, true);
+  assert.equal(expectedIncome({ ...p, day: 31 }, '2027-03').date, '2027-02-28');
+  assert.equal(salaryPlan([...LINES, pay('2026-11-02', 900)]).day, 29);
 });
 // Seis meses completos (mai-out): aluguel fixo, internet com pequena variação, mercado variável (3x/mês), assinatura que só apareceu 2 vezes.
 const HIST = [];
@@ -34,9 +35,9 @@ t('recurring keeps stable monthly items only', () => {
 });
 t('forecast of the next month: income minus fixed, then minus typical variable', () => {
   const f = forecast(HIST, salaryPlan(LINES), '2026-12', NOW);
-  assert.equal(f.income.amount, 1000); assert.ok(f.fixedTotal > 740 && f.fixedTotal < 742);
+  assert.equal(f.income.amount, 2000); assert.ok(f.fixedTotal > 740 && f.fixedTotal < 742);
   assert.equal(f.fixedTotal, f.rows.reduce((s, r) => s + r.amount, 0));
-  assert.equal(f.free, 1000 - f.fixedTotal);
+  assert.equal(f.free, 2000 - f.fixedTotal);
   assert.ok(f.variable > 0 && f.afterVariable === Math.round((f.free - f.variable) * 100) / 100);
 });
 t('forecast of the current month only counts what is still missing', () => {
@@ -44,10 +45,10 @@ t('forecast of the current month only counts what is still missing', () => {
   const f = forecast(items, salaryPlan(LINES), '2026-11', NOW);
   assert.equal(f.rows.find(r => r.key === 'aluguel').done, true);
   assert.equal(f.rows.find(r => r.key === 'internet').done, false);
-  assert.equal(f.income.amount, 2000); assert.equal(f.incomePending, 2000);
+  assert.equal(f.income.amount, 1000); assert.equal(f.received, 1000); assert.equal(f.incomePending, 0);
   assert.ok(f.fixedTotal > 39 && f.fixedTotal < 42);
-  const got = forecast(items, salaryPlan([...LINES, pay('2026-11-21', 2000)]), '2026-11', NOW);
-  assert.equal(got.incomePending, 0);
+  const early = forecast(items, salaryPlan([...LINES.filter(l => l.date !== '2026-10-28'), pay('2026-11-03', 1000)]), '2026-11', NOW);
+  assert.equal(early.received, 1000);
 });
 t('projection is null until the month has expenses, then extrapolates the variable part', () => {
   assert.equal(projection(HIST, NOW), null);
@@ -77,6 +78,6 @@ t('forecast com future:true trata o mês como futuro mesmo ancorado nele (extrat
   const p = salaryPlan(LINES), items = [X('2026-10-05', 500, 'aluguel', 'Moradia')];
   const a = forecast(items, p, '2026-11', NOW), b = forecast(items, p, '2026-11', NOW, { future: true });
   assert.equal(a.isCurrent, true); assert.equal(b.isCurrent, false);
-  assert.equal(b.received, 0); assert.equal(b.incomePending, 2000); assert.ok(b.rows.every(r => !r.done));
+  assert.equal(b.received, 0); assert.equal(b.incomePending, 1000); assert.ok(b.rows.every(r => !r.done));
 });
 console.log(n + ' tests passed');

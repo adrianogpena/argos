@@ -71,6 +71,7 @@
       <div class="seg" id="views" role="group" aria-label="Seção do mês"><button type="button" data-view="geral">Visão geral</button><button type="button" data-view="det">Detalhes</button><button type="button" data-view="lanc">Lançamentos</button></div>
       <div data-v="geral" class="stack">
         <div class="tiles" id="tiles"></div><div class="tag" id="needNote"></div>
+        <div class="panel" id="cash"></div>
         <div class="panel" id="cardPace" hidden><h2>Ritmo do mês atual</h2><div id="pace"></div></div>
         <div class="panel"><h2>Últimos 12 meses (€)</h2><div id="chMonths"></div><div class="tag">Toque numa barra para escolher o mês.</div></div>
         <div class="panel"><h2>Por categoria no mês</h2><div id="chCats"></div></div>
@@ -114,6 +115,7 @@ import { initNav } from "./lib/nav.js"; initNav();
 import { createVault, newId } from './lib/vault.js';
 import { expenseRecord, needSplit, monthly, byCategory, monthTotal, delta, categoriesIn, categoryOptions, canonicalCategory, byLabel, labelOptions, instText } from './lib/expenses-core.js';
 import { UNCAT, NEEDS } from './lib/classify.js';
+import { balanceByMonth, balanceSummary, refMonth, INCOME_KINDS } from './lib/income.js';
 import { salaryPlan, forecast, projection, recurring, topMerchants, categoryVsAverage, needByMonth, addMonths, nowKey } from './lib/expenses-report.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -132,11 +134,11 @@ function showView() {
   for (const el of document.querySelectorAll('[data-v]')) el.hidden = el.dataset.v !== view;
   for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
 }
-let expenses = [], rules = new Map(), month = today().slice(0, 7), started = false, editing = null, filter = 'all', plan = null, planErr = '', mrange = 'month';
+let income = [], expenses = [], rules = new Map(), month = today().slice(0, 7), started = false, editing = null, filter = 'all', plan = null, planErr = '', mrange = 'month';
 
 async function load() {
-  const [e, r] = await Promise.all([vault.list('expenses'), vault.list('expense-rules')]);
-  expenses = e.items; rules = new Map(r.items.map(x => [x.id, x]));
+  const [e, r, inc] = await Promise.all([vault.list('expenses'), vault.list('expense-rules'), vault.list('income').catch(() => ({ items: [] }))]);
+  expenses = e.items; income = inc.items; rules = new Map(r.items.map(x => [x.id, x]));
   if (!started) { started = true; month = fcMonth(expenses); }   // abre no mês de previsão
   $('#setup').hidden = true; $('#app').hidden = false;
   $('#sync').textContent = e.stale ? 'Offline: salvo neste aparelho.' : '';
@@ -178,6 +180,7 @@ function render() {
   $('#needNote').textContent = ns.none > 0.005 ? `Sem tipo definido: ${eur(ns.none)}. Edite os lançamentos para classificar.` : '';
 
   reports(items);
+  cashflow(items);
   const ms = monthly(items, 12, new Date(+month.slice(0, 4), +month.slice(5) - 1, 15));
   setChart('#chMonths', bars(ms));
   const cats = byCategory(items, month), max = Math.max(...cats.map(c => c.amount), 1);
@@ -253,6 +256,30 @@ function reports(items) {
 
   // 6) Essencial x flexível, 12 meses.
   setChart('#chNeed', stacked(needByMonth(items, 12, month)));
+}
+
+/** Receita x gasto: tudo o que entrou (salário, transferências, Coverflex...) contra o gasto do mês; saldo positivo = guardou. */
+function cashflow(items) {
+  const rows = balanceByMonth(income, items, month, 12), cur = rows[rows.length - 1], sum = balanceSummary(rows);
+  const mine = income.filter(x => refMonth(x) === month).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
+  const tile = (k, v, sub, cls) => `<div class="tile"><div class="k">${k}</div><div><span class="v ${cls || ''}">${v}</span></div><div class="s">${sub || ''}</div></div>`;
+  const head = !cur.earned ? `<div class="empty">Nenhuma entrada registrada neste mês. Peça ao Claude para atualizar as entradas (income).</div>` :
+    `<div class="hero"><div class="k">${cur.balance >= 0 ? 'Guardou em' : 'Gastou a mais em'} ${monthName(month)}</div><div class="v ${cur.balance >= 0 ? 'down' : 'up'}">${eur(Math.abs(cur.balance))}</div><div class="s">${cur.balance >= 0 ? (cur.saved != null ? Math.round(cur.saved * 100) + '% do que entrou' : '') : 'saiu mais do que entrou'}</div></div>` +
+    `<div class="tiles">${tile('Entrou', '+' + eur(cur.earned), cur.kinds.map(k => INCOME_KINDS[k.kind] + ' ' + eur0(k.amount)).join(' · '), 'down')}${tile('Gastou', '−' + eur(cur.spent))}</div>`;
+  const list = mine.map(x => `<div class="fc-r${x.skip ? ' done' : ''}"><span>${dayBR(x.date)}${x.date.slice(0, 7) !== month ? '/' + x.date.slice(2, 4) : ''} · ${esc(INCOME_KINDS[x.kind] || x.kind)} <span class="tag">· ${esc(x.note || '')}</span></span><span class="num">${eur(x.amount)} <button type="button" class="btn ghost" data-skipinc="${esc(x.id)}">${x.skip ? 'Voltar a contar' : 'Não é receita'}</button></span></div>`).join('');
+  $('#cash').innerHTML = '<h2>Receita x gasto</h2>' + head +
+    '<div id="chCash"></div><div class="leg"><span><i class="s1"></i>Guardou</span><span><i class="s2"></i>Gastou a mais</span></div>' +
+    `<div class="fc-note">Últimos 12 meses: entrou ${eur(sum.earned)}, gastou ${eur(sum.spent)}, ${sum.balance >= 0 ? 'guardou' : 'gastou a mais'} <b>${eur(Math.abs(sum.balance))}</b> (${sum.saved} meses guardando, ${sum.over} gastando a mais).</div>` +
+    (mine.length ? `<details class="more"><summary>Entradas que pagam o mês (${mine.length})</summary>${list}<div class="fc-note">O salário e a carga da Coverflex pagam o mês seguinte ao recebimento (recebido até o dia 5 conta no próprio mês); venda, devolução e reembolso contam no mês em que caíram. Não entram: poupança, depósito a prazo, empréstimos, pagamento do cartão e transferências suas.</div></details>` : '');
+  setChart('#chCash', balanceBars(rows));
+}
+function balanceBars(data) {
+  const W = chartW(data.length), H = 170, L = 48, B = 26, T = 8, hi = Math.max(...data.map(d => d.balance), 1), lo = Math.min(...data.map(d => d.balance), 0), span = (hi - lo) * 1.1 || 1;
+  const step = (W - L) / data.length, bw = Math.min(32, step - 8), y = v => T + (H - T - B) * (1 - (v - lo) / span), z = y(0);
+  return `<svg class="chart" style="width:${W}px;max-width:none" viewBox="0 0 ${W} ${H}" role="group" aria-label="Saldo por mês">` +
+    [hi, 0, lo].filter((v, i, a) => a.indexOf(v) === i).map(t => `<line class="grid" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${eur0(t)}</text>`).join('') +
+    data.map((d, i) => { const x = L + i * step + (step - bw) / 2, v = d.earned || d.spent ? d.balance : 0, tip = `${monthName(d.month)}: entrou ${eur(d.earned)} · gastou ${eur(d.spent)} · ${d.balance >= 0 ? 'guardou' : 'gastou a mais'} ${eur(Math.abs(d.balance))}`;
+      return `<g class="st" tabindex="0" role="img" data-tip="${esc(tip)}" aria-label="${esc(tip)}"><rect class="${v >= 0 ? 's1' : 's2'}" x="${x}" y="${Math.min(y(v), z)}" width="${bw}" height="${Math.max(Math.abs(y(v) - z), v ? 1 : 0)}"/><rect class="hit" x="${L + i * step}" y="${T}" width="${step}" height="${H - B - T}"/></g><text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${d.month.slice(5)}</text>`; }).join('') + '</svg>';
 }
 
 /** Largura útil do painel (o gráfico usa a largura real; 44 px por mês no mínimo, com rolagem só dentro do gráfico). */
@@ -348,6 +375,11 @@ document.addEventListener('click', async e => {
   else if (b.dataset.ok) {
     const x = expenses.find(y => y.id === b.dataset.ok); if (!x) return;
     try { const { auto, ...rest } = x; await vault.put('expenses', rest); await learn({ ...rest }, true); await load(); } catch (err) { alert(err.message); }
+  }
+  else if (b.dataset.skipinc) {
+    const x = income.find(y => y.id === b.dataset.skipinc); if (!x) return;
+    const { skip, ...rest } = x;
+    try { await vault.put('income', skip ? rest : { ...rest, skip: true }); await load(); } catch (err) { alert(err.message); }
   }
   else if (b.dataset.edit) openForm(expenses.find(x => x.id === b.dataset.edit));
   else if (b.dataset.del && confirm('Apagar este lançamento?')) { try { await vault.del('expenses', b.dataset.del); await load(); } catch (err) { alert(err.message); } }

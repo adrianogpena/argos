@@ -15,6 +15,7 @@
 //   node tools/expenses.mjs card <cartao.json> [--apply]   grava gastos do cartão de crédito (source 'card', data da compra): [{date,amount,desc,category,need,label,inst:{n,of,left,last}}]
 //   node tools/expenses.mjs drop <chave> <AAAA-MM> <AAAA-MM> [--apply]   apaga os gastos do extrato com essa chave entre os dois meses (ex.: o pagamento único do cartão que foi detalhado)
 //   node tools/expenses.mjs fuel [--apply]              liga cada abastecimento do Carro ao lançamento de Gastos de mesmo valor (0 a 5 dias) e o recategoriza como Transporte › Combustível (posto dentro de supermercado); simula sem --apply
+//   node tools/expenses.mjs income [--apply]            monta a coleção `income` (entradas de dinheiro: salário, transferências, devoluções, cargas da Coverflex) a partir de bank-lines + ~/.argos-coverflex; simula sem --apply; preserva `skip` marcado na tela
 //   node tools/expenses.mjs push <entradas.json>        simulação: mostra o que seria gravado
 //   node tools/expenses.mjs push <entradas.json> --apply   grava no cofre
 //
@@ -24,6 +25,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { monthReport, isMonth, MONTH_STATUS } from '../lib/bank-month.js';
 import { bankId, descKey, buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels, displayName, searchUrl, inferBranch, recurrenceHint, isIntermediary, canonMotivo, GENERIC_KEYS } from '../lib/classify.js';
+import { incomeRecords, INCOME_KINDS } from '../lib/income.js';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { fuelLinks, fuelPending } from '../lib/fuel-link.js';
 import { expenseRecord, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 
@@ -241,6 +245,19 @@ if (cmd === 'rules') {
   if (!flags.includes('--apply')) { console.log('Simulação: nada foi gravado. Acrescente --apply.'); process.exit(0); }
   await call('PUT', `/v1/c/bank-months/${file}`, rec);
   console.log('Gravado em bank-months.');
+} else if (cmd === 'income') {
+  need();
+  const apply = [file, ...flags].includes('--apply');
+  const [lines, rules, old] = await Promise.all([call('GET', '/v1/c/bank-lines'), call('GET', '/v1/c/expense-rules'), call('GET', '/v1/c/income')]);
+  let topups = []; try { const j = JSON.parse(readFileSync(join(process.env.COVERFLEX_DIR || join(homedir(), '.argos-coverflex'), 'coverflex-entries.json'), 'utf8')); topups = j.rows || j; } catch { console.log('(sem coverflex-entries.json: cargas da Coverflex ficam de fora)'); }
+  const recs = incomeRecords(lines.items, new Set(rules.items.filter(r => r.skip).map(r => r.id)), topups, new Map(old.items.map(x => [x.id, x])));
+  const by = new Map(); for (const r of recs) { const v = by.get(r.kind) || { n: 0, t: 0 }; v.n++; v.t += r.amount; by.set(r.kind, v); }
+  console.log(`${recs.length} entradas (já gravadas: ${old.items.length})`);
+  for (const [k, v] of [...by].sort((a, b) => b[1].t - a[1].t)) console.log(`  ${INCOME_KINDS[k].padEnd(24)} ${String(v.n).padStart(4)}  ${v.t.toFixed(2)}`);
+  const oldById = new Map(old.items.map(x => [x.id, x])), fresh = recs.filter(r => { const o = oldById.get(r.id); return !o || ['ref', 'kind', 'amount', 'date'].some(k => o[k] !== r[k]); });
+  if (!apply) { console.log(`Simulação: ${fresh.length} novas ou alteradas. Acrescente --apply para gravar.`); process.exit(0); }
+  for (let i = 0; i < fresh.length; i += 500) await call('POST', '/v1/c/income', { items: fresh.slice(i, i + 500) });
+  console.log(`Gravadas ${fresh.length} entradas (novas ou alteradas) em income.`);
 } else if (cmd === 'raw' && file) {
   // Arquivo morto do extrato: TODA linha (gastos, entradas, poupança, transferências), fiel ao banco. Coleção `bank-lines`,
   // que nenhuma tela nem relatório lê; serve só para conferir o extrato original. Id = hash estável: reimportar não duplica.
