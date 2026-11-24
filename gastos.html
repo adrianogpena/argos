@@ -157,7 +157,7 @@ async function loadSalary() {
 }
 const all = () => expenses;
 /** Último mês com extrato (gastos do banco ou do cartão; lançamento manual não conta). O mês seguinte é só previsão. */
-const dataMonth = items => items.reduce((m, x) => (x.source === 'bank' || x.source === 'card') && x.date.slice(0, 7) > m ? x.date.slice(0, 7) : m, '');
+const dataMonth = items => items.reduce((m, x) => (x.source === 'bank' || x.source === 'card' || x.source === 'coverflex') && x.date.slice(0, 7) > m ? x.date.slice(0, 7) : m, '');
 const fcMonth = items => { const d = dataMonth(items); return d ? addMonths(d, 1) : today().slice(0, 7); };
 
 function render() {
@@ -192,7 +192,7 @@ function render() {
   $('#list').innerHTML = sorted.length ? sorted.map(x => {
     const unc = x.category === UNCAT;
     return `<li><div class="main">${esc(x.category)} · ${eur(x.amount)}<div class="sub">${dateBR(x.date)}${x.note ? ' · ' + esc(x.note) : ''}</div>` +
-      `<div class="pills">${x.card ? `<span class="pill card">Cartão de crédito</span> ` : ''}${x.inst ? `<span class="pill ${x.inst.last ? 'last' : 'inst'}">${esc(instText(x.inst, eur))}</span> ` : ''}${x.label ? `<span class="pill lbl">${esc(x.label)}</span> ` : ''}${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
+      `<div class="pills">${x.card ? `<span class="pill card">Cartão de crédito</span> ` : ''}${x.coverflex ? `<span class="pill card">Coverflex</span> ` : ''}${x.inst ? `<span class="pill ${x.inst.last ? 'last' : 'inst'}">${esc(instText(x.inst, eur))}</span> ` : ''}${x.label ? `<span class="pill lbl">${esc(x.label)}</span> ` : ''}${x.need ? `<span class="pill need">${NEEDS[x.need]}</span> ` : ''}${x.auto ? `<span class="pill rev">${unc ? 'definir categoria' : 'palpite: confira'}</span>` : ''}</div></div>` +
       `<div class="acts">${x.auto && !unc ? `<button type="button" class="ok" data-ok="${esc(x.id)}" title="Confirmar categoria e tipo">✓ Confirmar</button>` : ''}<button type="button" data-edit="${esc(x.id)}">Editar</button><button type="button" class="del" data-del="${esc(x.id)}">Apagar</button></div></li>`;
   }).join('') : '<li class="empty">Nenhum lançamento.</li>';
 }
@@ -329,7 +329,7 @@ async function learn(rec, applySimilar) {
 
 $('#btnSave').onclick = async () => {
   const f = $('#formAdd'), old = expenses.find(x => x.id === editing);
-  const r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: pickedCategory(f), note: f.note.value, need: f.need.value, label: f.label.value, source: old?.source, key: old?.key });
+  const r = expenseRecord({ id: editing || newId(), date: f.date.value, amount: f.amount.value, category: pickedCategory(f), note: f.note.value, need: f.need.value, label: f.label.value, source: old?.source, key: old?.key, card: old?.card, coverflex: old?.coverflex, ck: old?.ck, inst: old?.inst });
   const names = { date: 'a data', amount: 'o valor', category: 'a categoria' };
   if (!r.ok) { $('#addMsg').className = 'msg bad'; $('#addMsg').textContent = 'Confira ' + names[r.error] + '.'; return; }
   try {

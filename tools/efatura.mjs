@@ -43,7 +43,8 @@ if (cmd === 'build') {
   const sug = merchantSuggestions(invoices, links, e.items);
   const merchants = merchantRecords(sug, m.items.map(x => x.id));
   const records = invoices.map(i => invoiceRecord(i, links.get(i.id))).sort((a, b) => a.date < b.date ? 1 : -1);
-  writeFileSync(f('plan.json'), JSON.stringify({ built: today, plan: { 'qr-merchants': merchants, efatura: records } }));
+  const extra = Object.fromEntries(Object.entries(readJson('plan.json', { plan: {} }).plan).filter(([c]) => c !== 'qr-merchants' && c !== 'efatura'));   // coleções acrescentadas por outras importações (ex.: coverflex)
+  writeFileSync(f('plan.json'), JSON.stringify({ built: today, plan: { 'qr-merchants': merchants, efatura: records, ...extra } }));
   const byConf = { alta: 0, media: 0, baixa: 0 }; for (const s of sug) byConf[s.conf]++;
   const live = invoices.filter(i => !isVoid(i));
   console.log(`faturas ${invoices.length} (válidas ${live.length}); ligadas a Gastos ${links.size}; sem lançamento ${live.length - links.size}`);
@@ -69,7 +70,7 @@ if (cmd === 'build') {
   if (apply) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     for (const b of batches) {
-      try { await call('POST', '/v1/c/' + b.collection, { items: b.items }); }
+      try { await call('POST', '/v1/c/' + b.collection.split('+')[0], { items: b.items }); }   // 'efatura+link' grava na coleção efatura
       catch (err) { console.error(err.message + '. Parei; o que já foi enviado está registrado. Tente depois da meia-noite UTC.'); break; }
       st = recordBatch(st, today, b.collection, b.items);
       writeFileSync(f('state.json'), JSON.stringify(st));
