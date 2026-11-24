@@ -13,7 +13,7 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
 | Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; os registros da tela Carro **não** são somados (evita contar em dobro), mas combustível e portagem do extrato entram sempre, como Transporte; `tools/expenses.mjs fuel` liga cada abastecimento do Carro ao lançamento de mesmo valor (0 a 5 dias) e o recategoriza como Combustível, para postos dentro de supermercado; meses com extrato mostram só dados reais, e o mês seguinte ao último extrato mostra só a previsão) | `gastos.html` | pronto |
 | Cartão (previsão das parcelas futuras sem compras novas, data de quitação, acréscimo x baixa por extrato, "meu plano" = débito automático no mínimo + extras manuais) | `cartao.html` | pronto; lê `card-statements`/`card-lines`; lógica em `lib/card-forecast.js` |
-| Saúde (peso e altura de pessoas e bichos) | `saude.html` | pronto; dados importados do Supabase uma única vez |
+| Saúde (peso e altura de pessoas e bichos; aba Exames com laudos de laboratório: último resultado, situação frente à referência, gráfico com faixa de referência e explicação de cada exame; laudos importados pelo Claude com `tools/health.mjs import`, JSON montado a partir do PDF e guardado em `~/.argos-health/`, fora do git) | `saude.html` | pronto; peso/altura vieram do Supabase uma única vez; lógica dos exames em `lib/health-exams.js` |
 | Faturas (lê o QR fiscal pela câmera do celular e guarda só os campos do QR, sem imagem; coleção `receipt-qr`, id = NIF-ATCUD, com o texto bruto em `raw` e `expenseId` = lançamento de Gastos com o mesmo valor, 0 a 5 dias, via `linkQr`; `tools/expenses.mjs review` mostra o `nif:` do QR ligado a cada pendente para ajudar a categorizar; o QR não traz itens; cada QR válido é salvo na hora e a câmera continua aberta; `qr-merchants` = nome e categoria por NIF do emitente e `qr-people` = nome por NIF do comprador (campo B; 999999990 = consumidor final, sem comprador), ambos perguntados na 1ª vez; não salva se já houver fatura digital com itens de mesma data e valor; `check` diff = bases + IVA não fecham com o total; nota de crédito NC entra negativa e não liga a gasto; o IVA vem da soma dos campos por taxa, porque alguns emitentes põem em `N` a soma das bases) | `faturas.html` | pronto; parser em `lib/qr-invoice.js`, jsQR copiado em `lib/jsqr.js` (reserva sem `BarcodeDetector`) |
 
 Nome escolhido: **Argos** (o gigante de cem olhos). Cada módulo é uma página própria, sem build, sem framework. Lógica pura em `lib/*.js` (módulos ES, testáveis em Node).
@@ -121,6 +121,7 @@ node test/home.test.mjs       resumo da home (4)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
 node test/fuelio.test.mjs     importação do Fuelio (4)
 node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (7)
+node test/health-exams.test.mjs exames de laboratório: registros, situação frente à referência, resumo por exame (7)
 node test/classify.test.mjs   classificação e plano de importação (7)
 node test/bank-month.test.mjs conferência mensal do extrato (3)
 node test/card-month.test.mjs extrato do cartão: parser, conferências, vínculo com o banco (13)

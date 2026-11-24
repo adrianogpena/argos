@@ -26,6 +26,15 @@
 .chart .hit:focus-visible { outline: none; stroke: var(--focus); stroke-width: 2; }
 .chart .lbl { fill: var(--ink); font-weight: 600; }
 .priv { margin: 0; color: var(--ink-2); }
+.chart .band { fill: var(--ok); opacity: .14; }
+.pill.ok { background: transparent; color: var(--ok); box-shadow: inset 0 0 0 1.5px var(--ok); }
+.pill.high, .pill.low { background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--danger); }
+.pill.edge { background: transparent; color: var(--amber); box-shadow: inset 0 0 0 1.5px var(--amber); }
+.list button[aria-pressed=true] { background: var(--tab-active); color: var(--ink); }
+.list .main b { font-weight: 600; }
+.explain h3 { margin: 12px 0 4px; font-size: 16px; color: var(--ink-2); }
+.explain p { margin: 0; }
+.tabs { margin: 0; }
 </style>
 </head>
 <body>
@@ -35,7 +44,7 @@
   <div class="stack">
   <section id="setup" class="panel stack" hidden>
     <h2>Cofre privado não conectado</h2>
-    <p class="hint">Peso e altura ficam no cofre, não nesta página pública. Conecte o cofre uma vez em <a href="carro.html">Carro → Cofre</a>; vale para todas as telas neste aparelho.</p>
+    <p class="hint">Peso, altura e exames ficam no cofre, não nesta página pública. Conecte o cofre uma vez em <a href="carro.html">Carro → Cofre</a>; vale para todas as telas neste aparelho.</p>
     <div class="msg bad" id="setupMsg" role="status"></div>
   </section>
 
@@ -44,9 +53,17 @@
     <div id="empty" class="panel" hidden><h2>Ninguém cadastrado</h2><p class="hint">Cadastre a primeira pessoa ou bicho para começar a registrar peso e altura.</p><button class="btn" id="btnFirst" type="button">+ Pessoa ou bicho</button></div>
     <div id="who" class="stack" hidden>
       <div class="acts"><button class="btn" id="btnAdd" type="button">+ Medida</button><button class="btn ghost" id="btnEditMember" type="button">Editar cadastro</button><span class="msg" id="sync" role="status"></span></div>
+      <div class="seg tabs" id="tabs" role="group" aria-label="Seção"><button type="button" data-tab="measures" aria-pressed="true">Medidas</button><button type="button" data-tab="exams" aria-pressed="false">Exames</button></div>
+      <div id="paneM" class="stack">
       <div class="tiles" id="tiles"></div>
       <div class="panel"><h2 id="chTitle">Evolução</h2><div class="seg" id="seg" role="group" aria-label="Medida"><button type="button" data-m="weight" aria-pressed="true">Peso</button><button type="button" data-m="height" aria-pressed="false">Altura</button></div><div id="chart"></div></div>
       <div class="panel"><h2>Registros</h2><ul class="list" id="list"></ul></div>
+      </div>
+      <div id="paneE" class="stack" hidden>
+        <div class="panel" id="exOverview"></div>
+        <div class="panel explain" id="exDetail" hidden></div>
+        <div class="panel"><h2>Laudos</h2><ul class="list" id="exReports"></ul><p class="hint">Os laudos são importados pelo Claude a partir do PDF (<code>tools/health.mjs</code>); aqui só se consulta.</p></div>
+      </div>
     </div>
     <div class="acts"><button class="btn ghost" id="btnNewMember" type="button">+ Pessoa ou bicho</button></div>
   </div>
@@ -86,6 +103,7 @@ import { initTheme } from "./lib/theme.js"; initTheme();
 import { initNav } from "./lib/nav.js"; initNav();
 import { createVault, newId } from './lib/vault.js';
 import { METRICS, memberRecord, measureRecord, series, latest, ageText } from './lib/health-core.js';
+import { SECTIONS, overview, testSeries, refOf, shown, TESTS } from './lib/health-exams.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -96,14 +114,14 @@ const fmt = (v, metric) => v.toLocaleString('pt-BR', { maximumFractionDigits: ME
 const val = (v, metric) => fmt(v, metric) + ' ' + METRICS[metric].unit;
 const ERR = { name: 'o nome', birth: 'a data de nascimento', metric: 'a medida', member: 'a pessoa', date: 'a data', value: 'o valor' };
 
-let members = [], measures = [], sel = null, metric = 'weight', editingM = null, editingP = null;
+let members = [], measures = [], exams = [], results = [], sel = null, metric = 'weight', tab = 'measures', testSel = null, editingM = null, editingP = null;
 
 async function load() {
-  const [a, b] = await Promise.all([vault.list('health-members'), vault.list('health-measures')]);
-  members = a.items.sort((x, y) => x.name.localeCompare(y.name, 'pt-BR')); measures = b.items;
+  const [a, b, c, d] = await Promise.all([vault.list('health-members'), vault.list('health-measures'), vault.list('health-exams'), vault.list('health-results')]);
+  members = a.items.sort((x, y) => x.name.localeCompare(y.name, 'pt-BR')); measures = b.items; exams = c.items; results = d.items;
   if (!members.some(m => m.id === sel)) sel = members[0]?.id || null;
   $('#setup').hidden = true; $('#app').hidden = false;
-  $('#sync').textContent = a.stale || b.stale ? 'Offline: salvo neste aparelho.' : '';
+  $('#sync').textContent = a.stale || b.stale || c.stale || d.stale ? 'Offline: salvo neste aparelho.' : '';
   render();
 }
 
@@ -111,6 +129,9 @@ function render() {
   $('#chips').innerHTML = members.map(m => `<button type="button" class="chip" data-who="${esc(m.id)}" aria-pressed="${m.id === sel}">${esc(m.name)}</button>`).join('');
   $('#empty').hidden = members.length > 0; $('#who').hidden = !sel;
   if (!sel) return;
+  $('#tabs').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === tab));
+  $('#paneM').hidden = tab !== 'measures'; $('#paneE').hidden = tab !== 'exams'; $('#btnAdd').hidden = tab !== 'measures';
+  if (tab === 'exams') return renderExams();
   const m = members.find(x => x.id === sel), w = latest(measures, sel, 'weight'), h = latest(measures, sel, 'height'), age = ageText(m.birth, today());
   const chg = w?.change == null ? '' : `<div class="mu">${w.change > 0 ? '▲' : w.change < 0 ? '▼' : '='} ${fmt(Math.abs(w.change), 'weight')} kg desde ${dateBR(w.since)}</div>`;
   $('#tiles').innerHTML =
@@ -120,24 +141,56 @@ function render() {
   $('#seg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === metric));
   const s = series(measures, sel, metric);
   $('#chTitle').textContent = `${METRICS[metric].label} (${METRICS[metric].unit})`;
-  $('#chart').innerHTML = s.length ? lineChart(s) : '<div class="mu">Sem registros de ' + METRICS[metric].label.toLowerCase() + '.</div>';
+  $('#chart').innerHTML = s.length ? lineChart(s, { label: METRICS[metric].label, fmt: v => fmt(v, metric), val: v => val(v, metric) }) : '<div class="mu">Sem registros de ' + METRICS[metric].label.toLowerCase() + '.</div>';
   $('#list').innerHTML = s.length ? [...s].reverse().map(x => `<li><div class="main"><span class="num">${val(x.value, metric)}</span><div class="sub">${dateBR(x.date)}</div></div><button type="button" data-edit="${esc(x.id)}">Editar</button><button type="button" class="del" data-del="${esc(x.id)}">Apagar</button></li>`).join('') : '<li class="mu">Nenhum registro.</li>';
 }
 
-function lineChart(s) {
-  const W = Math.max(280, Math.round($('#chart').clientWidth || 520)), H = 200, L = 44, R = 16, B = 28, T = 22, day = d => Date.parse(d + 'T00:00:00Z') / 864e5;
+function lineChart(s, o) {
+  const W = Math.max(280, Math.round(o.width || $('#chart').clientWidth || 520)), H = 200, L = 44, R = 16, B = 28, T = 22, day = d => Date.parse(d + 'T00:00:00Z') / 864e5;
   const x0 = day(s[0].date), x1 = Math.max(day(s[s.length - 1].date), x0 + 1), vs = s.map(p => p.value), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * .15 || hi * .1 || 1;
   const vmin = Math.max(0, lo - pad), vmax = hi + pad, X = d => L + (day(d) - x0) / (x1 - x0) * (W - L - R), Y = v => T + (H - T - B) * (1 - (v - vmin) / (vmax - vmin));
   const ticks = [vmin, (vmin + vmax) / 2, vmax], last = s[s.length - 1];
   const nice = v => v.toLocaleString('pt-BR', { maximumFractionDigits: v < 10 ? 1 : 0 });
   const mon = d => d.slice(5, 7) + '/' + d.slice(2, 4), xl = [s[0].date, last.date];
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${METRICS[metric].label} ao longo do tempo, ${s.length} registro(s), último ${val(last.value, metric)}">` +
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label} ao longo do tempo, ${s.length} registro(s), último ${o.val(last.value)}">` +
+    (o.low != null || o.high != null ? `<rect class="band" x="${L}" width="${W - L - R}" y="${Y(Math.min(o.high ?? vmax, vmax))}" height="${Math.max(0, Y(Math.max(o.low ?? vmin, vmin)) - Y(Math.min(o.high ?? vmax, vmax)))}"><title>Faixa de referência</title></rect>` : '') +
     ticks.map(t => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L - 6}" y="${Y(t) + 3}" text-anchor="end">${nice(t)}</text>`).join('') +
     `<text x="${L}" y="${H - 6}">${mon(xl[0])}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${mon(xl[1])}</text>` +
     (s.length > 1 ? `<polyline class="line" points="${s.map(p => X(p.date).toFixed(1) + ',' + Y(p.value).toFixed(1)).join(' ')}"/>` : '') +
     s.map(p => `<circle class="dot" r="4" cx="${X(p.date).toFixed(1)}" cy="${Y(p.value).toFixed(1)}"/>`).join('') +
-    s.map(p => { const tip = `${dateBR(p.date)}: ${val(p.value, metric)}`, k = s.length <= 12 ? ' tabindex="0"' : ''; return `<circle class="hit" r="23" cx="${X(p.date).toFixed(1)}" cy="${Y(p.value).toFixed(1)}"${k} data-tip="${esc(tip)}" aria-label="${esc(tip)}"/>`; }).join('') +
-    `<text class="lbl" x="${Math.min(X(last.date), W - R)}" y="${Y(last.value) - 9}" text-anchor="end">${fmt(last.value, metric)}</text></svg>`;
+    s.map(p => { const tip = `${dateBR(p.date)}: ${p.tip || o.val(p.value)}`, k = s.length <= 12 ? ' tabindex="0"' : ''; return `<circle class="hit" r="23" cx="${X(p.date).toFixed(1)}" cy="${Y(p.value).toFixed(1)}"${k} data-tip="${esc(tip)}" aria-label="${esc(tip)}"/>`; }).join('') +
+    `<text class="lbl" x="${Math.min(X(last.date), W - R)}" y="${Y(last.value) - 9}" text-anchor="end">${o.fmt(last.value)}</text></svg>`;
+}
+
+const fmtN = (v, d) => v.toLocaleString('pt-BR', { maximumFractionDigits: d ?? 1 });
+const STATUS = { ok: ['ok', 'Normal'], high: ['high', 'Acima'], low: ['low', 'Abaixo'] };
+function badge(o) {
+  if (!o.status) return '';
+  const edge = o.status === 'high' && o.ref?.highExcl && o.last.value === o.ref.high;
+  const [cls, txt] = edge ? ['edge', 'No limite'] : STATUS[o.status];
+  return `<span class="pill ${cls}">${txt}</span>`;
+}
+function renderExams() {
+  const rows = overview(results, sel), unit = x => x.unit ? ' ' + x.unit : '';
+  if (!rows.some(r => r.test === testSel)) testSel = rows[0]?.test || null;
+  $('#exOverview').innerHTML = rows.length ? SECTIONS.map(sec => {
+    const part = rows.filter(r => r.def.section === sec);
+    return part.length ? `<h2>${sec}</h2><ul class="list">${part.map(o => {
+      const chg = o.change == null || o.change === 0 ? '' : ` · ${o.change > 0 ? '▲' : '▼'} ${fmtN(Math.abs(o.change), o.def.decimals)} desde ${dateBR(o.prev.date)}`;
+      return `<li><div class="main"><b>${esc(o.def.short)}</b><div class="sub">${dateBR(o.last.date)}${chg}${o.ref?.refText ? ' · ref. ' + esc(o.ref.refText) : ''}</div></div><span class="num">${esc(shown(o.last))}${esc(unit(o.last))}</span>${badge(o)}<button type="button" data-test="${o.test}" aria-pressed="${o.test === testSel}">O que é</button></li>`;
+    }).join('')}</ul>` : '';
+  }).join('') : '<h2>Exames</h2><p class="hint">Nenhum exame deste cadastro ainda. Peça ao Claude para importar um laudo em PDF.</p>';
+  const det = $('#exDetail'); det.hidden = !testSel;
+  if (testSel) {
+    const d = TESTS[testSel], s = testSeries(results, sel, testSel), ref = refOf(s), pts = s.filter(x => x.value != null).map(x => ({ date: x.date, value: x.value, tip: shown(x) + unit(x) }));
+    det.innerHTML = `<h2>${esc(d.name)}</h2>` +
+      (pts.length ? `<div id="exChart">${lineChart(pts, { label: d.short, fmt: v => fmtN(v, d.decimals), val: v => fmtN(v, d.decimals) + (d.unit ? ' ' + d.unit : ''), low: ref?.low, high: ref?.high, width: det.clientWidth - 32 })}</div>` : '<div class="mu">Resultado qualitativo: sem gráfico.</div>') +
+      `<h3>O que mede</h3><p>${esc(d.what)}</p><h3>Como ler</h3><p>${esc(d.read)}</p>` +
+      (ref?.refText ? `<h3>Referência do laudo</h3><p>${esc(ref.refText)}${esc(unit(ref))}</p>` : '') +
+      `<h3>Histórico</h3><ul class="list">${[...s].reverse().map(x => `<li><div class="main"><span class="num">${esc(shown(x))}${esc(unit(x))}</span><div class="sub">${dateBR(x.date)}</div></div></li>`).join('')}</ul>`;
+  }
+  const mine = exams.filter(e => e.member === sel).sort((a, b) => b.date.localeCompare(a.date));
+  $('#exReports').innerHTML = mine.length ? mine.map(e => `<li><div class="main"><span class="num">${dateBR(e.date)}</span><div class="sub">${esc([e.lab, e.place, e.episode && 'episódio ' + e.episode].filter(Boolean).join(' · '))}${e.issued ? ' · emitido em ' + dateBR(e.issued) : ''}</div></div></li>`).join('') : '<li class="mu">Nenhum laudo.</li>';
 }
 
 const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; document.body.append(tip);
@@ -186,6 +239,8 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.who) { sel = b.dataset.who; render(); }
   else if (b.dataset.m) { metric = b.dataset.m; render(); }
+  else if (b.dataset.tab) { tab = b.dataset.tab; render(); }
+  else if (b.dataset.test) { testSel = b.dataset.test; render(); $('#exDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   else if (b.dataset.edit) openMeasure(measures.find(x => x.id === b.dataset.edit));
   else if (b.dataset.del && confirm('Apagar este registro?')) { try { await vault.del('health-measures', b.dataset.del); await load(); } catch (err) { alert(err.message); } }
 });
