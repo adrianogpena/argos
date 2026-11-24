@@ -11,7 +11,7 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Início (resumo) | `index.html` | pronto |
 | Ônibus | `onibus.html` | pronto (herdado de Paragem) |
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
-| Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; o carro **não** entra; meses com extrato mostram só dados reais, e o mês seguinte ao último extrato mostra só a previsão) | `gastos.html` | pronto |
+| Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; os registros da tela Carro **não** são somados (evita contar em dobro), mas combustível e portagem do extrato entram sempre, como Transporte; `tools/expenses.mjs fuel` liga cada abastecimento do Carro ao lançamento de mesmo valor (0 a 5 dias) e o recategoriza como Combustível, para postos dentro de supermercado; meses com extrato mostram só dados reais, e o mês seguinte ao último extrato mostra só a previsão) | `gastos.html` | pronto |
 | Cartão (previsão das parcelas futuras sem compras novas, data de quitação, acréscimo x baixa por extrato, "meu plano" = débito automático no mínimo + extras manuais) | `cartao.html` | pronto; lê `card-statements`/`card-lines`; lógica em `lib/card-forecast.js` |
 | Saúde (peso e altura de pessoas e bichos) | `saude.html` | pronto; dados importados do Supabase uma única vez |
 | Faturas (lê o QR fiscal pela câmera do celular e guarda só os campos do QR, sem imagem; coleção `receipt-qr`, id = NIF-ATCUD, com o texto bruto em `raw` e `expenseId` = lançamento de Gastos com o mesmo valor, 0 a 5 dias, via `linkQr`; `tools/expenses.mjs review` mostra o `nif:` do QR ligado a cada pendente para ajudar a categorizar; o QR não traz itens; cada QR válido é salvo na hora e a câmera continua aberta; `qr-merchants` = nome e categoria por NIF do emitente e `qr-people` = nome por NIF do comprador (campo B; 999999990 = consumidor final, sem comprador), ambos perguntados na 1ª vez; não salva se já houver fatura digital com itens de mesma data e valor; `check` diff = bases + IVA não fecham com o total; nota de crédito NC entra negativa e não liga a gasto; o IVA vem da soma dos campos por taxa, porque alguns emitentes põem em `N` a soma das bases) | `faturas.html` | pronto; parser em `lib/qr-invoice.js`, jsQR copiado em `lib/jsqr.js` (reserva sem `BarcodeDetector`) |
@@ -123,6 +123,7 @@ node test/card-month.test.mjs extrato do cartão: parser, conferências, víncul
 node test/card-forecast.test.mjs previsão do cartão: parcelas, quitação, acréscimo x baixa, plano com extras (11)
 node test/expenses-report.test.mjs relatórios de Gastos: salário com 13º/14º, fixos, previsão, ritmo (10)
 node test/qr-invoice.test.mjs QR fiscal das faturas: parser (9 casos)
+node test/fuel-link.test.mjs  abastecimento do Carro x Gastos: recategoriza o lançamento ligado (4)
 node test/receipt.test.mjs    faturas do mercado: parser Pingo Doce/Intermarché/Lidl, categorias, vínculo com Gastos, preço x quantidade (15)
 ```
 

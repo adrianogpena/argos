@@ -14,6 +14,7 @@
 //   node tools/expenses.mjs raw <linhas.json> [--file=nome.pdf] [--apply]   arquiva (cada linha leva stmt=AAAA-MM do extrato e file) TODAS as linhas do extrato em `bank-lines` (invisível nas telas; só para conferência)
 //   node tools/expenses.mjs card <cartao.json> [--apply]   grava gastos do cartão de crédito (source 'card', data da compra): [{date,amount,desc,category,need,label,inst:{n,of,left,last}}]
 //   node tools/expenses.mjs drop <chave> <AAAA-MM> <AAAA-MM> [--apply]   apaga os gastos do extrato com essa chave entre os dois meses (ex.: o pagamento único do cartão que foi detalhado)
+//   node tools/expenses.mjs fuel [--apply]              liga cada abastecimento do Carro ao lançamento de Gastos de mesmo valor (0 a 5 dias) e o recategoriza como Transporte › Combustível (posto dentro de supermercado); simula sem --apply
 //   node tools/expenses.mjs push <entradas.json>        simulação: mostra o que seria gravado
 //   node tools/expenses.mjs push <entradas.json> --apply   grava no cofre
 //
@@ -23,6 +24,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { monthReport, isMonth, MONTH_STATUS } from '../lib/bank-month.js';
 import { bankId, descKey, buildRecords, pendingGroups, merchantGroups, applyDecisions, applyLabels, displayName, searchUrl, inferBranch, recurrenceHint, isIntermediary, canonMotivo, GENERIC_KEYS } from '../lib/classify.js';
+import { fuelLinks, fuelPending } from '../lib/fuel-link.js';
 import { expenseRecord, categoryOptions, canonicalCategory } from '../lib/expenses-core.js';
 
 const [cmd, file, ...flags] = process.argv.slice(2);
@@ -123,6 +125,15 @@ if (cmd === 'rules') {
   for (let i = 0; i < r.updates.length; i += 200) await call('POST', '/v1/c/expenses', { items: r.updates.slice(i, i + 200) });
   for (let i = 0; i < r.rules.length; i += 200) await call('POST', '/v1/c/expense-rules', { items: r.rules.slice(i, i + 200) });  // lote: 1 gravação no KV, não 1 por regra
   console.log(`Gravados ${r.updates.length} lançamentos e ${r.rules.length} regras.`);
+} else if (cmd === 'fuel') {
+  need();
+  const [f, e] = await Promise.all([call('GET', '/v1/c/car-fuel'), call('GET', '/v1/c/expenses')]);
+  const r = fuelLinks(f.items, e.items);
+  for (const u of r.updates) console.log(`${u.date} ${u.amount.toFixed(2)} ${u.note || ''} → Transporte › Combustível`);
+  console.log(`${r.updates.length} a recategorizar | ${r.already} já eram combustível | ${r.missing.length} sem lançamento: ${r.missing.map(m => m.date + ' ' + Number(m.total).toFixed(2)).join('; ') || '-'}`);
+  if (!flags.concat(file || '').includes('--apply')) { console.log('Simulação: nada foi enviado. Acrescente --apply para gravar.'); process.exit(0); }
+  for (let i = 0; i < r.updates.length; i += 200) await call('POST', '/v1/c/expenses', { items: r.updates.slice(i, i + 200) });
+  console.log(`Gravados ${r.updates.length} lançamentos.`);
 } else if (cmd === 'rule' && file) {
   need();
   if (!plainKey(file)) { console.error('chave inválida (minúsculas, números e hífens, até 40)'); process.exit(1); }
@@ -198,7 +209,7 @@ if (cmd === 'rules') {
 } else if (cmd === 'month' && isMonth(file)) {
   // Relatório de conferência de um mês: confira com o extrato do banco e depois rode `validate`.
   need();
-  const [bl, ex, bm] = await Promise.all([call('GET', '/v1/c/bank-lines'), call('GET', '/v1/c/expenses'), call('GET', '/v1/c/bank-months')]);
+  const [bl, ex, bm, cf] = await Promise.all([call('GET', '/v1/c/bank-lines'), call('GET', '/v1/c/expenses'), call('GET', '/v1/c/bank-months'), call('GET', '/v1/c/car-fuel')]);
   const r = monthReport(file, bl.items, ex.items), rec = bm.items.find(x => x.id === file);
   if (!r.accounts.length) { console.error('Nenhuma linha do banco para ' + file); process.exit(1); }
   const eur = n => n.toFixed(2) + ' €';
@@ -211,6 +222,9 @@ if (cmd === 'rules') {
   console.log('\n# entradas (nunca são gasto): chave | qtd | total | exemplo');
   for (const g of r.incomeGroups) console.log([g.key, g.n, g.total.toFixed(2), g.example].join(' | '));
   if (r.siteNotInBank.length) { console.log('\n# em Gastos neste mês SEM linha do banco (manuais ou de outra origem): data | valor | nota'); for (const x of r.siteNotInBank) console.log([x.date, x.amount.toFixed(2), x.note || x.id].join(' | ')); }
+  const fp = fuelPending(cf.items, ex.items, file);
+  if (fp.toLink.length) { console.log('\n# abastecimentos do Carro cujo lançamento em Gastos NÃO é combustível (rode `fuel --apply`): data | valor | categoria atual | nota'); for (const x of fp.toLink) console.log([x.date, x.amount.toFixed(2), x.category, x.note || ''].join(' | ')); }
+  if (fp.missing.length) { console.log('\n# abastecimentos do Carro sem lançamento de mesmo valor em Gastos (0 a 5 dias): data | valor | posto'); for (const x of fp.missing) console.log([x.date, x.total.toFixed(2), x.station || '-'].join(' | ')); }
   if (flags.includes('--lines')) { console.log('\n# todas as saídas: data | valor | em Gastos? | texto do banco'); for (const d of r.debitLines) console.log([d.date, (-d.amount).toFixed(2), d.inExpenses ? 'sim' : 'NÃO', d.desc].join(' | ')); }
 } else if (cmd === 'validate' && isMonth(file)) {
   // Marca o mês como validado (ou reabre com --undo), guardando os totais do momento para detectar mudança depois.

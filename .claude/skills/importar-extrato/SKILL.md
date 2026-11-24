@@ -114,5 +114,5 @@ Fluxo para extratos novos (um mês, ou vários):
 - Valores em euro, ponto decimal no JSON. Espaço como separador de milhar (`1 505.68`) é do banco, não do JSON.
 - Mesmo comerciante, mesmo dia, mesmo valor: são lançamentos distintos (o script numera). Não deduplique você.
 - Ao final, informe quantos lançamentos o extrato tinha, quantos viraram gasto e a soma por mês, para o dono conferir com o banco.
-- Dados do carro não entram em Gastos (o banco já paga o combustível).
+- Os registros da tela Carro não são somados em Gastos (o banco já paga o combustível), mas combustível e portagem do extrato entram sempre. Depois de importar, rode `node tools/expenses.mjs fuel` (simula; `--apply` grava): abastecimentos do Carro em posto dentro de supermercado (ex.: Intermarché Carvalhos) vêm do banco como Mercado e ele os recategoriza como Transporte › Combustível.
 - **Tudo que o extrato traz é salvo no cofre, mesmo o que não aparece em tela** (saldos, taxas, TAN, limite, imputação, linhas do cartão e do banco): as coleções `bank-lines`, `bank-months`, `card-statements` e `card-lines` existem para isso. Nunca descarte um campo por "não ser usado agora".
