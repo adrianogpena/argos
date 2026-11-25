@@ -11,6 +11,7 @@ t('paradas salvas: de todas as linhas UNIR, sem repetir, na ordem', () => {
     { key: 'v', kind: 'unir', routes: [{ from: 'vng:2', to: ['vng:1'] }] },
   ] };
   assert.deepEqual(savedStops(setup), ['vng:1', 'vng:2', 'vng:3', 'vng:4', 'vng:9']);
+  assert.deepEqual(savedStops({ ...setup, unirStops: ['vng:7', 'vng:2'] }), ['vng:1', 'vng:2', 'vng:3', 'vng:4', 'vng:9', 'vng:7']);
   assert.deepEqual(savedStops(null), []);
 });
 t('rótulo: apelido, senão oficial, senão id', () => {
