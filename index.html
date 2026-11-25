@@ -169,7 +169,7 @@ async function busMain() {
     const { items } = await vault.list('bus-setup'), rec = items.find(x => x.id === 'setup');
     const setup = rec && rec.state;
     if (!setup) return;
-    const unir = createUnir({ getJSON: fetchJSON, storage: localStorage }), base = stcpBase(location.hostname);
+    const unir = createUnir({ getJSON: fetchJSON, storage: localStorage, getNames: () => setup.stopNames }), base = stcpBase(location.hostname);
     const rows = await nextBuses(setup, { fetchStcp: id => fetchJSON(base, `/api/stops/${encodeURIComponent(id)}/realtime`), unirUpcoming: l => unir.unirUpcoming(l, 3) });
     if (!rows.length) return;
     box.innerHTML = `<div class="panel"><h2 class="lab"><span class="am" aria-hidden="true">●</span> Próximo ônibus</h2><ul class="blist">${rows.map(r => {

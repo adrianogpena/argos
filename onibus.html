@@ -103,6 +103,8 @@
 .legend { margin: 0; color: var(--ink-2); }
 .routes { list-style: none; margin: 0; padding: 0; color: var(--ink-2); }
 .routes li { padding: 4px 0; }
+.stopbtn { background: none; border: 0; border-bottom: 1px dotted var(--ink-2); padding: 0; margin: 0; font: inherit; font-family: var(--font-num); font-weight: 600; color: var(--ink); cursor: pointer; }
+.stopbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .foot { margin-top: 24px; color: var(--ink-2); }
 
 @media (max-width: 560px) {
@@ -429,7 +431,7 @@ async function refresh() {
   schedule();
 }
 // ---------- UNIR trips: timetable only ----------
-const unir = createUnir({ getJSON: (b, p) => getJSON(b, p), storage: localStorage });
+const unir = createUnir({ getJSON: (b, p) => getJSON(b, p), storage: localStorage, getNames: () => state.stopNames });
 const { unirPrune, unirUpcoming } = unir;
 async function refreshUnir(l) {
   const id = ++runId;
@@ -626,7 +628,14 @@ function renderUnir(l) {
       </div>`;
     }).join('');
   } else if (!live.err) body += `<div class="empty">Carregando horários…</div>`;
-  const routes = l.routes.map(r => `<li><span class="code">${esc(r.from)}</span> → ${r.to.map(t => `<span class="code">${esc(t)}</span>`).join(' ou ')}</li>`).join('');
+  // Apelidos das paragens: toque numa paragem para renomear (vazio = nome oficial da UNIR).
+  const official = {};
+  for (const o of live.unir || []) { official[o.from] = o.fromOfficial; official[o.to] = o.toOfficial; }
+  const stopBtn = id => {
+    const alias = (state.stopNames || {})[id], off = official[id];
+    return `<button class="code stopbtn" data-stop="${esc(id)}" title="${esc(off ? `${off} (${id}). Tocar para dar um apelido` : `${id}. Tocar para dar um apelido`)}">${esc(alias || off || id)}</button>`;
+  };
+  const routes = l.routes.map(r => `<li>${stopBtn(r.from)} → ${r.to.map(stopBtn).join(' ou ')}</li>`).join('');
   $('#main').innerHTML = `
     <section class="line-head">
       <div class="badge" aria-hidden="true">${esc(l.short)}</div>
@@ -646,6 +655,14 @@ function renderUnir(l) {
     <details class="legend more"><summary>Sobre estes horários</summary>Horários previstos de paragens.amp.pt; a UNIR não publica posições nem atrasos em tempo real. ≈ = chegada estimada pela viagem no sentido contrário (a última paragem não lista chegadas). Caminhadas: distância em linha reta + 30% a 80 m/min.</details>`;
   $('#main').querySelectorAll('[data-act="retry"]').forEach(b => b.onclick = () => refresh());
   $('#main').querySelectorAll('[data-act="settings"]').forEach(b => b.onclick = openSettings);
+  $('#main').querySelectorAll('.stopbtn').forEach(b => b.onclick = () => {
+    const id = b.dataset.stop, cur = (state.stopNames || {})[id] || '';
+    const v = prompt(`Apelido para a paragem ${official[id] ? `${official[id]} (${id})` : id}\n(deixe vazio para usar o nome oficial)`, cur);
+    if (v === null) return;
+    state.stopNames = { ...(state.stopNames || {}) };
+    if (v.trim()) state.stopNames[id] = v.trim().slice(0, 40); else delete state.stopNames[id];
+    save(); live = { busy: false }; render(); refresh();
+  });
   $('#btnUnirRemove').onclick = () => {
     if (!confirm(`Remover ${l.name}?`)) return;
     state.lines = state.lines.filter(x => x !== l); state.activeLine = state.lines[0]?.key || null; save();

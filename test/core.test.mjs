@@ -198,6 +198,14 @@ await test('UNIR trips: matched by trip_id, with the walk from the drop-off stop
   assert.ok(Core.walkMinutes(RB, RA) >= 10 && Core.walkMinutes(RB, RA) <= 14);
 });
 
+await test('UNIR apelidos: usa o apelido, guarda o oficial; vazio volta ao oficial', () => {
+  const names = { 'vng:3': 'Apelido Alfa', 'vng:2': '  ' };
+  const trips = Core.unirTrips({ from: PX, to: [RA, RB], names });
+  eq(trips.map(t => [t.toName, t.toOfficial, t.fromName, t.fromOfficial]),
+    [['Apelido Alfa', 'Rua Alfa', 'Praça Exemplo (Metro)', 'Praça Exemplo (Metro)'], ['Rua Beta', 'Rua Beta', 'Praça Exemplo (Metro)', 'Praça Exemplo (Metro)'], ['Rua Beta', 'Rua Beta', 'Praça Exemplo (Metro)', 'Praça Exemplo (Metro)']]);
+  eq(Core.stopName(PX, undefined), 'Praça Exemplo (Metro)');
+});
+
 await test('UNIR terminus: arrival estimated from the ride in the other direction, only for trips ending there', () => {
   const V4 = tt('vng:4', 'Rua Alfa', 41.1500, -8.6000, [['U1', '06:26:22', '9030', 'Praça Exemplo (Metro)'], ['U2', '07:59:06', '9031', 'Destino C']]);
   const est = Core.unirRides(PX, RA);
