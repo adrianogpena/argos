@@ -103,6 +103,8 @@
 .legend { margin: 0; color: var(--ink-2); }
 .routes { list-style: none; margin: 0; padding: 0; color: var(--ink-2); }
 .routes li { padding: 4px 0; }
+.bus.nofit { opacity: .4; }
+.picker-lbl { padding: 8px 16px 0; color: var(--ink-2); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .picker { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
 .picker .chip.on { background: var(--ink); color: var(--bg); }
 .stopbtn { background: none; border: 0; border-bottom: 1px dotted var(--ink-2); padding: 0; margin: 0; font: inherit; font-family: var(--font-num); font-weight: 600; color: var(--ink); cursor: pointer; }
@@ -435,9 +437,9 @@ async function refresh() {
   schedule();
 }
 // ---------- Aba Unir: todos os ônibus de uma paragem salva (independe das viagens salvas) ----------
-const UNIR_PICK = 'argos.unirTab';
-const unirTab = { on: false, stops: null, sel: null, rows: null, limit: 40, busy: false, err: null, at: null };
-try { unirTab.sel = localStorage.getItem(UNIR_PICK); } catch (e) {}
+const UNIR_PICK = 'argos.unirTab', UNIR_DEST = 'argos.unirTabDest', UNIR_STEP = 10;
+const unirTab = { on: false, stops: null, sel: null, dest: null, rows: null, limit: UNIR_STEP, busy: false, err: null, at: null };
+try { unirTab.sel = localStorage.getItem(UNIR_PICK); unirTab.dest = localStorage.getItem(UNIR_DEST) || null; } catch (e) {}
 async function refreshUnirTab() {
   if (unirTab.busy) return;
   unirTab.busy = true; unirTab.err = null; render();
@@ -449,15 +451,17 @@ async function refreshUnirTab() {
       unirTab.stops = info; render();
     }
     if (!unirTab.stops.some(x => x.id === unirTab.sel)) unirTab.sel = unirTab.stops[0]?.id || null;
+    if (unirTab.dest === unirTab.sel || !unirTab.stops.some(x => x.id === unirTab.dest)) unirTab.dest = null;
     if (unirTab.sel) {
-      const days = [];
+      const days = [], destDays = unirTab.dest ? [] : null;
       for (let k = -1; k < 8; k++) {
         const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + k);
         const date = ymd(d);
-        days.push({ date, stop: await unir.unirStop(unirTab.sel, date) });
+        const [st, dt] = await Promise.all([unir.unirStop(unirTab.sel, date), unirTab.dest ? unir.unirStop(unirTab.dest, date) : null]);
+        days.push({ date, stop: st }); if (destDays) destDays.push({ date, stop: dt });
         if (k >= 0 && stopDepartures(days, Date.now(), unirTab.limit).length >= unirTab.limit) break;
       }
-      unirTab.rows = stopDepartures(days, Date.now(), unirTab.limit);
+      unirTab.rows = stopDepartures(days, Date.now(), unirTab.limit, destDays);
     }
     unirTab.at = new Date();
   } catch (e) { unirTab.err = e instanceof ApiError ? e : new ApiError('parse', e.message || String(e)); }
@@ -465,7 +469,11 @@ async function refreshUnirTab() {
 }
 function renderUnirTab() {
   const stops = unirTab.stops || [];
-  const chips = stops.map(x => `<button class="chip${x.id === unirTab.sel ? ' on' : ''}" data-pick="${esc(x.id)}" aria-pressed="${x.id === unirTab.sel}" title="${esc(`${x.official || ''} (${x.id})`)}">${esc(stopLabel(x.id, state.stopNames, x.official))}</button>`).join(' ');
+  const lab = id => { const x = stops.find(y => y.id === id); return stopLabel(id, state.stopNames, x?.official); };
+  const chip = (x, attr, on) => `<button class="chip${on ? ' on' : ''}" ${attr}="${esc(x.id)}" aria-pressed="${on}" title="${esc(`${x.official || ''} (${x.id})`)}">${esc(lab(x.id))}</button>`;
+  const chips = stops.map(x => chip(x, 'data-pick', x.id === unirTab.sel)).join(' ');
+  const destChips = `<button class="chip${unirTab.dest ? '' : ' on'}" data-dest="" aria-pressed="${!unirTab.dest}">Qualquer</button> ` + stops.filter(x => x.id !== unirTab.sel).map(x => chip(x, 'data-dest', x.id === unirTab.dest)).join(' ');
+  const dn = unirTab.dest ? lab(unirTab.dest) : '';
   let body = unirTab.err ? errorBox(unirTab.err) : '';
   if (unirTab.rows) {
     if (!unirTab.rows.length) body += `<div class="empty">Nenhum ônibus nesta paragem nos próximos 7 dias.</div>`;
@@ -474,27 +482,40 @@ function renderUnirTab() {
       const m = Math.round((o.depAt - Date.now()) / 60000), day = dayLabel(o.depAt);
       const sep = day !== last ? `<div class="sec-title"><h2>${esc(day || 'Hoje')}</h2></div>` : ''; last = day;
       const when = m < 60 ? `${Math.max(0, m)}<small>min</small>` : `<span class="at">${hm(o.depAt)}</span>`;
-      return `${sep}<div class="bus"><div class="min">${when}</div>
-        <div><div class="where"><span class="lnum">${esc(o.line)}</span> para ${esc(o.headsign)}</div><div class="sub">sai às ${hm(o.depAt)}</div></div></div>`;
+      let sub = `sai às ${hm(o.depAt)}`, right = '';
+      if (unirTab.dest) {
+        if (!o.serves) sub += ` · não passa em ${esc(dn)}`;
+        else if (o.ends) sub += ` · vai até ${esc(dn)} (fim da linha, sem horário de chegada)`;
+        else { sub += ` · ${o.rideMin} min de viagem`; right = `<div class="right"><div class="clock">${esc(dn)} ${hm(o.arrAt)}</div></div>`; }
+      }
+      return `${sep}<div class="bus${unirTab.dest && !o.serves ? ' nofit' : ''}"><div class="min">${when}</div>
+        <div><div class="where"><span class="lnum">${esc(o.line)}</span> para ${esc(o.headsign)}</div><div class="sub">${sub}</div></div>${right}</div>`;
     }).join('');
   } else if (!unirTab.err) body += `<div class="empty">${stops.length || unirTab.busy ? 'Carregando horários…' : 'Nenhuma paragem UNIR salva ainda.'}</div>`;
   $('#main').innerHTML = `
     <section class="line-head"><div class="badge" aria-hidden="true">U</div><div class="dir"><div class="lbl">UNIR <span class="tag">Horário</span></div><div class="to">Todos os ônibus da paragem</div></div></section>
     <section class="panel sched" aria-live="polite">
-      <div class="panel-head"><span class="k">Paragem</span><span class="pill sched">Horário</span></div>
-      <div class="picker" role="group" aria-label="Paragem">${chips || (unirTab.busy ? 'Carregando…' : '')}</div>
+      <div class="panel-head"><span class="k">Percurso</span><span class="stopname">${unirTab.dest ? `${esc(lab(unirTab.sel))} → ${esc(dn)}` : esc(lab(unirTab.sel))}</span><span class="pill sched">Horário</span></div>
+      <div class="picker-lbl">Origem</div>
+      <div class="picker" role="group" aria-label="Origem">${chips || (unirTab.busy ? 'Carregando…' : '')}</div>
+      ${stops.length > 1 ? `<div class="picker-lbl">Destino (opcional)</div><div class="picker" role="group" aria-label="Destino">${destChips}</div>` : ''}
       ${body}
       ${unirTab.rows && unirTab.rows.length >= unirTab.limit ? '<div class="status-row"><button class="btn ghost" id="unirMore">Mostrar mais</button></div>' : ''}
       <div class="status-row"><span class="upd">${unirTab.at ? `Atualizado às ${hm(unirTab.at.getTime())}` : ''}</span><button class="btn ghost" id="unirRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
     </section>
-    <details class="legend more"><summary>Sobre estes horários</summary>Todos os ônibus que a UNIR lista na paragem (paragens.amp.pt), de qualquer linha e destino, não só os das viagens salvas. A última paragem de uma linha só lista partidas. Sem posição nem atraso em tempo real.</details>`;
+    <details class="legend more"><summary>Sobre estes horários</summary>Todos os ônibus que a UNIR lista na origem (paragens.amp.pt), de qualquer linha e destino, não só os das viagens salvas. Com destino escolhido, um ônibus serve se o mesmo trip_id aparece no destino depois da origem; os que não servem ficam esmaecidos. A última paragem de uma linha só lista partidas. Sem posição nem atraso em tempo real.</details>`;
   $('#main').querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
-    unirTab.sel = b.dataset.pick; unirTab.rows = null; unirTab.limit = 40;
+    unirTab.sel = b.dataset.pick; unirTab.rows = null; unirTab.limit = UNIR_STEP;
     try { localStorage.setItem(UNIR_PICK, unirTab.sel); } catch (e) {}
     refreshUnirTab();
   });
+  $('#main').querySelectorAll('[data-dest]').forEach(b => b.onclick = () => {
+    unirTab.dest = b.dataset.dest || null; unirTab.rows = null; unirTab.limit = UNIR_STEP;
+    try { localStorage.setItem(UNIR_DEST, unirTab.dest || ''); } catch (e) {}
+    refreshUnirTab();
+  });
   $('#main').querySelectorAll('[data-act="retry"],[data-act="settings"]').forEach(b => b.onclick = () => b.dataset.act === 'retry' ? refreshUnirTab() : openSettings());
-  const more = $('#unirMore'); if (more) more.onclick = () => { unirTab.limit += 40; refreshUnirTab(); };
+  const more = $('#unirMore'); if (more) more.onclick = () => { unirTab.limit += UNIR_STEP; refreshUnirTab(); };
   $('#unirRefresh').onclick = () => { unirTab.stops = null; refreshUnirTab(); };
 }
 
