@@ -69,7 +69,8 @@ Migração concluída:
 
 Regra: nunca pedir, escrever ou registrar o token; se precisar de credencial, usar `request_credential`.
 
-Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre; STCP ao vivo pela chamada via proxy e UNIR por horário). `lib/bus-core.js` e `lib/bus-net.js` são compartilhados entre `onibus.html` e a home. Ideias: escolher linha por horário do dia (casa de manhã, trabalho à tarde) e permitir fixar quais linhas aparecem.
+Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre; STCP ao vivo pela chamada via proxy e UNIR por horário). `lib/bus-core.js` e `lib/bus-net.js` são compartilhados entre `onibus.html` e a home. **Aba Unir** (`onibus.html`, sem mexer nas abas das linhas): escolhe-se uma parada salva (as das linhas UNIR mais `unirStops` do setup) como origem e, opcionalmente, outra como destino; lista 10 ônibus por vez ("Mostrar mais" de 10 em 10). Cada linha é um **círculo** (ida e volta do mesmo ônibus) e os **dois lados da rua são o mesmo lugar** (`lib/unir-net.js`): com destino, o ônibus pode seguir até o fim da linha e recomeçar no outro sentido (espera de até 25 min, chegada marcada com ≈); por linha, o sentido de menor trajeto fica normal e o mais longo, e quem nunca chega, ficam esmaecidos (não saem da lista). A rede (duração e horário de cada viagem, grupos de paradas do mesmo lugar) vem da coleção `unir-net` do cofre, gerada por `node tools/unir.mjs scan` + `push --apply` (a UNIR só publica horários por parada; refazer de vez em quando); sem ela a aba usa só o mesmo `trip_id`. `unir-stops.js` = lista simples da parada.
+Ideias: escolher linha por horário do dia (casa de manhã, trabalho à tarde) e permitir fixar quais linhas aparecem.
 
 ## Extrato do banco (feito)
 
@@ -119,6 +120,8 @@ node test/car.test.mjs        consumo, resumo, lembretes, leituras do odômetro 
 node test/expenses.test.mjs   gastos (8)
 node test/home.test.mjs       resumo da home (4)
 node test/home-bus.test.mjs   próximo ônibus da home (4)
+node test/unir-stops.test.mjs aba Unir: paradas salvas, rótulos, saídas por parada (4)
+node test/unir-net.test.mjs   aba Unir: rede, círculo ida e volta, lados da rua, sentido mais longo (8)
 node test/fuelio.test.mjs     importação do Fuelio (4)
 node test/health.test.mjs     saúde: peso, altura, idade, conversão do Supabase (7)
 node test/health-exams.test.mjs exames de laboratório: registros, situação frente à referência, resumo por exame (7)
