@@ -72,10 +72,44 @@ t('sem destino escolhido: uma chegada por lugar salvo, só pelo menor trajeto; s
   const z = r.filter(x => x.line === 'Z');
   assert.deepEqual(z.map(x => [x.sentido, x.arrivals.map(a => [a.id, a.rideMin]), x.fade]), [['2', [['vng:6', 10]], undefined], ['1', [], 'none'], ['2', [['vng:6', 10]], undefined]]);
   const x0 = r.find(x => x.tripId === 'X:2:0630');
-  assert.deepEqual(x0.arrivals.map(a => [a.id, a.mode, a.rideMin]), [['vng:3', 'direct', 20], ['vng:6', 'continues', 30]]);
+  assert.deepEqual(x0.arrivals.map(a => [a.id, a.mode, a.rideMin]), [['vng:6', 'continues', 30], ['vng:3', 'direct', 20]]);   // ordem dos lugares salvos, não da hora
   const y = multiDepartures(mday([8], [[6], [3]]), net, now, 20);
   assert.deepEqual(y.map(x => [x.line, x.arrivals.map(a => a.id), x.fade]), [['Y', ['vng:6'], undefined]]);
   assert.deepEqual(multiDepartures(mday([8], [[3]]), net, now, 20).map(x => x.fade), ['none']);
   assert.equal(multiDepartures(mday([1], [[6]]), net, now, 1).length, 1);
+});
+// Linha W: sentido 2 faz O > D em 10 min; sentido 1 sai de O, acaba em E às 07:55 e segue na viagem 2 que sai de X às 07:55 e passa em D às 08:05
+const w = (id, rows) => st(id, 41.5 + rows.length / 100, -8.5, rows);
+const ws = {
+  20: w('Origem W', [['W:2:0700', '07:00:00', 'W', '2', 1], ['W:2:0800', '08:00:00', 'W', '2', 1], ['W:1:0745', '07:45:00', 'W', '1', 1]]),
+  21: w('Destino W', [['W:2:0700', '07:10:00', 'W', '2', 2], ['W:2:0800', '08:10:00', 'W', '2', 2], ['W:2:0755', '08:05:00', 'W', '2', 2]]),
+  22: w('Fim E', [['W:1:0745', '07:55:00', 'W', '1', 2]]),
+  23: w('Saída X', [['W:2:0755', '07:55:00', 'W', '2', 1]]),
+};
+const wnet = buildNet(ws), wday = (o, d) => [{ date: '2026-10-09', origin: o.map(i => ({ prg: `vng:${i}`, ...ws[i] })), dests: d.map(g => ({ id: `vng:${g[0]}`, stops: g.map(i => ({ prg: `vng:${i}`, ...ws[i] })) })) }];
+t('sentido mais longo que chega antes do próximo do sentido curto continua valendo', () => {
+  const r = multiDepartures(wday([20], [[21]]), wnet, now, 10);
+  assert.deepEqual(r.map(x => [x.sentido, x.arrivals.map(a => [a.rideMin, a.mode])]), [['2', [[10, 'direct']]], ['1', [[20, 'continues']]], ['2', [[10, 'direct']]]]);
+});
+t('viagem acima do teto não conta; e o limite não muda o que é "mais longo"', () => {
+  const r = multiDepartures(wday([20], [[21]]), wnet, now, 10, { maxRide: 15 });
+  assert.deepEqual(r.map(x => [x.sentido, x.arrivals.length, x.fade]), [['2', 1, undefined], ['1', 0, 'none'], ['2', 1, undefined]]);
+  const um = multiDepartures(wday([20], [[21]]), wnet, now, 1), tres = multiDepartures(wday([20], [[21]]), wnet, now, 3);
+  assert.deepEqual(um[0], tres[0]);
+  const memo = {}; multiDepartures(wday([20], [[21]]), wnet, now, 10, { memo });
+  assert.deepEqual(memo['vng:21|W'], { 2: 10, 1: 20 });   // o mínimo fica guardado para as próximas chamadas
+});
+t('destino é o fim da linha: chegada estimada pelo fim da viagem; sem rede, só "fim da linha"', () => {
+  const fs = {
+    30: st('Origem F', 41.6, -8.5, [['F:2:0900', '09:00:00', 'F', '2', 1]]),
+    31: st('Meio F', 41.61, -8.5, [['F:2:0900', '09:12:00', 'F', '2', 2]]),
+    32: st('Fim Exemplo', 41.62, -8.5, []),
+  };
+  for (const h of Object.values(fs)) for (const x of h.horarios) x.destino = 'Fim Exemplo';
+  const days = [{ date: '2026-10-09', origin: [{ prg: 'vng:30', ...fs[30] }], dests: [{ id: 'vng:32', stops: [{ prg: 'vng:32', ...fs[32] }] }] }];
+  const a = multiDepartures(days, buildNet(fs), now, 5)[0].arrivals[0];
+  assert.deepEqual([a.mode, hm(a.arrAt), a.rideMin], ['ends', '9:12', 12]);
+  const b = multiDepartures(days, null, now, 5)[0].arrivals[0];
+  assert.deepEqual([b.mode, b.arrAt, b.rideMin], ['ends', null, null]);
 });
 console.log(`${n} grupos ok`);

@@ -249,7 +249,7 @@ import { initTheme, setTheme, getTheme, applyTheme } from './lib/theme.js';
 import { initNav } from './lib/nav.js'; initNav();
 import { UNIR, PAGES_PROXY, ymd, createUnir } from './lib/bus-net.js';
 import { savedStops, stopLabel } from './lib/unir-stops.js';
-import { netFromRecords, sisters, multiDepartures } from './lib/unir-net.js';
+import { netFromRecords, sisters, loopDepartures, multiDepartures } from './lib/unir-net.js';
 (() => {
 'use strict';
 const $ = (s, el = document) => el.querySelector(s);
@@ -439,7 +439,7 @@ async function refresh() {
 }
 // ---------- Aba Unir: todos os ônibus de uma paragem salva (independe das viagens salvas) ----------
 const UNIR_PICK = 'argos.unirTab', UNIR_STEP = 10;
-const unirTab = { on: false, stops: null, net: null, netTried: false, places: [], sel: null, rows: null, limit: UNIR_STEP, busy: false, err: null, at: null };
+const unirTab = { on: false, stops: null, net: null, netTried: false, places: [], memos: {}, fetched: new Map(), open: new Set(), sel: null, rows: null, limit: UNIR_STEP, busy: false, err: null, at: null };
 try { unirTab.sel = localStorage.getItem(UNIR_PICK); } catch (e) {}
 // Rede da UNIR (duração das viagens e lados da rua), gerada por tools/unir.mjs e guardada no cofre (`unir-net`); cópia local por 24 h.
 const UNIR_NET = 'argos.unirNet';
@@ -477,15 +477,16 @@ async function refreshUnirTab() {
       for (const x of unirTab.stops) { if (seenPlace.has(x.id)) continue; sisters(net, x.id).forEach(i => seenPlace.add(i)); places.push(x.id); }
       unirTab.places = places;
       const days = [], idsO = sisters(net, unirTab.sel);
-      const rowsOf = () => multiDepartures(days, net, Date.now(), unirTab.limit);
+      const get = (id, date) => { const k = `${id}|${date}`; if (!unirTab.fetched.has(k)) unirTab.fetched.set(k, unir.unirStop(id, date).catch(e => { unirTab.fetched.delete(k); throw e; })); return unirTab.fetched.get(k); };
+      const enough = () => loopDepartures(days.map(d => ({ date: d.date, origin: d.origin })), null, Date.now(), unirTab.limit).length >= unirTab.limit;   // só conta saídas da origem
       for (let k = -1; k < 8; k++) {
         const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + k);
         const date = ymd(d);
-        const [origin, ...dests] = await Promise.all([Promise.all(idsO.map(id => unir.unirStop(id, date))), ...places.map(async id => ({ id, stops: await Promise.all(sisters(net, id).map(i => unir.unirStop(i, date))) }))]);
+        const [origin, ...dests] = await Promise.all([Promise.all(idsO.map(id => get(id, date))), ...places.map(async id => ({ id, stops: await Promise.all(sisters(net, id).map(i => get(i, date))) }))]);
         days.push({ date, origin, dests });
-        if (k >= 0 && rowsOf().length >= unirTab.limit) break;
+        if (k >= 0 && enough()) break;
       }
-      unirTab.rows = rowsOf();
+      unirTab.rows = multiDepartures(days, net, Date.now(), unirTab.limit, { memo: unirTab.memos[unirTab.sel] ||= {} });
     }
     unirTab.at = new Date();
   } catch (e) { unirTab.err = e instanceof ApiError ? e : new ApiError('parse', e.message || String(e)); }
@@ -506,7 +507,11 @@ function renderUnirTab() {
       const when = m < 60 ? `${Math.max(0, m)}<small>min</small>` : `<span class="at">${hm(o.depAt)}</span>`;
       const side = o.fromId && o.fromId !== unirTab.sel ? ` de ${esc(o.fromName)} (outra parada do mesmo lugar)` : '';
       const sub = `sai${side} às ${hm(o.depAt)}`;
-      const arr = (o.arrivals || []).map(a => { const est = a.mode === 'continues' || a.mode === 'loop'; return `<div class="clock">${esc(lab(a.id))} ${est ? '≈' : ''}${hm(a.arrAt)} <small>${a.rideMin} min</small></div>`; }).join('');
+      const rk = `${o.tripId}|${o.fromId}|${o.depAt}`, all = o.arrivals || [], MAXSHOW = 4, expanded = unirTab.open.has(rk);
+      const top = new Set([...all].sort((x, y) => (x.arrAt ?? Infinity) - (y.arrAt ?? Infinity)).slice(0, MAXSHOW));   // os mais próximos, na ordem dos lugares salvos
+      const shown = expanded ? all : all.filter(x => top.has(x));
+      const arr = shown.map(a => { const est = a.mode !== 'direct'; return `<div class="clock">${esc(lab(a.id))} ${a.arrAt == null ? '<small>fim da linha</small>' : `${est ? '≈' : ''}${hm(a.arrAt)} <small>${a.rideMin} min</small>`}</div>`; }).join('')
+        + (all.length > MAXSHOW ? `<button class="chip" data-more="${esc(rk)}" aria-expanded="${expanded}">${expanded ? 'menos' : `+${all.length - MAXSHOW}`}</button>` : '');
       const note = o.fade === 'none' ? ' · não chega a nenhum lugar salvo' : '';
       return `${sep}<div class="bus${o.fade ? ' nofit' : ''}"><div class="min">${when}</div>
         <div><div class="where"><span class="lnum">${esc(o.line)}</span> para ${esc(o.headsign)}</div><div class="sub">${sub}${note}</div></div>${arr ? `<div class="right">${arr}</div>` : ''}</div>`;
@@ -522,7 +527,7 @@ function renderUnirTab() {
       ${unirTab.rows ? `<div class="status-row"><button class="btn ghost" id="unirMore">Mostrar mais ${UNIR_STEP}</button></div>` : ''}
       <div class="status-row"><span class="upd">${unirTab.at ? `Atualizado às ${hm(unirTab.at.getTime())}` : ''}</span><button class="btn ghost" id="unirRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
     </section>
-    <details class="legend more"><summary>Sobre estes horários</summary>Todos os ônibus que a UNIR lista na origem (paragens.amp.pt), de qualquer linha e destino, não só os das viagens salvas. Cada linha é um círculo (ida e volta do mesmo ônibus) e os dois lados da rua contam como o mesmo lugar. Cada ônibus mostra a chegada estimada em cada lugar salvo a que ele leva, só pelo menor trajeto do círculo: o ônibus pode seguir até o fim da linha e recomeçar no outro sentido (≈ estimativa, com espera de até 25 min). Quem não chega a nenhum lugar salvo fica esmaecido. A última paragem de uma linha só lista partidas. Sem posição nem atraso em tempo real.</details>`;
+    <details class="legend more"><summary>Sobre estes horários</summary>Todos os ônibus que a UNIR lista na origem (paragens.amp.pt), de qualquer linha e destino, não só os das viagens salvas. Cada linha é um círculo (ida e volta do mesmo ônibus) e os dois lados da rua contam como o mesmo lugar. Cada ônibus mostra a chegada estimada nos lugares salvos a que ele leva (até 4, os mais próximos; "+N" mostra o resto), pelo menor trajeto do círculo, e só aparece o sentido mais longo quando chega antes do próximo ônibus do sentido curto; viagens acima de 90 min não contam: o ônibus pode seguir até o fim da linha e recomeçar no outro sentido (≈ estimativa, com espera de até 25 min). Quem não chega a nenhum lugar salvo fica esmaecido. A última paragem de uma linha só lista partidas. Sem posição nem atraso em tempo real.</details>`;
   $('#main').querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
     unirTab.sel = b.dataset.pick; unirTab.rows = null; unirTab.limit = UNIR_STEP;
     try { localStorage.setItem(UNIR_PICK, unirTab.sel); } catch (e) {}
@@ -530,7 +535,8 @@ function renderUnirTab() {
   });
   $('#main').querySelectorAll('[data-act="retry"],[data-act="settings"]').forEach(b => b.onclick = () => b.dataset.act === 'retry' ? refreshUnirTab() : openSettings());
   const more = $('#unirMore'); if (more) more.onclick = () => { unirTab.limit += UNIR_STEP; refreshUnirTab(); };
-  $('#unirRefresh').onclick = () => { unirTab.stops = null; refreshUnirTab(); };
+  $('#unirRefresh').onclick = () => { unirTab.stops = null; unirTab.fetched.clear(); unirTab.memos = {}; refreshUnirTab(); };
+  $('#main').querySelectorAll('[data-more]').forEach(b => b.onclick = () => { const k = b.dataset.more; unirTab.open.has(k) ? unirTab.open.delete(k) : unirTab.open.add(k); render(); });
 }
 
 // ---------- UNIR trips: timetable only ----------
