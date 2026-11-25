@@ -474,7 +474,13 @@ async function refreshUnirTab() {
     if (unirTab.sel) {
       const places = [];   // um id por lugar salvo (os dois lados da rua contam como um), fora o da origem
       const seenPlace = new Set(sisters(net, unirTab.sel));
-      for (const x of unirTab.stops) { if (seenPlace.has(x.id)) continue; sisters(net, x.id).forEach(i => seenPlace.add(i)); places.push(x.id); }
+      const named = id => typeof state.stopNames?.[id] === 'string' && state.stopNames[id].trim();
+      for (const x of unirTab.stops) {   // só lugares com apelido definido; o rótulo vem da parada que tem o apelido
+        if (seenPlace.has(x.id)) continue;
+        const grp = sisters(net, x.id); grp.forEach(i => seenPlace.add(i));
+        const rep = unirTab.stops.find(y => grp.includes(y.id) && named(y.id));
+        if (rep) places.push(rep.id);
+      }
       unirTab.places = places;
       const days = [], idsO = sisters(net, unirTab.sel);
       const get = (id, date) => { const k = `${id}|${date}`; if (!unirTab.fetched.has(k)) unirTab.fetched.set(k, unir.unirStop(id, date).catch(e => { unirTab.fetched.delete(k); throw e; })); return unirTab.fetched.get(k); };
@@ -527,7 +533,7 @@ function renderUnirTab() {
       ${unirTab.rows ? `<div class="status-row"><button class="btn ghost" id="unirMore">Mostrar mais ${UNIR_STEP}</button></div>` : ''}
       <div class="status-row"><span class="upd">${unirTab.at ? `Atualizado às ${hm(unirTab.at.getTime())}` : ''}</span><button class="btn ghost" id="unirRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
     </section>
-    <details class="legend more"><summary>Sobre estes horários</summary>Todos os ônibus que a UNIR lista na origem (paragens.amp.pt), de qualquer linha e destino, não só os das viagens salvas. Cada linha é um círculo (ida e volta do mesmo ônibus) e os dois lados da rua contam como o mesmo lugar. Cada ônibus mostra a chegada estimada nos lugares salvos a que ele leva (até 4, os mais próximos; "+N" mostra o resto), pelo menor trajeto do círculo, e só aparece o sentido mais longo quando chega antes do próximo ônibus do sentido curto; viagens acima de 90 min não contam: o ônibus pode seguir até o fim da linha e recomeçar no outro sentido (≈ estimativa, com espera de até 25 min). Quem não chega a nenhum lugar salvo fica esmaecido. A última paragem de uma linha só lista partidas. Sem posição nem atraso em tempo real.</details>`;
+    <details class="legend more"><summary>Sobre estes horários</summary>Todos os ônibus que a UNIR lista na origem (paragens.amp.pt), de qualquer linha e destino, não só os das viagens salvas. Cada linha é um círculo (ida e volta do mesmo ônibus) e os dois lados da rua contam como o mesmo lugar. Cada ônibus mostra a chegada estimada nos lugares salvos com apelido a que ele leva (até 4, os mais próximos; "+N" mostra o resto), pelo menor trajeto do círculo, e só aparece o sentido mais longo quando chega antes do próximo ônibus do sentido curto; viagens acima de 90 min não contam: o ônibus pode seguir até o fim da linha e recomeçar no outro sentido (≈ estimativa, com espera de até 25 min). Quem não chega a nenhum lugar salvo fica esmaecido. A última paragem de uma linha só lista partidas. Sem posição nem atraso em tempo real.</details>`;
   $('#main').querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
     unirTab.sel = b.dataset.pick; unirTab.rows = null; unirTab.limit = UNIR_STEP;
     try { localStorage.setItem(UNIR_PICK, unirTab.sel); } catch (e) {}
