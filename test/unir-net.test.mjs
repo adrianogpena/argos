@@ -1,6 +1,6 @@
 // node test/unir-net.test.mjs  (dados fictícios)
 import assert from 'node:assert/strict';
-import { buildNet, netRecords, netFromRecords, sisters, loopDepartures } from '../lib/unir-net.js';
+import { buildNet, netRecords, netFromRecords, sisters, loopDepartures, multiDepartures } from '../lib/unir-net.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 
 // Linha X (círculo): ida (sentido 2) A > B > C(fim). Volta (sentido 1) S(início, ao lado de C) > C2 (outro lado de C) > E > A2 (outro lado de A).
@@ -65,5 +65,17 @@ t('respeita o agora e o limite', () => {
   const r = loopDepartures(day([1], [6]), net, new Date(2026, 9, 9, 7, 0).getTime(), 10);
   assert.ok(r.every(x => x.depAt >= new Date(2026, 9, 9, 7, 0).getTime()));
   assert.equal(loopDepartures(day([1], [6]), net, now, 2).length, 2);
+});
+const mday = (origin, dests) => [{ date: '2026-10-09', origin: origin.map(i => ({ prg: `vng:${i}`, ...stops[i] })), dests: dests.map(g => ({ id: `vng:${g[0]}`, stops: g.map(i => ({ prg: `vng:${i}`, ...stops[i] })) })) }];
+t('sem destino escolhido: uma chegada por lugar salvo, só pelo menor trajeto; sem chegada fica esmaecido', () => {
+  const r = multiDepartures(mday([1, 7], [[6], [3, 5]]), net, now, 20);
+  const z = r.filter(x => x.line === 'Z');
+  assert.deepEqual(z.map(x => [x.sentido, x.arrivals.map(a => [a.id, a.rideMin]), x.fade]), [['2', [['vng:6', 10]], undefined], ['1', [], 'none'], ['2', [['vng:6', 10]], undefined]]);
+  const x0 = r.find(x => x.tripId === 'X:2:0630');
+  assert.deepEqual(x0.arrivals.map(a => [a.id, a.mode, a.rideMin]), [['vng:3', 'direct', 20], ['vng:6', 'continues', 30]]);
+  const y = multiDepartures(mday([8], [[6], [3]]), net, now, 20);
+  assert.deepEqual(y.map(x => [x.line, x.arrivals.map(a => a.id), x.fade]), [['Y', ['vng:6'], undefined]]);
+  assert.deepEqual(multiDepartures(mday([8], [[3]]), net, now, 20).map(x => x.fade), ['none']);
+  assert.equal(multiDepartures(mday([1], [[6]]), net, now, 1).length, 1);
 });
 console.log(`${n} grupos ok`);
