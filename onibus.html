@@ -500,7 +500,7 @@ function renderUnirTab() {
       <div class="picker" role="group" aria-label="Origem">${chips || (unirTab.busy ? 'Carregando…' : '')}</div>
       ${stops.length > 1 ? `<div class="picker-lbl">Destino (opcional)</div><div class="picker" role="group" aria-label="Destino">${destChips}</div>` : ''}
       ${body}
-      ${unirTab.rows && unirTab.rows.length >= unirTab.limit ? '<div class="status-row"><button class="btn ghost" id="unirMore">Mostrar mais</button></div>' : ''}
+      ${unirTab.rows ? `<div class="status-row"><button class="btn ghost" id="unirMore">Mostrar mais ${UNIR_STEP}</button></div>` : ''}
       <div class="status-row"><span class="upd">${unirTab.at ? `Atualizado às ${hm(unirTab.at.getTime())}` : ''}</span><button class="btn ghost" id="unirRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
     </section>
     <details class="legend more"><summary>Sobre estes horários</summary>Todos os ônibus que a UNIR lista na origem (paragens.amp.pt), de qualquer linha e destino, não só os das viagens salvas. Com destino escolhido, um ônibus serve se o mesmo trip_id aparece no destino depois da origem; os que não servem ficam esmaecidos. A última paragem de uma linha só lista partidas. Sem posição nem atraso em tempo real.</details>`;
