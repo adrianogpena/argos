@@ -112,6 +112,7 @@ const win = args.includes('--no-open') ? null : spawn(browser, [
   `--window-size=${W},${H + TITLE_BAR}`,
   `--user-data-dir=${profile}`,
   '--touch-events=enabled',
+  '--hide-scrollbars',
   '--disable-features=Translate,TranslateUI,TranslateRPCs',
   '--lang=pt-BR',
   '--no-first-run',

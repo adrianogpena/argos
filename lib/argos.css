@@ -157,7 +157,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .nav-links { width: 100%; gap: 0; }
   .nav-links a { flex: 1 1 0; min-width: 0; justify-content: center; min-height: var(--nav-h); padding: 0 2px; border-radius: 0; font-size: 14px;
     border-top: 3px solid transparent; margin-top: -1px; }
-  .nav-links a[aria-current=page] { background: transparent; color: var(--amber); border-top-color: var(--amber-fill); }
+  .nav-links a[aria-current=page] { background: var(--tab-active); color: var(--amber); border-top-color: var(--amber-fill); }
 }
 
 /* ---------- botão de tema (lib/theme.js preenche o ícone); .icon-btn = o mesmo botão quadrado de 44px para outros ícones (ex.: configurações) ---------- */

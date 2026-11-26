@@ -44,7 +44,7 @@
   <div class="stack">
   <section id="setup" class="panel stack" hidden>
     <h2>Cofre privado não conectado</h2>
-    <p class="hint">Peso, altura e exames ficam no cofre, não nesta página pública. Conecte o cofre uma vez em <a href="carro.html">Carro → Cofre</a>; vale para todas as telas neste aparelho.</p>
+    <p class="hint">Peso, altura e exames ficam no cofre, não nesta página pública. Conecte o cofre uma vez em <a href="index.html">Início → Cofre</a>; vale para todas as telas neste aparelho.</p>
     <div class="msg bad" id="setupMsg" role="status"></div>
   </section>
 
@@ -248,7 +248,7 @@ document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e =
 
 (async () => {
   if (!vault.configured()) { $('#setup').hidden = false; return; }
-  try { await load(); } catch (e) { $('#setup').hidden = false; $('#setupMsg').textContent = e.kind === 'auth' ? 'Token incorreto. Reconecte em Carro → Cofre.' : e.message; }
+  try { await load(); } catch (e) { $('#setup').hidden = false; $('#setupMsg').textContent = e.kind === 'auth' ? 'Token incorreto. Reconecte em Início → Cofre.' : e.message; }
 })();
 </script>
 </body>

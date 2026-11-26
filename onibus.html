@@ -235,7 +235,7 @@ hr.sep { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--trac
     <button class="btn ghost" type="button" id="btnVaultSave">Salvar configuração no cofre</button>
     <button class="btn ghost" type="button" id="btnVaultLoad">Carregar configuração do cofre</button>
   </div>
-  <span class="hint">O cofre privado guarda suas linhas e trajetos fora desta página pública. Conecte-o uma vez em Carro → Cofre.</span>
+  <span class="hint">O cofre privado guarda suas linhas e trajetos fora desta página pública. Conecte-o uma vez em Início → Cofre.</span>
   <div class="msg" id="ioMsg" role="status"></div>
   <div class="actions">
     <button class="btn danger" type="button" id="btnReset">Apagar tudo</button>
@@ -927,7 +927,7 @@ async function vaultSetup(save) {
   const msg = $('#ioMsg'); msg.className = 'msg'; msg.textContent = '…';
   try {
     const { createVault } = await import('./lib/vault.js'), v = createVault();
-    if (!v.configured()) throw new Error('Conecte o cofre primeiro: abra Carro → Cofre.');
+    if (!v.configured()) throw new Error('Conecte o cofre primeiro: abra Início → Cofre.');
     if (save) {
       const copy = JSON.parse(JSON.stringify(state)); copy.settings.proxy = '';
       const r = await v.put('bus-setup', { id: 'setup', state: copy });
