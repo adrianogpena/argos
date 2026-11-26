@@ -1,6 +1,6 @@
 // node test/unir-stops.test.mjs  (dados fictícios)
 import assert from 'node:assert/strict';
-import { savedStops, stopLabel, stopDepartures } from '../lib/unir-stops.js';
+import { savedStops, stopLabel, stopDepartures, originStops, destStops, percursoRows } from '../lib/unir-stops.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok  ' + name); };
 const stop = rows => ({ horarios: rows.map(([trip_id, chegada, linha, destino]) => ({ trip_id, chegada, linha, destino })) });
 
@@ -41,5 +41,14 @@ t('destino: marca quem chega, a viagem; quem não para fica na lista como não s
   assert.deepEqual(stopDepartures([org], now, 10, [fim]).map(x => [x.tripId, x.serves, x.ends ?? false]),
     [['A', true, true], ['B', false, false], ['C', false, false], ['D', false, false]]);
   assert.equal(stopDepartures([org], now, 10).every(x => x.serves === undefined), true);
+});
+t('percursos: origens sem as só-destino, destinos sem os descartados, ônibus só do destino', () => {
+  const ids = ['vng:1', 'vng:2', 'vng:3', 'vng:4'], setup = { unirOnlyDest: ['vng:3'], unirSkip: ['vng:1>vng:4'] };
+  assert.deepEqual(originStops(ids, setup), ['vng:1', 'vng:2', 'vng:4']);
+  assert.deepEqual(destStops(ids, setup, 'vng:1'), ['vng:2', 'vng:3']);
+  assert.deepEqual(destStops(ids, setup, 'vng:2'), ['vng:1', 'vng:3', 'vng:4']);
+  const rows = [{ line: 'A', arrivals: [{ id: 'vng:2', mode: 'direct' }] }, { line: 'B', arrivals: [{ id: 'vng:3' }] }, { line: 'C', arrivals: [] }, { line: 'D', arrivals: [{ id: 'vng:2' }, { id: 'vng:3' }] }];
+  assert.deepEqual(percursoRows(rows, 'vng:2').map(r => [r.line, r.arrival.id]), [['A', 'vng:2'], ['D', 'vng:2']]);
+  assert.deepEqual(percursoRows(rows, 'vng:2', 1).map(r => r.line), ['A']);
 });
 console.log(`${n} grupos ok`);
