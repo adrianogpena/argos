@@ -20,7 +20,7 @@ setTheme('auto'); assert.equal(document.documentElement.dataset.theme, 'auto'); 
 setTheme('xyz'); assert.equal(store.get('argos.theme'), 'dark');
 
 assert.equal(TABS.length, 5);
-for (const [p, tab] of [['/', 'Início'], ['/index.html', 'Início'], ['/onibus.html', 'Ônibus'], ['/carro.html', 'Carro'], ['/gastos.html', 'Gastos'], ['/cartao.html', 'Gastos'], ['/faturas.html?x=1', 'Gastos'], ['/saude.html', 'Saúde']])
+for (const [p, tab] of [['/', 'Início'], ['/index.html', 'Início'], ['/transporte.html', 'Transporte'], ['/carro.html', 'Carro'], ['/gastos.html', 'Gastos'], ['/cartao.html', 'Gastos'], ['/faturas.html?x=1', 'Gastos'], ['/saude.html', 'Saúde']])
   assert.equal(currentTab(p)?.label, tab, p);
 assert.equal(currentTab('/outra.html'), null);
 const h = navHtml('/cartao.html');

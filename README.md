@@ -4,7 +4,7 @@ A personal dashboard (buses, car, expenses). The bus module follows Porto STCP b
 
 ```
 index.html             home: summary (month spending, car reminders) and links to the modules
-onibus.html            bus module: one file, no build step
+transporte.html            bus module: one file, no build step
 manifest.webmanifest   home-screen install (optional)
 sw.js                  offline app shell (optional; works over https or localhost only)
 icon.svg / icon-*.png  icons
@@ -42,7 +42,7 @@ Cloudflare Pages, not GitHub Pages: every `*.github.io` site of one user shares 
 
 1. Dashboard → Workers & Pages → Create → Pages → Connect to Git → pick this repository. Framework preset: *None*; build command empty; output directory `/`.
 2. After the first deploy the app is at `https://<project>.pages.dev`. Put that origin (scheme + domain, no path) in `ALLOWED_ORIGIN` in `vault/wrangler.toml` and `proxy/wrangler.toml`, and redeploy both Workers.
-3. On `pages.dev` the app uses the Worker named by `PAGES_PROXY` in `onibus.html` (`https://argos-proxy.<your-subdomain>.workers.dev`). Adjust it if your Worker URL differs, or open `https://<project>.pages.dev/onibus.html?api=<worker url>` once: the `?api=` value is saved.
+3. On `pages.dev` the app uses the Worker named by `PAGES_PROXY` in `transporte.html` (`https://argos-proxy.<your-subdomain>.workers.dev`). Adjust it if your Worker URL differs, or open `https://<project>.pages.dev/transporte.html?api=<worker url>` once: the `?api=` value is saved.
 
 **B. Your own computer on home Wi-Fi (no accounts)**
 
@@ -109,7 +109,7 @@ Trips are personal (they reveal where you live and go), so **none ship in this r
 
 ## Tests
 
-`node test/core.test.mjs` runs the logic from `onibus.html` (the `<script id="core">` block) against sample `/realtime` responses in the documented shape. Those responses are built by hand, not captured from STCP. The test cases cover trip_id grouping, other lines mixed in, a bus that already passed, duplicate rows, a bus waiting at the first stop, a timetable-only trip, the look-back limit, a failing stop, request counts, and the paste parser.
+`node test/core.test.mjs` runs the logic from `transporte.html` (the `<script id="core">` block) against sample `/realtime` responses in the documented shape. Those responses are built by hand, not captured from STCP. The test cases cover trip_id grouping, other lines mixed in, a bus that already passed, duplicate rows, a bus waiting at the first stop, a timetable-only trip, the look-back limit, a failing stop, request counts, and the paste parser.
 
 ## Etiquette and caveats
 

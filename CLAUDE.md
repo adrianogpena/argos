@@ -9,7 +9,7 @@ Um painel pessoal (dashboard) para os dados do dia a dia do dono. Nasceu como **
 | Módulo | Arquivo | Estado |
 |---|---|---|
 | Início (resumo) | `index.html` | pronto |
-| Ônibus | `onibus.html` | pronto (herdado de Paragem) |
+| Transporte (ônibus STCP/UNIR e Metro) | `transporte.html` | pronto (herdado de Paragem) |
 | Carro (km, abastecimento, consumo, manutenção, lembretes) | `carro.html` | pronto |
 | Gastos (gráfico mensal e por categoria; só mostra e edita; o extrato é importado pelo Claude via skill `importar-extrato`; os registros da tela Carro **não** são somados (evita contar em dobro), mas combustível e portagem do extrato entram sempre, como Transporte; `tools/expenses.mjs fuel` liga cada abastecimento do Carro ao lançamento de mesmo valor (0 a 5 dias) e o recategoriza como Combustível, para postos dentro de supermercado; meses com extrato mostram só dados reais, e o mês seguinte ao último extrato mostra só a previsão) | `gastos.html` | pronto |
 | Cartão (previsão das parcelas futuras sem compras novas, data de quitação, acréscimo x baixa por extrato, "meu plano" = débito automático no mínimo + extras manuais) | `cartao.html` | pronto; lê `card-statements`/`card-lines`; lógica em `lib/card-forecast.js` |
@@ -59,8 +59,8 @@ Feito e no ar:
 - Repositório limpo `adrianogpena/argos`, sem histórico do Paragem. `main` é a produção.
 - Cloudflare Pages: `https://argos-ejb.pages.dev`, deploy automático a cada push na `main`.
 - Cofre (Worker `vault` + KV) em `https://vault.adrianogpena.workers.dev`, com `ALLOWED_ORIGIN` = `https://argos-ejb.pages.dev` e `VAULT_TOKEN` configurado. `/v1/ping` sem token retorna 401, como esperado.
-- Proxy dos ônibus em `https://argos-proxy.adrianogpena.workers.dev` (mesmo `ALLOWED_ORIGIN`; `PAGES_PROXY` em `onibus.html` confirmado). `onibus.html` mostra as chegadas.
-- Código: renomeado para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v2`), home em `index.html` (`lib/home-core.js`), ônibus em `onibus.html`.
+- Proxy dos ônibus em `https://argos-proxy.adrianogpena.workers.dev` (mesmo `ALLOWED_ORIGIN`; `PAGES_PROXY` em `transporte.html` confirmado). `transporte.html` mostra as chegadas.
+- Código: renomeado para Argos (chave `argos.v1` migra `paragem.v1`; cache `argos-v2`), home em `index.html` (`lib/home-core.js`), ônibus em `transporte.html`.
 
 Migração concluída:
 - O app conecta ao cofre (carro usa o token com sucesso) e o setup dos ônibus, incluindo as linhas UNIR, está salvo no cofre (`bus-setup`).
@@ -69,7 +69,8 @@ Migração concluída:
 
 Regra: nunca pedir, escrever ou registrar o token; se precisar de credencial, usar `request_credential`.
 
-Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre; STCP ao vivo pela chamada via proxy e UNIR por horário). `lib/bus-core.js` e `lib/bus-net.js` são compartilhados entre `onibus.html` e a home. **Aba Unir** (`onibus.html`, sem mexer nas abas das linhas): dois dropdowns, e vale **um ou outro**. **Paragem** (todas as salvas): lista os próximos ônibus da paragem e, em cada um, a chegada nos lugares salvos a que leva (até 4, "+N" mostra o resto); quem não chega a nenhum fica esmaecido. **Percursos** ("Origem > Destino"): lista só os ônibus que vão da origem ao destino; escolher um percurso limpa a paragem e escolher uma paragem limpa o percurso. Os percursos são os pares com ao menos um ônibus hoje ou amanhã, menos os que saem de uma parada só-destino (`setup.unirOnlyDest`) e os descartados (`setup.unirSkip` = `["vng:A>vng:B"]`). Origem e destino são **paradas exatas** (cada lado da rua é uma parada, ex.: Casa ida/volta). Chegada direta (mesmo `trip_id`) ou ≈ quando o ônibus segue até o fim da linha e recomeça no outro sentido (espera de até 25 min, `lib/unir-net.js`); por linha, o sentido mais longo só vale se chega antes do próximo do curto. 10 ônibus por vez ("Mostrar mais" de 10 em 10). A rede (duração e horário de cada viagem) vem da coleção `unir-net` do cofre, gerada por `node tools/unir.mjs scan` + `push --apply` (a UNIR só publica horários por parada; refazer de vez em quando). Lógica dos dropdowns em `lib/unir-stops.js` (`originStops`, `destStops`, `percursoRows`).
+Home: card "Próximo ônibus" feito (`lib/home-bus.js`; lê `bus-setup` do cofre; STCP ao vivo pela chamada via proxy e UNIR por horário). `lib/bus-core.js` e `lib/bus-net.js` são compartilhados entre `transporte.html` e a home. **Aba Unir** (`transporte.html`, sem mexer nas abas das linhas): dois dropdowns, e vale **um ou outro**. **Paragem** (todas as salvas): lista os próximos ônibus da paragem e, em cada um, a chegada nos lugares salvos a que leva (até 4, "+N" mostra o resto); quem não chega a nenhum fica esmaecido. **Percursos** ("Origem > Destino"): lista só os ônibus que vão da origem ao destino; escolher um percurso limpa a paragem e escolher uma paragem limpa o percurso. Os percursos são os pares com ao menos um ônibus hoje ou amanhã, menos os que saem de uma parada só-destino (`setup.unirOnlyDest`) e os descartados (`setup.unirSkip` = `["vng:A>vng:B"]`). Origem e destino são **paradas exatas** (cada lado da rua é uma parada, ex.: Casa ida/volta). Chegada direta (mesmo `trip_id`) ou ≈ quando o ônibus segue até o fim da linha e recomeça no outro sentido (espera de até 25 min, `lib/unir-net.js`); por linha, o sentido mais longo só vale se chega antes do próximo do curto. 10 ônibus por vez ("Mostrar mais" de 10 em 10). A rede (duração e horário de cada viagem) vem da coleção `unir-net` do cofre, gerada por `node tools/unir.mjs scan` + `push --apply` (a UNIR só publica horários por parada; refazer de vez em quando). Lógica dos dropdowns em `lib/unir-stops.js` (`originStops`, `destStops`, `percursoRows`).
+**Metro (aba "Metro" em `transporte.html`: dropdown de estação e de destino opcional; lê `gtfs/metro/net.json`, sem cofre; atualiza a cada 30 s; avisa quando o feed vence)**: o GTFS público do Metro do Porto fica **no git** em `gtfs/metro/` (dado público de horários, sem dado pessoal: única exceção à regra número um; os 12 arquivos `.txt` brutos + `net.json`, a rede compacta que a página vai ler: padrões de paradas, variantes de minutos entre paradas e viagens = padrão, variante, saída, serviço). `node tools/metro.mjs fetch` baixa e reconstrói, `build` só reconstrói, `info` resume; lógica em `lib/metro-gtfs.js` (`activeServices` = serviços de uma data com exceções, `tripStops` = hora em cada parada; `lib/metro-net.js` = `stationList`, `destinationsFrom` (destinos diretos), `departures(net, origem, agora, {dest, limit})` com destino, próxima estação e chegada; horário passa de 1440 depois da meia-noite). Feed atual vale de 2026-09-01 a 2026-12-31: refazer `fetch` antes de acabar. Uma parada por estação (as duas plataformas dividem o `stop_id`); o GTFS não traz viagens do Bexp no fim de semana e a exceção `BexDF` não tem viagens (ignorada).
 Ideias: escolher linha por horário do dia (casa de manhã, trabalho à tarde) e permitir fixar quais linhas aparecem.
 
 ## Extrato do banco (feito)
@@ -133,10 +134,12 @@ node test/expenses-report.test.mjs relatórios de Gastos: salário com 13º/14º
 node test/qr-invoice.test.mjs QR fiscal das faturas: parser (9 casos)
 node test/efatura.test.mjs    e-fatura (Portal das Finanças): linhas, vínculo com Gastos, sugestão por NIF, lotes diários (1 arquivo)
 node test/fuel-link.test.mjs  abastecimento do Carro x Gastos: recategoriza o lançamento ligado (4)
+node test/metro-gtfs.test.mjs GTFS do Metro: CSV, padrões/variantes, serviços do dia, depois da meia-noite (7 grupos)
+node test/metro-net.test.mjs   partidas do Metro: sentido (destino e próxima estação), chegada a um destino, depois da meia-noite, feriados (9 grupos)
 node test/receipt.test.mjs    faturas do mercado: parser Pingo Doce/Intermarché/Lidl, categorias, vínculo com Gastos, preço x quantidade (15)
 ```
 
-Rode todos antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `onibus.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
+Rode todos antes de commitar. O `core.test.mjs` testa `lib/bus-core.js` (a lógica pura dos ônibus, antes embutida no `transporte.html`). Para testar as páginas no navegador: servir a pasta com um servidor estático, rodar o `vault/worker.js` com um KV em memória (o `test/vault.test.mjs` mostra como simular) e abrir com Playwright.
 
 ## Como criar o repositório novo limpo
 

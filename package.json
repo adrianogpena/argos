@@ -9,7 +9,7 @@
     "phone:carro": "node tools/phone.mjs carro.html",
     "phone:faturas": "node tools/phone.mjs faturas.html",
     "phone:saude": "node tools/phone.mjs saude.html",
-    "phone:onibus": "node tools/phone.mjs onibus.html",
+    "phone:transporte": "node tools/phone.mjs transporte.html",
     "phone:landscape": "node tools/phone.mjs --landscape"
   }
 }

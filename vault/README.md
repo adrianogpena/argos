@@ -49,7 +49,7 @@ npx wrangler deploy
 
 Abra `https://argos-ejb.pages.dev/carro.html`, toque em **Cofre**, cole o endereço do Worker (`https://vault.SEUNOME.workers.dev`) e o token. Repita em cada aparelho. Se aparecer "Cannot reach the vault", confira o `ALLOWED_ORIGIN` (deve ser idêntico à origem do app).
 
-Depois, no app de ônibus (`onibus.html`): **Settings → Save setup to vault**, para os trajetos ficarem no cofre.
+Depois, no app de ônibus (`transporte.html`): **Settings → Save setup to vault**, para os trajetos ficarem no cofre.
 
 ## O que protege o quê
 

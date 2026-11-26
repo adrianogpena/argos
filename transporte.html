@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ônibus</title>
+<title>Transporte</title>
 <meta name="description" content="Acompanhe uma linha de ônibus da STCP no Porto e veja o que está chegando à sua paragem.">
 <meta name="theme-color" content="#101316">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -142,7 +142,7 @@ hr.sep { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--trac
 <body>
 <nav class="nav" data-nav aria-label="Principal"></nav>
 <main class="wrap">
-  <div class="head"><h1>Ônibus</h1><span class="when"></span>
+  <div class="head"><h1>Transporte</h1><span class="when"></span>
     <button class="theme-btn" id="btnTheme" data-theme-btn type="button"></button>
     <button class="icon-btn" id="btnSettings" type="button" aria-label="Configurações" title="Configurações">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
@@ -251,6 +251,7 @@ import { initNav } from './lib/nav.js'; initNav();
 import { UNIR, PAGES_PROXY, ymd, createUnir } from './lib/bus-net.js';
 import { savedStops, stopLabel, originStops, destStops, percursoRows } from './lib/unir-stops.js';
 import { netFromRecords, multiDepartures } from './lib/unir-net.js';
+import { stationList, destinationsFrom, departures as metroDepartures } from './lib/metro-net.js';
 (() => {
 'use strict';
 const $ = (s, el = document) => el.querySelector(s);
@@ -385,6 +386,7 @@ const myIdx = () => { const d = dir(); return d ? d.stops.findIndex(s => s.id ==
 
 async function refresh() {
   clearTimeout(timer);
+  if (metroTab.on) return refreshMetro();
   if (unirTab.on) return refreshUnirTab();
   if (line()?.kind === 'unir') return refreshUnir(line());
   const d = dir(), mi = myIdx();
@@ -516,6 +518,77 @@ function renderUnirTab() {
   $('#unirRefresh').onclick = () => { unirTab.stops = null; unirTab.routes = null; unirTab.fetched.clear(); unirTab.memos = {}; refreshUnirTab(); };
 }
 
+// ---------- Aba Metro: partidas por estação (GTFS público do Metro do Porto, gtfs/metro/net.json) ----------
+const METRO_PICK = 'argos.metroStation', METRO_DEST = 'argos.metroDest', METRO_STEP = 10;
+const metroTab = { on: false, net: null, stations: null, sel: null, dest: null, limit: METRO_STEP, busy: false, err: null, at: null };
+try { metroTab.sel = localStorage.getItem(METRO_PICK) || null; metroTab.dest = localStorage.getItem(METRO_DEST) || null; } catch (e) {}
+async function refreshMetro(reload = false) {
+  if (metroTab.busy) return;
+  if (metroTab.net && !reload) { metroTab.at = new Date(); return render(); }
+  metroTab.busy = true; metroTab.err = null; render();
+  try {
+    const r = await fetch('./gtfs/metro/net.json', { cache: reload ? 'reload' : 'default' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    metroTab.net = await r.json(); metroTab.stations = stationList(metroTab.net); metroTab.at = new Date();
+  } catch (e) { metroTab.err = e.message || String(e); }
+  metroTab.busy = false; render();
+}
+function renderMetroTab() {
+  const net = metroTab.net, now = Date.now(), stations = metroTab.stations || [];
+  if (net && !net.stops[metroTab.sel]) metroTab.sel = null;
+  const dests = net && metroTab.sel ? destinationsFrom(net, metroTab.sel) : [];
+  if (metroTab.dest && !dests.some(d => d.id === metroTab.dest)) metroTab.dest = null;
+  const name = id => net?.stops[id]?.[0] || '';
+  const opt = (v, text, sel, title = '') => `<option value="${esc(v)}"${sel ? ' selected' : ''}${title ? ` title="${esc(title)}"` : ''}>${esc(text)}</option>`;
+  // Favoritas (state.metroFav, ids na ordem escolhida; vêm do cofre (bus-setup), não do git) no topo das duas listas.
+  const favIds = (state.metroFav || []).filter(id => net?.stops[id]), isFav = id => favIds.includes(id);
+  const groups = (list, sel, title) => {
+    const top = favIds.map(id => list.find(x => x.id === id)).filter(Boolean), rest = list.filter(x => !isFav(x.id));
+    const o = x => opt(x.id, x.name, x.id === sel, x.routes ? `Linha ${x.routes.join(', ')}` : '');
+    return (top.length ? `<optgroup label="Favoritas">${top.map(o).join('')}</optgroup><optgroup label="${title}">${rest.map(o).join('')}</optgroup>` : rest.map(o).join(''));
+  };
+  const stationOpts = (metroTab.sel ? '' : opt('', '—', true)) + groups(stations, metroTab.sel, 'Todas');
+  const destOpts = opt('', 'Qualquer destino', !metroTab.dest) + groups(dests, metroTab.dest, 'Outros destinos');
+  let body = metroTab.err ? `<div class="err" role="alert"><strong>Não consegui carregar os horários do Metro</strong>${esc(metroTab.err)}<div class="acts"><button class="chip" data-act="retry">Tentar de novo</button></div></div>` : '';
+  const end = net?.feed?.end, today = ymd(new Date()).replace(/-/g, '');
+  if (end && today > end) body += `<div class="err" role="alert"><strong>Horário do Metro vencido</strong>O feed vale até ${esc(end.slice(6))}/${esc(end.slice(4, 6))}/${esc(end.slice(0, 4))}. Rode <code>node tools/metro.mjs fetch</code> para atualizar.</div>`;
+  if (net && metroTab.sel) {
+    const rows = metroDepartures(net, metroTab.sel, now, { dest: metroTab.dest, limit: metroTab.limit });
+    if (!rows.length) body += `<div class="empty">Nenhuma partida${metroTab.dest ? ' para este destino' : ''} nos próximos dias.</div>`;
+    let last = null;
+    body += rows.map(o => {
+      const m = Math.round((o.depAt - now) / 60000), day = dayLabel(o.depAt);
+      const sep = day !== last ? `<div class="sec-title"><h2>${esc(day || 'Hoje')}</h2></div>` : ''; last = day;
+      const when = m < 60 ? `${Math.max(0, m)}<small>min</small>` : `<span class="at">${hm(o.depAt)}</span>`;
+      const c = '#' + o.color, pill = `<span class="lnum" style="background:${esc(c)};color:${inkFor(c)}">${esc(o.line)}</span>`;
+      const arr = o.arrAt != null ? `<div class="clock">${esc(name(metroTab.dest))} ${hm(o.arrAt)} <small>${o.rideMin} min · ${o.stops} ${o.stops === 1 ? 'parada' : 'paradas'}</small></div>` : '';
+      return `${sep}<div class="bus"><div class="min">${when}</div>
+        <div><div class="where">${pill} para ${esc(o.headsign)}</div><div class="sub">sai às ${hm(o.depAt)} · próxima: ${esc(o.nextName)}</div></div>${arr ? `<div class="right">${arr}</div>` : ''}</div>`;
+    }).join('');
+    metroTab.more = rows.length >= metroTab.limit;
+  } else if (!metroTab.err) body += `<div class="empty">${metroTab.busy ? 'Carregando horários…' : net ? 'Escolha uma estação.' : ''}</div>`;
+  $('#main').innerHTML = `
+    <section class="line-head"><div class="badge" aria-hidden="true">M</div><div class="dir"><div class="lbl">Metro do Porto <span class="tag">Horário</span></div><div class="to">${metroTab.dest ? 'Metros da estação até o destino' : 'Próximos metros da estação'}</div></div></section>
+    <section class="panel sched" aria-live="polite">
+      <div class="panel-head"><span class="k">Estação</span><span class="stopname">${esc(name(metroTab.sel))}</span><span class="pill sched">Horário</span></div>
+      <div class="picker-lbl">Estação</div>
+      <div class="picker"><select id="metroStation" aria-label="Estação"${net ? '' : ' disabled'}>${stationOpts || '<option>Carregando…</option>'}</select></div>
+      <div class="picker-lbl">Destino</div>
+      <div class="picker"><select id="metroDest" aria-label="Destino"${metroTab.sel ? '' : ' disabled'}>${destOpts}</select></div>
+      ${body}
+      ${metroTab.more ? `<div class="status-row"><button class="btn ghost" id="metroMore">Mostrar mais ${METRO_STEP}</button></div>` : ''}
+      <div class="status-row"><span class="upd">${metroTab.at ? `Atualizado às ${hm(now)}` : ''}</span><button class="btn ghost" id="metroRefresh">${ICONS.refresh}<span>Atualizar</span></button></div>
+    </section>
+    <details class="legend more"><summary>Sobre estes horários</summary>Horários do Metro do Porto (GTFS público${end ? `, válido até ${esc(end.slice(6))}/${esc(end.slice(4, 6))}/${esc(end.slice(0, 4))}` : ''}). Cada estação é uma só parada, então o sentido vem do destino final da composição e da próxima estação. Com um destino escolhido, só aparecem os metros que passam nele depois da estação, sem baldeação. Sem posição nem atraso em tempo real.</details>`;
+  const choose = (sel, dest) => { metroTab.sel = sel; metroTab.dest = dest; metroTab.limit = METRO_STEP; try { localStorage.setItem(METRO_PICK, sel || ''); localStorage.setItem(METRO_DEST, dest || ''); } catch (e) {} render(); };
+  $('#metroStation').onchange = ev => ev.target.value && choose(ev.target.value, null);
+  $('#metroDest').onchange = ev => choose(metroTab.sel, ev.target.value || null);
+  $('#main').querySelectorAll('[data-act="retry"]').forEach(b => b.onclick = () => refreshMetro(true));
+  const more = $('#metroMore'); if (more) more.onclick = () => { metroTab.limit += METRO_STEP; render(); };
+  $('#metroRefresh').onclick = () => refreshMetro(true);
+}
+setInterval(() => { if (metroTab.on && metroTab.net && !document.hidden && document.activeElement?.tagName !== 'SELECT') render(); }, 30000);
+
 // ---------- UNIR trips: timetable only ----------
 const unir = createUnir({ getJSON: (b, p) => getJSON(b, p), storage: localStorage, getNames: () => state.stopNames });
 const { unirPrune, unirUpcoming } = unir;
@@ -576,14 +649,15 @@ function whereText(b, stops) {
 // ---------- render ----------
 function renderTabs() {
   $('#tabs').innerHTML = state.lines.map(l => `
-    <button class="tab" data-key="${esc(l.key)}" aria-current="${!unirTab.on && l.key === state.activeLine}" aria-label="${l.kind === 'unir' ? esc(l.name) : `Linha ${esc(l.short)} para ${esc(l.dirs[l.activeDir]?.name || '')}`}" title="${esc(l.kind === 'unir' ? l.name : l.dirs[l.activeDir]?.name || '')}">
+    <button class="tab" data-key="${esc(l.key)}" aria-current="${!unirTab.on && !metroTab.on && l.key === state.activeLine}" aria-label="${l.kind === 'unir' ? esc(l.name) : `Linha ${esc(l.short)} para ${esc(l.dirs[l.activeDir]?.name || '')}`}" title="${esc(l.kind === 'unir' ? l.name : l.dirs[l.activeDir]?.name || '')}">
       <span class="sw" style="background:${esc(Core.normColor(l.color) || '#F5D24C')};color:${inkFor(l.color)}">${esc(l.short)}</span>
-    </button>`).join('') + `<button class="tab" id="tabUnir" aria-current="${unirTab.on}" title="Todos os ônibus de uma paragem UNIR"><span class="sw" style="background:var(--surface-2, #ddd);color:var(--ink)">Unir</span></button><button class="tab add" id="tabAdd">+ Adicionar linha</button>`;
+    </button>`).join('') + `<button class="tab" id="tabUnir" aria-current="${unirTab.on}" title="Todos os ônibus de uma paragem UNIR"><span class="sw" style="background:var(--surface-2, #ddd);color:var(--ink)">Unir</span></button><button class="tab" id="tabMetro" aria-current="${metroTab.on}" title="Horários do Metro do Porto"><span class="sw" style="background:var(--surface-2, #ddd);color:var(--ink)">Metro</span></button><button class="tab add" id="tabAdd">+ Adicionar linha</button>`;
   $('#tabs').querySelectorAll('[data-key]').forEach(b => b.onclick = () => {
-    if (state.activeLine === b.dataset.key && !unirTab.on) return;
-    unirTab.on = false; state.activeLine = b.dataset.key; save(); live = { busy: false }; render(); refresh();
+    if (state.activeLine === b.dataset.key && !unirTab.on && !metroTab.on) return;
+    unirTab.on = false; metroTab.on = false; state.activeLine = b.dataset.key; save(); live = { busy: false }; render(); refresh();
   });
-  $('#tabUnir').onclick = () => { if (unirTab.on) return; unirTab.on = true; render(); refresh(); };
+  $('#tabUnir').onclick = () => { if (unirTab.on) return; unirTab.on = true; metroTab.on = false; render(); refresh(); };
+  $('#tabMetro').onclick = () => { if (metroTab.on) return; metroTab.on = true; unirTab.on = false; render(); refresh(); };
   $('#tabAdd').onclick = openAdd;
 }
 
@@ -605,6 +679,7 @@ function render() {
   applyAccent(l);
   renderTabs();
   const main = $('#main');
+  if (metroTab.on) return renderMetroTab();
   if (unirTab.on) return renderUnirTab();
   if (l?.kind === 'unir') return renderUnir(l);
   if (!l) { main.innerHTML = `<div class="panel"><div class="empty">Nenhuma linha ainda. Adicione uma para começar.</div></div>`; return; }

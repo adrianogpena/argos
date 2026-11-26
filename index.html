@@ -77,7 +77,7 @@ button.mod { width: 100%; text-align: left; border: 0; cursor: pointer; }
 
     <h2 class="lab seclabel">Módulos</h2>
     <div class="mods">
-      <a class="panel mod" href="onibus.html"><h2>Ônibus</h2><p class="mu">Chegadas STCP e horários UNIR</p></a>
+      <a class="panel mod" href="transporte.html"><h2>Transporte</h2><p class="mu">Chegadas STCP, horários UNIR e Metro</p></a>
       <a class="panel mod" href="carro.html"><h2>Carro</h2><p class="mu">Km, abastecimento, consumo e revisões</p></a>
       <a class="panel mod" href="gastos.html"><h2>Gastos</h2><p class="mu">Resumo mensal, por categoria e faturas</p></a>
       <a class="panel mod" href="cartao.html"><h2>Cartão</h2><p class="mu">Parcelas futuras e prazo para quitar</p></a>
@@ -178,7 +178,7 @@ async function busMain() {
       if (r.empty) return `<li><div class="main"><div class="bl">${esc(r.label)}</div><div class="mu">${r.kind === 'unir' ? 'Nenhum horário nos próximos 7 dias.' : 'Sem previsão agora.'}</div></div></li>`;
       if (r.kind === 'stcp') { const [a, ...rest] = r.minutesList; return `<li><div class="main"><div class="bl">${esc(r.label)}</div><div class="mu">${esc(r.stop)} · ao vivo${rest.length ? ` · depois ${rest.map(minsText).join(' · ')} min` : ''}</div></div><div class="bn ins am">${mins(a)}</div></li>`; }
       return `<li><div class="main"><div class="bl">${esc(r.label)}</div><div class="mu">linha ${esc(r.line)} às ${hm(r.depAt)} para ${esc(r.to)} · chega ${r.est ? '≈' : ''}${hm(r.doneAt)} · horário</div></div><div class="bn ins am">${mins(r.minutes)}</div></li>`;
-    }).join('')}</ul><a class="btn ghost link-btn" href="onibus.html">Detalhes em Ônibus</a></div>`;
+    }).join('')}</ul><a class="btn ghost link-btn" href="transporte.html">Detalhes em Transporte</a></div>`;
   } catch (err) { /* a home continua sem o card de ônibus */ }
 }
 $("#btnCofre").onclick = () => {

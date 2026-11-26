@@ -1,7 +1,7 @@
 {
   "name": "Argos",
   "short_name": "Argos",
-  "description": "Painel pessoal: ônibus, carro e gastos.",
+  "description": "Painel pessoal: transporte, carro e gastos.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
