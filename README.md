@@ -77,10 +77,9 @@ It then opens full screen like an app. With option A, the app shell is cached, s
 
 ## 5. Using it
 
-- **502 toward Matosinhos** is preloaded from your example list, with **BCM1** set as your stop. It's tagged *Example data*. Tap **Line → Load both directions from STCP** to replace it with the official stop list for both directions. This uses BCM1 to look up the route.
 - **Set your stop:** tap a stop in the timeline → *Set as my stop*.
 - **Add a line:** + Add line.
-  - *From STCP:* enter the line number and the code of any stop on it (e.g. `502` + `BCM1`). The app finds the internal `route_id` through `/api/stops/BCM1/routes` and then loads both directions. If you already know the route_id, you can enter it directly. stcp.pt/pt/linhas no longer puts route_ids in its HTML; to find one, open the line page with your browser's developer tools on the Network tab and look for a request to `/api/route/ID/stops`.
+  - *From STCP:* enter the line number and the code of any stop on it (e.g. line number + any stop code). The app finds the internal `route_id` through `/api/stops/<code>/routes` and then loads both directions. If you already know the route_id, you can enter it directly. stcp.pt/pt/linhas no longer puts route_ids in its HTML; to find one, open the line page with your browser's developer tools on the Network tab and look for a request to `/api/route/ID/stops`.
   - *Paste stops:* one stop per line, in order. `CODE Name`, `Name CODE`, `Name (CODE)` and the comma-separated format from your brief all work. A preview shows what was recognised.
 - **Settings:** buses to follow (1–3), refresh interval (30 s minimum), how many stops back the app may poll, when a bus counts as not started (5, 10 or 15 min to its next stop), theme, API address, and copy/paste of your whole setup to move it to another device.
 

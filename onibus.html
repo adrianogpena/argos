@@ -167,9 +167,9 @@ hr.sep { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--trac
     <button type="button" data-mode="api" aria-pressed="true">Da STCP</button>
     <button type="button" data-mode="paste" aria-pressed="false">Colar paragens</button>
   </div>
-  <label class="field"><span class="lab">Número da linha</span><input type="text" name="short" placeholder="502" autocomplete="off" autocapitalize="characters" required></label>
+  <label class="field"><span class="lab">Número da linha</span><input type="text" name="short" placeholder="ex.: 200" autocomplete="off" autocapitalize="characters" required></label>
   <div class="pane" data-pane="api">
-    <label class="field"><span class="lab">Um código de paragem desta linha</span><input type="text" name="probe" placeholder="BCM1" autocomplete="off" autocapitalize="characters">
+    <label class="field"><span class="lab">Um código de paragem desta linha</span><input type="text" name="probe" placeholder="ex.: ABC1" autocomplete="off" autocapitalize="characters">
       <span class="hint">Usado para descobrir o route_id interno da linha via /api/stops/CODE/routes.</span></label>
     <label class="field"><span class="lab">…ou o route_id interno, se souber</span><input type="text" name="rid" placeholder="opcional" autocomplete="off">
       <span class="hint">Em stcp.pt/pt/linhas, abra a linha e, nas ferramentas de desenvolvedor do navegador, procure a requisição a /api/route/<b>ID</b>/stops.</span></label>
@@ -256,47 +256,12 @@ import { netFromRecords, multiDepartures } from './lib/unir-net.js';
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const EXAMPLE_502 = `BLRB2 Bolhão
-BLFZ1 Bolhão (Firmeza)
-JN3 Jornal de Notícias
-PRR1 Pr. da República
-FIG Figueiroa
-CVA1 Carvalhosa
-HML1 Hospital Militar
-BVBR2 Boavista Brasília
-BCM1 Boavista-Casa da Música
-AGM1 Agramonte
-ACRD1 António Cardoso
-BSS1 Bessa
-FOCO1 Foco
-PINM1 Pinheiro Manso
-SRV3 Serralves
-PNV2 Paulo Novais
-FTM4 Fonte da Moura
-LGO2 Liceu Garcia Orta
-PRCD3 Parque da Cidade
-NEV2 Nevogilde
-MAL2 Malaca
-CQ5 Sea Life Castelo do Queijo
-PCID1 Pr. Cid. Salvador
-SAR1 Sousa Aroso
-AVM1 Av. Menéres
-MTSP1 Matosinhos Praia
-GODH5 Godinho
-LOTA1 Lota
-SP1 S. Pedro
-MATM6 Matosinhos Mercado`;
-
 function defaultState() {
   return {
     v: 1,
     settings: { count: 2, interval: 30, maxBack: 15, ghost: 10, theme: 'auto', proxy: '' },
-    activeLine: 'l502',
-    lines: [{
-      key: 'l502', short: '502', routeId: null, color: '#F5D24C', example: true, probe: 'BCM1',
-      dirs: [{ id: 'paste', name: 'Matosinhos (Mercado)', stops: Core.parseStopList(EXAMPLE_502), myStop: 'BCM1' }],
-      activeDir: 0,
-    }, ...unirDefaults()],
+    activeLine: null,
+    lines: [...unirDefaults()],
     unir: 2,
   };
 }
@@ -441,6 +406,7 @@ async function refresh() {
 // ---------- Aba Unir: todos os ônibus de uma paragem salva (independe das viagens salvas) ----------
 const UNIR_PICK = 'argos.unirTab', UNIR_ROUTE = 'argos.unirRoute', UNIR_STEP = 10;
 const unirTab = { on: false, stops: null, net: null, netTried: false, memos: {}, fetched: new Map(), open: new Set(), sel: null, route: null, routes: null, rows: null, limit: UNIR_STEP, busy: false, err: null, at: null };
+if (!state.lines.length) unirTab.on = true;   // novo acesso: só a aba Unir
 try { unirTab.sel = localStorage.getItem(UNIR_PICK); unirTab.route = localStorage.getItem(UNIR_ROUTE) || null; } catch (e) {}
 // Rede da UNIR (duração das viagens e lados da rua), gerada por tools/unir.mjs e guardada no cofre (`unir-net`); cópia local por 24 h.
 const UNIR_NET = 'argos.unirNet';
@@ -705,7 +671,7 @@ function render() {
     <section class="line-head">
       <div class="badge" aria-label="Linha ${esc(l.short)}">${esc(l.short)}</div>
       <div class="dir">
-        <div class="lbl">Sentido ${l.example ? '<span class="tag">Dados de exemplo</span>' : ''}</div>
+        <div class="lbl">Sentido</div>
         <div class="to">${esc(d.name)}</div>
         <div class="dir-actions">
           <button class="chip" id="btnSwap" ${twoDirs ? '' : 'disabled'} title="${twoDirs ? 'Mudar para ' + esc(other) : 'Só um sentido carregado'}">${ICONS.swap}${twoDirs ? 'Para ' + esc(other) : 'Um sentido'}</button>
@@ -715,8 +681,7 @@ function render() {
     </section>
     ${panel}
     <div class="sec-title"><h2>${stops.length} paragens</h2><span>${buses.length ? 'minutos até o próximo ônibus' : ''}</span></div>
-    <ol class="tl" id="tl">${rows}</ol>
-    ${l.example ? `<p class="legend">Esta lista de paragens é o exemplo do briefing. Abra <b>Linha</b> para carregar os dois sentidos da STCP.</p>` : ''}`;
+    <ol class="tl" id="tl">${rows}</ol>`;
 
   main.querySelectorAll('[data-act="retry"]').forEach(b => b.onclick = () => refresh());
   main.querySelectorAll('[data-act="settings"]').forEach(b => b.onclick = openSettings);
@@ -866,7 +831,7 @@ $('#btnAddGo').onclick = async () => {
   const f = $('#formAdd'), msg = $('#addMsg');
   const short = f.short.value.trim().toUpperCase();
   if (!short) { msg.className = 'msg bad'; msg.textContent = 'Informe o número da linha.'; return; }
-  const base = { key: 'l' + Date.now().toString(36), short, routeId: null, color: Core.normColor(f.color.value) || null, example: false, probe: f.probe.value.trim().toUpperCase(), activeDir: 0 };
+  const base = { key: 'l' + Date.now().toString(36), short, routeId: null, color: Core.normColor(f.color.value) || null, probe: f.probe.value.trim().toUpperCase(), activeDir: 0 };
   try {
     if (addMode === 'paste') {
       const stops = Core.parseStopList(f.list.value);
@@ -890,7 +855,7 @@ $('#btnAddGo').onclick = async () => {
 function openLine() {
   const l = line(), f = $('#formLine');
   $('#lineTitle').textContent = `Linha ${l.short}`;
-  $('#lineHint').textContent = `${l.dirs.length} ${l.dirs.length > 1 ? 'sentidos carregados' : 'sentido carregado'}${l.routeId ? ` · route_id ${l.routeId}` : ''}${l.example ? ' · dados de exemplo' : ''}.`;
+  $('#lineHint').textContent = `${l.dirs.length} ${l.dirs.length > 1 ? 'sentidos carregados' : 'sentido carregado'}${l.routeId ? ` · route_id ${l.routeId}` : ''}.`;
   f.color.value = l.color || ''; f.probe.value = l.probe || l.dirs[0]?.stops[0]?.code || '';
   $('#lineMsg').textContent = ''; $('#dlgLine').showModal();
 }
@@ -907,7 +872,7 @@ $('#btnLineRefresh').onclick = async () => {
     const mine = new Map(l.dirs.map(d => [d.myStop, true]));
     r.dirs.forEach(d => { const hit = d.stops.find(s => mine.has(s.id)); if (hit) d.myStop = hit.id; });
     const keep = r.dirs.findIndex(d => d.myStop);
-    Object.assign(l, { routeId: r.rid, dirs: r.dirs, example: false, color: l.color || r.color, probe: f.probe.value.trim().toUpperCase() || l.probe, activeDir: Math.max(0, keep) });
+    Object.assign(l, { routeId: r.rid, dirs: r.dirs, color: l.color || r.color, probe: f.probe.value.trim().toUpperCase() || l.probe, activeDir: Math.max(0, keep) });
     save(); msg.className = 'msg good'; msg.textContent = `${r.dirs.length} sentido(s) carregado(s), route_id ${r.rid}.`;
     live = { busy: false }; render(); refresh();
   } catch (e) { msg.className = 'msg bad'; msg.textContent = explain(e); }
@@ -938,7 +903,7 @@ $('#formSettings').proxy.addEventListener('change', e => { state.settings.proxy 
 $('#btnTest').onclick = async () => {
   state.settings.proxy = $('#formSettings').proxy.value.trim().replace(/\/+$/, ''); save();
   const msg = $('#testMsg'); msg.className = 'msg'; msg.textContent = 'Testando…';
-  const probe = dir()?.stops[Math.max(0, myIdx())]?.id || 'BCM1';
+  const probe = dir()?.stops[Math.max(0, myIdx())]?.id || '';
   const out = [];
   for (const base of candidates()) {
     try { const j = await getJSON(base, `/api/stops/${encodeURIComponent(probe)}/realtime`); out.push(`${base}: funciona (${(j.arrivals || []).length} chegadas em ${probe})`); apiBase = apiBase || base; }
